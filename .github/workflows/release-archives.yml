@@ -1,0 +1,55 @@
+name: Release archives
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  archives:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: macos-15
+            target: macos-arm64
+          - os: windows-2025
+            target: windows-x64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.3'
+          package-manager-cache: false
+      - name: Locked dependencies and audit
+        run: node scripts/ci.mjs dependencies
+      - name: Build and accept the archive to publish
+        env:
+          TARGETS: ${{ matrix.target }}
+        run: node scripts/release-build.mjs
+      - name: Native Node 22 installation and CLI/MCP acceptance
+        run: node scripts/ci.mjs archive
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Native Node 24 installation and CLI/MCP acceptance
+        run: node scripts/ci.mjs archive
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+

@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  approval:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.approval.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.3'
+          package-manager-cache: false
+      - id: approval
+        run: node scripts/release-pr.mjs gate
+
+  verify:
+    needs: approval
+    if: needs.approval.outputs.release == 'true'
+    # The reusable workflow declares an owner-only recovery publisher. Its
+    # permissions must fit this caller even though closed PRs skip that job.
+    # All regular verification jobs retain contents: read.
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: read
+    uses: ./.github/workflows/pr-ci.yml
+    with:
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+  archives:
+    needs: verify
+    uses: ./.github/workflows/release-archives.yml
+    with:
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+  publish:
+    needs: [verify, archives]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.3'
+          package-manager-cache: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Create only the approved annotated tag
+        run: node scripts/release-pr.mjs tag
+      - name: Publish the approved notes and verified archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RELEASE_NOTES_FILE: docs/release-notes.md
+        run: node scripts/release-upload.mjs
+
+  downloaded-acceptance:
+    needs: publish
+    uses: ./.github/workflows/release-downloads.yml
+    with:
+      ref: ${{ github.event.pull_request.merge_commit_sha }}

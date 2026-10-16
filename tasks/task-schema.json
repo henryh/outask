@@ -1,0 +1,51 @@
+{
+  "stores": {
+    "active.json": {
+      "statuses": [
+        "pending",
+        "in_progress",
+        "review"
+      ]
+    },
+    "done.json": {
+      "statuses": [
+        "done"
+      ]
+    }
+  },
+  "fields": {
+    "scope": {
+      "type": "string",
+      "required": true,
+      "non_empty": true
+    },
+    "acceptance": {
+      "type": "array",
+      "required": true,
+      "min_items": 1,
+      "items": "string",
+      "non_empty_items": true
+    },
+    "blockers": {
+      "type": "array",
+      "required": true,
+      "items": "integer"
+    },
+    "completed_at": {
+      "type": "date",
+      "required_for_statuses": [
+        "done"
+      ]
+    },
+    "techdesign": {
+      "type": "string",
+      "non_empty": true
+    },
+    "stages": {
+      "type": "array",
+      "min_items": 1,
+      "items": "string",
+      "non_empty_items": true
+    }
+  }
+}

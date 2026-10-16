@@ -1,0 +1,194 @@
+name: PR CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.23.3', '24']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Locked dependencies and audit
+        run: make ci-dependencies
+      - name: Core and MCP suites
+        run: make test
+      - name: Linux x64 test distribution and installed CLI/MCP
+        run: make test-distribution
+
+  macos-distribution:
+    name: macOS arm64 Node ${{ matrix.node }}
+    runs-on: macos-15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.23.3', '24']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          architecture: arm64
+          package-manager-cache: false
+      - name: Require native macOS arm64
+        run: node -e "require('node:assert/strict').equal(process.platform + '-' + process.arch, 'darwin-arm64')"
+      - name: Locked dependencies and audit
+        run: make ci-dependencies
+      - name: Native shell profile installation
+        run: node --test app/tests/install-path.test.mjs
+      - name: Native macOS archive and installed CLI/MCP
+        run: make test-distribution
+
+  windows-distribution:
+    name: Windows x64 Node ${{ matrix.node }}
+    runs-on: windows-2025
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.23.3', '24']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          architecture: x64
+          package-manager-cache: false
+      - name: Require native Windows x64
+        run: node -e "require('node:assert/strict').equal(process.platform + '-' + process.arch, 'win32-x64')"
+      - name: Locked dependencies and audit
+        run: node scripts/ci.mjs dependencies
+      - name: Native writer locks and Windows PATH diagnostics
+        run: node --test app/tests/project-lock.test.mjs app/tests/windows-install.test.mjs
+      - name: Native Windows archive and installed PowerShell, cmd.exe CLI and MCP
+        run: node scripts/ci.mjs distribution
+
+  release-candidate:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    name: Release candidate
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.candidate.outputs.release }}
+      recovery: ${{ steps.recovery.outputs.recovery }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.3'
+          package-manager-cache: false
+      - id: candidate
+        run: node scripts/release-pr.mjs check
+      - id: recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-recovery.mjs plan
+
+  release-archives:
+    needs: release-candidate
+    if: needs.release-candidate.outputs.release == 'true'
+    uses: ./.github/workflows/release-archives.yml
+    with:
+      ref: ${{ github.sha }}
+
+  publish-approved-release:
+    needs: [verify, macos-distribution, windows-distribution, release-candidate]
+    if: >-
+      needs.release-candidate.outputs.recovery == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner &&
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner
+    name: Publish approved release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: read
+    outputs:
+      ref: ${{ steps.plan.outputs.approved_ref }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: publisher
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.3'
+          package-manager-cache: false
+      - id: plan
+        run: node publisher/scripts/release-recovery.mjs plan
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.plan.outputs.approved_ref }}
+          path: approved
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.plan.outputs.artifact_run }}
+          pattern: release-*
+          path: publisher/dist
+          merge-multiple: true
+      - name: Verify original approval and existing tag
+        working-directory: approved
+        run: node ../publisher/scripts/release-recovery.mjs verify
+      - name: Publish using corrected code and original approved archives
+        working-directory: approved
+        env:
+          REPO: ${{ github.repository }}
+          RELEASE_NOTES_FILE: docs/release-notes.md
+        run: node ../publisher/scripts/release-upload.mjs
+
+  recovered-downloads:
+    needs: publish-approved-release
+    uses: ./.github/workflows/release-downloads.yml
+    with:
+      ref: ${{ needs.publish-approved-release.outputs.ref }}
