@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "id": 1,
+    "title": "Fix release installation with inaccessible PATH entries and clarify macOS/Codex setup",
+    "status": "in_progress",
+    "priority": "high",
+    "blockers": [],
+    "scope": "Fix the reproduced release-installer EACCES failure caused by an unrelated inaccessible PATH entry; add focused regression coverage; verify first install and command/MCP launch from a fresh supported shell without pre-seeding the command directory; clarify published macOS installation, permission failure handling, stable installed locations and Codex MCP registration in primary and packaged instructions. Preserve unrelated commands/data and explicit user-controlled client configuration. Do not claim the reported real-Mac incident is reproduced without its exact command/stderr; do not bypass sandbox or Gatekeeper restrictions, add project-local installation fallbacks, automatic client configuration or new CLI commands.",
+    "acceptance": [
+      "The actual release installer succeeds with a non-searchable unrelated PATH directory, and still refuses an accessible unrelated tasks command; a regression test fails against the original installer.",
+      "A native macOS archive acceptance starts with a fresh zsh HOME and PATH without the installed bin directory, runs the documented installer, discovers the installed tasks command in a new login shell and starts MCP by command name; Linux/Windows acceptance remains valid.",
+      "Primary and packaged macOS instructions distinguish extraction, successful installation and MCP registration; include supported failure remediation and the official Codex command codex mcp add tasks -- tasks mcp, client restart/verification and a documented installed-path/Node alternative when client PATH differs.",
+      "Independent review, focused QA and required local checks pass on the combined candidate; record concrete evidence and any still-unobserved real-Mac/Codex boundaries before candidate closure.",
+      "Include advancing stable version/lockfile and exact release notes under the project release value gate. Native hosted CI/archive gates require explicit remote-action agreement. Publication and downloaded-asset checks are read-only post-merge acceptance, never pre-merge claims."
+    ],
+    "values": {
+      "goal": "Support reliable per-user installation and local CLI/MCP use on the declared platforms.",
+      "value": "Users can install the release despite an unrelated inaccessible PATH entry and follow clear macOS/Codex setup instructions instead of an accidental project-local workaround.",
+      "observable_result": "The reproduced installer failure is eliminated and a clean-shell installed-command/MCP scenario works at the user boundary.",
+      "verification": "Run the regression against original/fixed installer, native distribution acceptance with a fresh shell PATH, and inspect the actual packaged instructions."
+    },
+    "notes": "Reported Mac incident details are pending. Published v1.0 macOS asset downloaded anonymously (HTTP 200) with verified API SHA; installer and CLI modes are 0755. Both quoted warnings originate in installed Codex, not Outask. Separate PATH EACCES reproduced using the unchanged published archive on Linux; this is not evidence of native Mac incident root cause. Prior native CI preseeded PATH and used Bash plus direct SDK MCP launch. No changes to published v1.0 assets.",
+    "updated_at": "2026-10-17T05:33:26.630Z"
+  }]
