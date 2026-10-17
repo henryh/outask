@@ -252,101 +252,79 @@ exit "$status"
   if (target === 'windows-x64') {
     writeFileSync(join(releaseRoot, 'README.md'), `# Outask AI v${version} (Windows x64)
 
-Requires native Windows x64 and installed Node.js ${nodeRange} on PATH. No WSL or administrator account is needed.
+Requires native Windows x64 and installed Node.js ${nodeRange} on PATH.
 Extract the archive, open its OutaskAI directory in PowerShell or cmd.exe, then run:
 
 PowerShell: \`./install.cmd\`
 
 cmd.exe: \`install.cmd\`
 
-Application: %USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI. Command: %USERPROFILE%\\AppData\\Local\\OutaskAI\\bin\\tasks.cmd.
-The installer preserves existing user PATH entries and adds the command directory once.
-Open a new PowerShell or cmd.exe terminal to run tasks by name; an already-open session keeps its PATH.
-If PATH setup fails, use the printed absolute launcher path immediately.
+Application: \`%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\`. Command: \`%USERPROFILE%\\AppData\\Local\\OutaskAI\\bin\\tasks.cmd\`.
+Open a new terminal, then run from a project directory:
 
-Run from a project directory:
+\`\`\`text
+tasks create --title "Write release notes"
+tasks list --format table
+\`\`\`
 
-\`tasks create --title "Write release notes"\`
+## MCP (optional)
 
-\`tasks list --format table\`
+Configure your client to start Node directly:
 
-\`tasks validate\`
+\`\`\`json
+${JSON.stringify({ command: 'node', args: ['C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\OutaskAI\\app\\bin\\tasks', 'mcp'] })}
+\`\`\`
 
-Update by running the new archive's install.cmd. Managed program files are replaced; unrelated files, project tasks and configuration are preserved.
-Uninstall with install.cmd uninstall from the installed OutaskAI directory (PowerShell: ./install.cmd uninstall).
-This removes only the managed launcher; application files, user PATH, projects and configuration remain.
-Use --bin-dir and --release-root for custom command and application-parent directories.
+Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
+[MCP setup](https://github.com/henryh/outask/blob/v${version}/app/mcp/README.md) · [Commands](https://github.com/henryh/outask/blob/v${version}/app/README.md)
 
-For packaged MCP, configure command node and args ["C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\OutaskAI\\app\\bin\\tasks", "mcp"].
-Use the actual absolute path, JSON-escaped backslashes, and explicit project_path in tool calls.
+## Update and remove
+
+Update: extract the new archive and rerun its installer.
+Uninstall (PowerShell): \`& "$env:USERPROFILE\\AppData\\Local\\Programs\\OutaskAI\\install.cmd" uninstall\`
+Uninstall (cmd.exe): \`"%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\\install.cmd" uninstall\`
+Uninstall removes the managed launcher; application files, projects and configuration remain.
+Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.
 `);
     return;
   }
-  writeFileSync(join(releaseRoot, 'README.md'), `# Outask AI v${version} (${target})
+  const platform = target === 'macos-arm64' ? 'macOS Apple silicon' : 'Linux x64';
+  const application = target === 'macos-arm64' ? '~/Library/Application Support/OutaskAI' : '~/.local/share/task-tracker/releases/OutaskAI';
+  const uninstall = target === 'macos-arm64' ? '"$HOME/Library/Application Support/OutaskAI/install.sh" uninstall' : '"$HOME/.local/share/task-tracker/releases/OutaskAI/install.sh" uninstall';
+  writeFileSync(join(releaseRoot, 'README.md'), `# Outask AI v${version} (${platform})
 
-Outask AI keeps tasks with your code as readable JSON. This archive installs
-the technical \`tasks\` command; existing \`task-tracker\` installation paths
-remain valid identifiers.
-
-Extract this archive in a directory you will keep, open its OutaskAI directory, then run:
+Requires ${platform} and installed Node.js ${nodeRange} on PATH.
+Extract the archive, open its OutaskAI directory in a terminal, then run:
 
 \`\`\`sh
 ./install.sh
 \`\`\`
 
-${target === 'macos-arm64' ? 'You can also double-click Install.command in Finder and press any key after reading the result.\nAfter success it attempts to close its own idle, single-tab Terminal window.\nIf the window stays open, use Cmd+W; failures retain their diagnostics.\nThe application is installed at ~/Library/Application Support/OutaskAI.' : 'The application is installed at ~/.local/share/task-tracker/releases/OutaskAI.'}
-Extraction alone does not install the command. A successful installer prints
-Installed OutaskAI at ... and the managed command path.
-If the shell reports Permission denied when starting ./install.sh, run sh ./install.sh.
-If installation itself fails, retain the command and resolve the reported error
-before continuing; an agent may need access to the user installation directories.
-${target === 'macos-arm64' ? 'Install.command is unsigned and not notarised. For an Apple verification warning, follow https://support.apple.com/en-us/102445 to allow this launcher in Privacy & Security, or open a terminal here and run sh ./install.sh.\n' : ''}
-The command is ~/.local/bin/tasks. The installer configures PATH for future
-terminals in zsh .zprofile (also .zshrc on Linux, respecting ZDOTDIR) or bash
-.bashrc and the first login profile. Open a new terminal afterward. It prints an
-immediate command and a manual PATH setting if shell setup needs attention.
-
-Requires installed Node.js ${nodeRange} on PATH. The installer reports a missing or
-unsupported runtime before changing files.
-
-## Use
+If starting the installer reports Permission denied, run \`sh ./install.sh\`.
+${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
+Open a new terminal, then run from a project directory:
 
 \`\`\`sh
 tasks create --title "Write release notes"
 tasks list --format table
-tasks validate
 \`\`\`
-
-Run \`tasks --help\` for all commands.
 
 ## Connect Codex (optional)
 
-After installation, open a new terminal and run:
-
 \`\`\`sh
-tasks --version
 codex mcp add tasks -- tasks mcp
 codex mcp list
 \`\`\`
 
-Start a new Codex session to load the server; use /mcp to inspect it.
-For a client with a different PATH, register the installed command and Node
-from the working terminal:
-
-\`\`\`sh
-codex mcp add tasks -- "$(command -v node)" "$(command -v tasks)" mcp
-\`\`\`
-
-Register again if the selected Node path changes. Other clients and MCP details:
-https://github.com/henryh/outask/blob/v${version}/app/mcp/README.md
+Start a new Codex session; use \`/mcp\` to inspect the server.
+[MCP setup](https://github.com/henryh/outask/blob/v${version}/app/mcp/README.md) · [Commands](https://github.com/henryh/outask/blob/v${version}/app/README.md)
 
 ## Update and remove
 
-Use --bin-dir for the command directory and --release-root for the parent of OutaskAI.
-To update, download the new archive, extract it in a directory you will keep and run its install.sh.
-Updates replace the managed application files in OutaskAI. User projects, configuration and unrelated files beside the application are preserved. Older versioned installation copies are retained.
-To uninstall, run ./install.sh uninstall from the installed OutaskAI directory.
-Uninstall removes only the managed command link; application copies, project data and configuration are preserved.
+Update: extract the new archive and run \`./install.sh\` from its OutaskAI directory.
+Uninstall: \`${uninstall}\`
+Uninstall removes the managed command link; application files, projects and configuration remain.
+Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.
 `);
 }
 

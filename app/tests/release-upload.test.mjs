@@ -142,7 +142,8 @@ test('invalid notes and publication prerequisites fail before remote mutations',
     {RELEASE_NOTES_FILE: ''}, {TARGETS: 'unsupported-platform'}, {MISSING_TAG: '1'}, {MISMATCH: '1'}, {DIRTY: '1'},
     {notesText: '# Duplicate title\n' + valid},
     {notesText: valid.replace('## Current version', '## Missing')},
-    {notesText: valid.replace('directory you will keep', 'directory')},
+    {notesText: valid.replace('extract the archive', 'download the archive')},
+    {notesText: valid.replace('open that directory', 'continue')},
     {notesText: valid.replace('Node.js 22.23.3 or later', 'Node.js')},
     {notesText: valid.replace('./install.cmd', './install.sh')},
     {notesText: valid.replace('install.cmd   & rem cmd.exe', 'install.cmd   # cmd.exe')},
@@ -154,6 +155,20 @@ test('invalid notes and publication prerequisites fail before remote mutations',
     const result = f.invoke(env);
     assert.notEqual(result.status, 0, JSON.stringify(env));
     assert.equal(mutations(result).length, 0);
+  }
+});
+
+test('release notes need not retain the extracted download directory', t => {
+  const f = fixture(t);
+  for (const install of [
+    'Extract the archive. Open the directory OutaskAI in a terminal and run:',
+    'Download the archive, extract it in a directory you will keep, open that directory in a terminal and run:',
+  ]) {
+    const notes = approvedNotes(f.version).replace('Download and extract the archive, open that directory in a terminal and run:', install);
+    const result = f.invoke({ notesText: notes, existing: { ...f.existing(f.assets, false), body: notes } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(mutations(result).length, 0);
+    assert.equal(result.release.body, notes);
   }
 });
 

@@ -128,34 +128,62 @@ test('archives contain app resources without runtimes, HTTP, plugins, developmen
   assert.equal(existsSync(join(archives, 'SHA256SUMS')), false);
 });
 
-test('archive README starts with installation and covers runtime, use, PATH, update and removal', () => {
+test('each archive README and installer help describe only their destination platform', (t) => {
   const nodeRange = JSON.parse(readFileSync(join(repo, 'app/package.json'), 'utf8')).engines.node;
-  for (const target of ['linux-x64', 'macos-arm64']) {
-    const archive = `OutaskAI-${releaseVersion}-${target}.tar.gz`;
-    const readme = ok(run('tar', ['-xOf', join(archives, archive), 'OutaskAI/README.md']));
-    assert.ok(readme.startsWith(`# Outask AI v${releaseVersion} (`));
-    const runtime = readme.indexOf(nodeRange);
-    assert.ok(runtime >= 0);
-    assert.ok(readme.indexOf('Extract this archive in a directory you will keep') >= 0 && readme.indexOf('Extract this archive') < runtime);
-    assert.ok(readme.indexOf('./install.sh') >= 0 && readme.indexOf('./install.sh') < runtime);
-    assert.match(readme, /Extraction alone does not install the command/);
-    assert.match(readme, /Permission denied.*sh \.\/install.sh/);
-    assert.match(readme, /configures PATH for future\nterminals/);
-    assert.match(readme, target === 'macos-arm64' ? /Library\/Application Support\/OutaskAI/ : /task-tracker\/releases\/OutaskAI/);
-    if (target === 'macos-arm64') {
-      assert.match(readme, /press any key/);
-      assert.match(readme, /If the window stays open, use Cmd\+W/);
+  const platforms = {
+    'linux-x64': {
+      name: 'Linux x64', application: '~/.local/share/task-tracker/releases/OutaskAI',
+      foreign: /macOS|Apple|Windows|PowerShell|cmd\.exe|install\.cmd|Install\.command|Library\/Application Support|AppData/,
+    },
+    'macos-arm64': {
+      name: 'macOS Apple silicon', application: '~/Library/Application Support/OutaskAI',
+      foreign: /Linux|Windows|PowerShell|cmd\.exe|install\.cmd|\.local\/share\/task-tracker\/releases|AppData/,
+    },
+    'windows-x64': {
+      name: 'Windows x64', application: '%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI',
+      foreign: /Linux|macOS|Apple|install\.sh|Install\.command|~\/|\.local\/|Library\/Application Support/,
+    },
+  };
+  for (const [target, platform] of Object.entries(platforms)) {
+    const f = fixture(t, target);
+    const readme = readFileSync(join(f.source, 'README.md'), 'utf8');
+    // Metadata, rather than the host OS, must determine cross-built archive help.
+    const help = ok(run(process.execPath, [join(f.source, 'install.mjs'), '--help'], { env: f.env }));
+    assert.ok(readme.startsWith(`# Outask AI v${releaseVersion} (${platform.name})\n`));
+    assert.ok(readme.trimEnd().split('\n').length <= 40, target);
+    assert.ok(readme.includes(`Node.js ${nodeRange}`));
+    assert.match(help, /Node\.js 22\.23\.3 or later on PATH/);
+    for (const instructions of [readme, help]) {
+      assert.ok(instructions.includes(platform.name));
+      assert.ok(instructions.includes(platform.application));
+      assert.doesNotMatch(instructions, platform.foreign);
     }
-    assert.match(readme, /## Use/);
-    assert.match(readme, /tasks create --title "Write release notes"/);
-    assert.match(readme, /tasks list --format table/);
-    assert.match(readme, /tasks validate/);
-    assert.match(readme, /Run `tasks --help` for all commands/);
-    assert.match(readme, /tasks --version\ncodex mcp add tasks -- tasks mcp\ncodex mcp list/);
-    assert.match(readme, /## Update and remove/);
-    assert.match(readme, /To update, download the new archive, extract it in a directory you will keep/);
-    assert.match(readme, /Updates replace the managed application files/);
-    assert.match(readme, /To uninstall, run \.\/install\.sh uninstall/);
+    assert.ok(readme.indexOf(nodeRange) < readme.indexOf('install.'), target);
+    assert.match(readme, /Extract the archive/);
+    assert.match(readme, /Open a new terminal/);
+    assert.match(readme, /from a project directory/);
+    assert.match(readme, /tasks create --title "Write release notes"\ntasks list --format table/);
+    assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/mcp/README.md`));
+    assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/README.md`));
+    assert.match(help, /\[--bin-dir <directory>\] \[--release-root <parent-directory>\]/);
+    assert.match(readme, /Update: extract the new archive/);
+    if (target === 'windows-x64') {
+      assert.match(readme, /PowerShell: `\.\/install.cmd`/);
+      assert.match(readme, /cmd.exe: `install.cmd`/);
+      const config = JSON.parse(readme.match(/```json\n([\s\S]*?)\n```/)[1]);
+      assert.deepEqual(config, { command: 'node', args: ['C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\OutaskAI\\app\\bin\\tasks', 'mcp'] });
+      assert.ok(readme.includes('& "$env:USERPROFILE\\AppData\\Local\\Programs\\OutaskAI\\install.cmd" uninstall'));
+      assert.ok(readme.includes('"%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\\install.cmd" uninstall'));
+      assert.match(help, /\.\/install\.cmd \(PowerShell\), install\.cmd \(cmd\.exe\)/);
+    } else {
+      assert.match(readme, /```sh\n\.\/install\.sh\n```/);
+      assert.match(readme, /codex mcp add tasks -- tasks mcp\ncodex mcp list/);
+      assert.equal((readme.match(/codex mcp add/g) || []).length, 1);
+      const installed = platform.application.replace('~', '$HOME');
+      assert.ok(readme.includes(`"${installed}/install.sh" uninstall`));
+      assert.ok(help.includes('Usage: ./install.sh [install|uninstall]'));
+      for (const [, commands] of readme.matchAll(/```sh\n([\s\S]*?)\n```/g)) ok(run('/bin/sh', ['-n'], { input: commands }));
+    }
   }
 });
 
@@ -544,16 +572,8 @@ test('installer migrates existing checkout and previous release command links', 
   assert.equal(existsSync(join(old, 'bin/tasks')), true);
 });
 
-test('Windows archive describes native installation, persistent user PATH and packaged MCP', () => {
+test('Windows archive installer checks Node before delegating to the managed installer', () => {
   const archive = join(archives, `OutaskAI-${releaseVersion}-windows-x64.tar.gz`);
-  const readme = ok(run('tar', ['-xOf', archive, 'OutaskAI/README.md']));
-  assert.match(readme, /PowerShell: `\.\/install.cmd`/);
-  assert.match(readme, /cmd.exe: `install.cmd`/);
-  assert.match(readme, /AppData\\Local\\Programs\\OutaskAI/);
-  assert.match(readme, /existing user PATH entries/);
-  assert.match(readme, /already-open session/);
-  assert.match(readme, /unrelated files, project tasks and configuration are preserved/);
-  assert.match(readme, /For packaged MCP, configure command node/);
   const installer = ok(run('tar', ['-xOf', archive, 'OutaskAI/install.cmd']));
   assert.match(installer, /DEPENDENCY_MISSING/);
   assert.match(installer, /runtime.cjs/);

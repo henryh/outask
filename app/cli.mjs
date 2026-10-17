@@ -84,7 +84,7 @@ export async function main(args) {
     }
     if (name === 'mcp') {
       if (rest.length === 1 && ['--help', '-h'].includes(rest[0])) {
-        process.stdout.write('Usage: tasks mcp\nStart the local stdio adapter; each tool call selects its project.\nPublished releases include the adapter and its dependencies.\nConfigure the client with the absolute path to the installed tasks command and argument mcp.\nSetup and tool contract: https://github.com/henryh/outask/blob/main/app/mcp/README.md\n');
+        process.stdout.write('Usage: tasks mcp\nStart the local stdio adapter; select the project in each tool call.\nPublished releases include the adapter and its dependencies.\nConfigure the client with command node and arguments <absolute app/bin/tasks path>, mcp.\nSetup and tool contract: https://github.com/henryh/outask/blob/main/app/mcp/README.md\n');
         return;
       }
       if (rest.length) fail('INVALID_INPUT', 'tasks mcp accepts no options; select the project in each tool call');

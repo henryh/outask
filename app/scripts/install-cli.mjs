@@ -62,7 +62,13 @@ try {
     'bin-dir': { type: 'string' }, 'release-root': { type: 'string' }, help: { type: 'boolean', short: 'h' },
   } });
   if (values.help) {
-    process.stdout.write('Usage: node app/scripts/install-cli.mjs install|uninstall [--bin-dir <directory>] [--release-root <parent-directory>]\nDefault: ~/.local/bin on POSIX, %USERPROFILE%\\AppData\\Local\\OutaskAI\\bin on Windows (tasks.cmd launcher). Windows persists user PATH; reopen your terminal. Use --release-root for the parent directory of a custom OutaskAI installation. Install refuses unrelated commands; uninstall removes only the managed command link.\nUpdate by updating this checkout, then rerun install. Task data and config are never touched. Install configures PATH in bash startup files or zsh .zprofile (plus .zshrc on Linux), respecting ZDOTDIR; open a new terminal afterward.\n');
+    process.stdout.write(`Usage: node app/scripts/install-cli.mjs install|uninstall [--bin-dir <directory>] [--release-root <parent-directory>]
+Requires Node.js 22.23.3 or later on PATH.
+Command: ${windows ? '%USERPROFILE%\\AppData\\Local\\OutaskAI\\bin\\tasks.cmd' : '~/.local/bin/tasks'}
+Open a new terminal after installation. To update, update this checkout and rerun install.
+Use --release-root for the parent of an existing custom OutaskAI installation.
+Install refuses unrelated commands; uninstall removes the managed command link and preserves application files, projects and configuration.
+`);
   } else {
     if (positionals.length !== 1 || !['install', 'uninstall'].includes(positionals[0]) || values['bin-dir'] === '' || values['release-root'] === '') {
       fail('INVALID_INPUT', 'use install or uninstall, with optional --bin-dir <directory> and --release-root <parent-directory>');

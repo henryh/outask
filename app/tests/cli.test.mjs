@@ -333,7 +333,7 @@ test('CLI preserves compact defaults, exact filters, human help and error stream
   const project = fixture(t, [task(1, { status: 'in_progress', priority: 'low' }), task(2, { priority: 'high' }), task(3)]);
   const mcpHelp = success(cli(['mcp', '--help'])).stdout;
   assert.match(mcpHelp, /Published releases include the adapter and its dependencies/);
-  assert.match(mcpHelp, /absolute path to the installed tasks command and argument mcp/);
+  assert.match(mcpHelp, /command node and arguments <absolute app\/bin\/tasks path>, mcp/);
   assert.doesNotMatch(mcpHelp, /npm ci|checkout|\/home\/you/);
   const defaults = JSON.parse(success(cli(['list', project, '--format=json'])).stdout);
   assert.deepEqual(defaults.fields, ['id', 'title', 'status']);

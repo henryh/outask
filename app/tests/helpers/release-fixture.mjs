@@ -17,7 +17,7 @@ Outask AI ${version} keeps task work clear and local.
 
 Requires Node.js 22.23.3 or later on PATH.
 
-Download the archive, extract it in a directory you will keep, open that directory in a terminal and run:
+Download and extract the archive, open that directory in a terminal and run:
 
 \`\`\`sh
 ./install.sh
@@ -46,4 +46,3 @@ tasks list --format table
 - [MCP setup](https://github.com/owner/project/blob/v${version}/app/mcp/README.md)
 `;
 }
-
