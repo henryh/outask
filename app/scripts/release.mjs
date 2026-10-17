@@ -298,8 +298,8 @@ ${target === 'macos-arm64' ? 'You can also double-click Install.command in Finde
 Extraction alone does not install the command. A successful installer prints
 Installed OutaskAI at ... and the managed command path.
 If the shell reports Permission denied when starting ./install.sh, run sh ./install.sh.
-If installation itself fails, retain the command and error and resolve directory
-permissions before continuing; an agent may need access to the user installation directories.
+If installation itself fails, retain the command and resolve the reported error
+before continuing; an agent may need access to the user installation directories.
 ${target === 'macos-arm64' ? 'Install.command is unsigned and not notarised. For an Apple verification warning, follow https://support.apple.com/en-us/102445 to allow this launcher in Privacy & Security, or open a terminal here and run sh ./install.sh.\n' : ''}
 The command is ~/.local/bin/tasks. The installer configures PATH for future
 terminals in zsh .zprofile (also .zshrc on Linux, respecting ZDOTDIR) or bash
