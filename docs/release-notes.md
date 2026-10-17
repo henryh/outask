@@ -6,33 +6,24 @@
 
 ## Current version
 
-Outask AI keeps project tasks with your code in readable local JSON files. Use
-the CLI directly or connect a local AI agent through MCP on Linux x64, macOS
-Apple silicon and Windows x64.
+Outask AI keeps project tasks in local JSON files, with CLI and local MCP access.
 
 ## What's new
 
-- Install successfully when an unrelated PATH directory cannot be searched,
-  while continuing to reject conflicting task commands.
-- Follow macOS installation and permission guidance directly from the archive.
-- Connect the installed MCP server to Codex with a short registration command
-  and guidance for clients with a different PATH.
+- Install despite an inaccessible unrelated PATH directory; conflicting commands remain protected.
+- Use concise installation, CLI and MCP instructions, with platform-specific archive guides.
 
 ## Install
 
 Requires Node.js 22.23.3 or later on PATH.
-
-Download the archive for your platform, extract it into a directory you will keep,
-and open that directory's OutaskAI folder in a terminal.
+Extract the archive. Open the directory OutaskAI in a terminal.
 
 Linux/macOS:
-
 ```sh
 ./install.sh
 ```
 
 Windows:
-
 ```text
 ./install.cmd  # PowerShell
 install.cmd   & rem cmd.exe
@@ -40,8 +31,7 @@ install.cmd   & rem cmd.exe
 
 ## Run
 
-From a project directory:
-
+Open a new terminal. From a project directory:
 ```sh
 tasks create --title "Write release notes"
 tasks list --format table

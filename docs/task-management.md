@@ -1,54 +1,41 @@
 # Tasks in this repository
 
-The public repository starts with an empty backlog and completed-task store.
-New contributor tasks begin at ID 1. Historical development tasks are not part
-of these stores. Do not import old tasks or reset an existing contributor backlog.
+Only PM changes contributor tasks, within the owner's authorised scope.
+`tasks/active.json` and `tasks/done.json` own status; `tasks/task-schema.json`
+owns required fields. Do not import other project stores or reset the backlog.
 
-Task status is owned by `tasks/active.json` and `tasks/done.json`.
-`tasks/task-schema.json` declares this repository's stricter contributor format:
-every task requires scope, acceptance checks and blockers; done requires
-`completed_at`. Active statuses are pending, in_progress and review; Done is done.
-These are repository rules, separate from the tracker's three-field minimum.
-IDs are positive integers unique across all retained stores. Only blockers still
-in Active prevent starting work.
+## Task records
 
-## Delivery plan
+- Positive integer IDs are unique across retained stores; the tracker allocates them.
+- Active: `pending`, `in_progress`, `review`. Done: `done`.
+- Every task requires `scope`, nonempty `acceptance` and `blockers`.
+- Done requires `completed_at`. Only blockers still in Active prevent starting.
+- Validate and commit changed stores with refreshed `tasks/.task-tracker.json`.
+  The tracker never stages or commits files.
 
-Only the PM role changes records. Create or select work only within the owner's
-authorised scope. Use a matching `task-<id>-<slug>` branch and preserve corrections
-in that task. Implement, obtain independent feature review, complete QA and
-documentation, then record acceptance evidence and candidate closure on the same
-branch. Validate and commit `tasks/.task-tracker.json` with every store change.
-Do not create a separate closure PR. Rework returns the task to review and removes
-`completed_at`; repeat affected gates before closing again.
-
-The [full contributor delivery policy](contributing.md#task-delivery) governs
-integration, explicit remote-action agreement, hosted CI, owner merge, release
-value and post-merge verification. Follow it before publishing any candidate.
-Status on main is authoritative; done on an unmerged task branch records
-candidate acceptance. For release tasks, declare real publication and downloaded
-asset acceptance as read-only post-merge delivery checks. Never describe those
-results as already observed during pre-merge acceptance.
+Use `task-<id>-<slug>` and preserve corrections there. Record acceptance, set
+`completed_at` and close on that branch before the final push. Branch-local done
+means candidate acceptance; status on `main` owns delivered completion. Rework
+returns to review and removes `completed_at` until affected gates pass again.
+Follow the complete [delivery sequence](contributing.md#task-delivery).
 
 ## Agent task access
 
-Prefer connected `tasks` MCP tools. Discover their schemas in the tool catalog;
-pass the known repository path as `project_path`. An ordinary list uses Active,
-`fields: ["id", "title", "status"]` and `limit: 10`. Follow bounded pagination;
-include history or detailed fields only for the requested check. Use `get_tasks`
-for a known ordered ID batch. Read known instruction routes directly.
+Prefer connected tasks MCP tools; pass this repository's absolute `project_path`.
+List Active with `fields: ["id", "title", "status"]`, `limit: 10`; follow pagination.
+Use `get_task` or `get_tasks` for selected details and explicit history selectors
+when needed. See [MCP setup](../app/mcp/README.md).
 
-PM uses `create_task`, `update_task`, `transition_task` and `delete_task` for
-authorised writes; `validate_project` checks all stores and refreshes service
-state. The [MCP guide](../app/mcp/README.md) owns schemas and errors. If MCP is
-unavailable, use the CLI or standalone equivalents. Report MCP failures and
-inspect the result before retrying a mutation; switching interfaces does not
-bypass errors or grant authority.
+PM uses `create_task`, `update_task`, `transition_task` and `delete_task` for writes.
+Use the last-read `if_updated_at` for stale-write protection. Successful mutations
+validate/refresh service state; use `validate_project` after manual repairs and
+at explicit validation gates. Report failures and inspect state before retrying;
+a mutation transport failure may already have persisted.
 
-CLI reads default to the current directory and support explicit project paths.
-Use `tasks list`, `tasks get <id>`, `tasks get-many --id <id>`, `tasks deps <id>` and
-`tasks validate`. The [operator reference](../app/README.md) explains selection,
-projections, search, structured write input and manual edits. PM prepares required
-project fields before creating or changing tasks. Prefer `--if-updated-at` with
-the last-read timestamp for stale-write protection. The tracker does not invent
-`completed_at` and never stages or commits files.
+If MCP is unavailable, use the [CLI](../app/README.md) with an explicit project path:
+
+```sh
+tasks list --project-path /absolute/project --fields id,title,status --limit 10
+tasks get 1 --project-path /absolute/project
+tasks validate --project-path /absolute/project
+```
