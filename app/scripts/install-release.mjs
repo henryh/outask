@@ -105,7 +105,7 @@ try {
       for (const part of (process.env.PATH ?? '').split(delimiter)) {
         for (const name of windows ? ['tasks.cmd', 'tasks.exe', 'tasks.bat', 'tasks.com', 'tasks.ps1', 'tasks'] : ['tasks']) {
           const candidate = resolve(part || '.', name);
-          if (canonical(candidate) !== target && executable(candidate) && !owned(candidate)) throw new Error(`COMMAND_EXISTS: ${candidate} is already on PATH; resolve the collision before installing`);
+          if (executable(candidate) && canonical(candidate) !== target && !owned(candidate)) throw new Error(`COMMAND_EXISTS: ${candidate} is already on PATH; resolve the collision before installing`);
         }
       }
       if (inspect(destination) && (!inspect(destination).isDirectory() || !managed(destination))) {

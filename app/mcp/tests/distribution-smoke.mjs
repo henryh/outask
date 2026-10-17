@@ -5,7 +5,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { projectLockPath } from '../../src/project-lock.mjs';
@@ -25,8 +25,8 @@ const releases = windows ? join(home, 'AppData/Local/Programs') : process.platfo
 const config = join(home, '.config/task-tracker/config.json');
 const tools = join(temporary, 'tools');
 const env = {
-  ...process.env, USERPROFILE: windows ? home : process.env.USERPROFILE, HOME: home, SHELL: '/bin/bash', ZDOTDIR: undefined, XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'),
-  PATH: windows ? process.env.PATH : `${bin}:${tools}:/usr/bin:/bin`,
+  ...process.env, USERPROFILE: windows ? home : process.env.USERPROFILE, HOME: home, SHELL: process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash', ZDOTDIR: undefined, XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'),
+  PATH: windows ? process.env.PATH : `${tools}:/usr/bin:/bin`,
 };
 delete env.TASK_TRACKER_CONFIG;
 
@@ -64,6 +64,7 @@ let lock;
 let stderr = '';
 let evidence;
 let registryBackup;
+let commandEnv = env;
 const extraLocks = [];
 const powershell = windows ? join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe') : undefined;
 function documentedInstall(source, shell) {
@@ -130,10 +131,12 @@ try {
   assert.equal(existsSync(bin), false);
 
   const localHelper = fileURLToPath(new URL('../../../scripts/install-local-release.mjs', import.meta.url));
+  const helperHome = join(temporary, 'helper home');
+  mkdirSync(helperHome);
   const helperBin = join(home, 'custom helper bin');
   const helperReleases = join(home, 'custom helper releases');
   const helperEnv = {
-    ...env, BIN_DIR: helperBin, RELEASE_ROOT: helperReleases,
+    ...env, HOME: helperHome, BIN_DIR: helperBin, RELEASE_ROOT: helperReleases,
     PATH: windows ? env.PATH : `${dirname(process.execPath)}:${env.PATH}`,
   };
   const localInstall = invoke(process.execPath, [localHelper], helperEnv);
@@ -151,8 +154,26 @@ try {
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), false,
     'The helper launcher must not mask the default command in later PATH checks');
 
+  if (!windows) {
+    assert.equal(env.PATH.split(delimiter).includes(bin), false, 'First installation must not inherit the installed command directory');
+    assert.equal(existsSync(join(home, process.platform === 'darwin' ? '.zprofile' : '.bashrc')), false, 'First installation must start with fresh shell startup files');
+  }
   if (windows) documentedInstall(source, 'powershell'); else run(installer);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
+  if (!windows) {
+    const script = `discovered=$(command -v tasks) && reported=$(tasks --version) && "$OUTASK_SMOKE_NODE" -e 'console.log("OUTASK_FRESH_SHELL:" + JSON.stringify({ command: process.argv[1], version: process.argv[2], path: process.env.PATH, home: process.env.HOME }))' "$discovered" "$reported"`;
+    const shell = invoke(env.SHELL, [process.platform === 'darwin' ? '-lc' : '-ic', script], { ...env, OUTASK_SMOKE_NODE: process.execPath });
+    assert.equal(shell.status, 0, `Fresh shell could not run the installed command:\n${shell.stdout}\n${shell.stderr}`);
+    // System shell startup may print a banner independently of the test command.
+    const output = shell.stdout.split(/\r?\n/).find((line) => line.startsWith('OUTASK_FRESH_SHELL:'));
+    assert.ok(output, `Fresh shell did not report its command environment:\n${shell.stdout}\n${shell.stderr}`);
+    const inherited = JSON.parse(output.slice('OUTASK_FRESH_SHELL:'.length));
+    assert.equal(inherited.command, command, 'A new shell must discover the installed tasks by name');
+    assert.equal(inherited.version, metadata.version);
+    assert.equal(inherited.home, home, 'Fresh shell must use the isolated installation HOME');
+    assert.ok(inherited.path.split(delimiter).includes(bin), 'Shell startup must add the installed command directory');
+    commandEnv = { ...env, PATH: inherited.path };
+  }
   if (windows) documentedInstall(source, 'cmd'); else run(installer);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
   if (windows) {
@@ -200,7 +221,7 @@ try {
   assert.equal(cli('validate', '--format', 'json').valid, true);
 
   client = new Client({ name: 'outask-distribution-smoke', version: '1.0.0' });
-  const transport = new StdioClientTransport({ command: windows ? process.execPath : command, args: windows ? [join(releases, name, 'app/bin/tasks'), 'mcp'] : ['mcp'], cwd: project, env, stderr: 'pipe' });
+  const transport = new StdioClientTransport({ command: windows ? process.execPath : 'tasks', args: windows ? [join(releases, name, 'app/bin/tasks'), 'mcp'] : ['mcp'], cwd: project, env: commandEnv, stderr: 'pipe' });
   transport.stderr.on('data', (chunk) => { stderr += chunk; });
   await client.connect(transport);
   async function call(name, args, errorCode) {
@@ -279,7 +300,8 @@ try {
     result: 'PASS', os: { platform: process.platform, version: osVersion, architecture },
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
-    checks: [...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : []), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
+    ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive' } } : {}),
+    checks: [...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);

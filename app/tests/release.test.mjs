@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test, before, after } from 'node:test';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -138,6 +138,8 @@ test('archive README starts with installation and covers runtime, use, PATH, upd
     assert.ok(runtime >= 0);
     assert.ok(readme.indexOf('Extract this archive in a directory you will keep') >= 0 && readme.indexOf('Extract this archive') < runtime);
     assert.ok(readme.indexOf('./install.sh') >= 0 && readme.indexOf('./install.sh') < runtime);
+    assert.match(readme, /Extraction alone does not install the command/);
+    assert.match(readme, /Permission denied.*sh \.\/install.sh/);
     assert.match(readme, /configures PATH for future\nterminals/);
     assert.match(readme, target === 'macos-arm64' ? /Library\/Application Support\/OutaskAI/ : /task-tracker\/releases\/OutaskAI/);
     if (target === 'macos-arm64') {
@@ -149,6 +151,7 @@ test('archive README starts with installation and covers runtime, use, PATH, upd
     assert.match(readme, /tasks list --format table/);
     assert.match(readme, /tasks validate/);
     assert.match(readme, /Run `tasks --help` for all commands/);
+    assert.match(readme, /tasks --version\ncodex mcp add tasks -- tasks mcp\ncodex mcp list/);
     assert.match(readme, /## Update and remove/);
     assert.match(readme, /To update, download the new archive, extract it in a directory you will keep/);
     assert.match(readme, /Updates replace the managed application files/);
@@ -506,6 +509,23 @@ test('installer preserves unrelated commands including dangling symlinks and PAT
   writeFileSync(join(f.tools, 'tasks'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   assert.match(f.install().stderr, /COMMAND_EXISTS/);
   assert.equal(existsSync(f.releases), false);
+});
+
+test('installer ignores an unrelated non-searchable PATH directory', {
+  skip: process.getuid?.() === 0 ? 'Root bypasses POSIX directory search permissions; run this regression as an unprivileged user.' : false,
+}, (t) => {
+  const f = fixture(t);
+  const restricted = join(f.home, 'restricted path');
+  mkdirSync(restricted);
+  chmodSync(restricted, 0o000);
+  try {
+    assert.throws(() => lstatSync(join(restricted, 'tasks')), { code: 'EACCES' });
+    const env = { ...f.env, PATH: `${restricted}:${f.env.PATH}` };
+    assert.match(ok(run(join(f.source, 'install.sh'), [], { env })), /Installed OutaskAI/);
+    assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env })).trim(), releaseVersion);
+  } finally {
+    chmodSync(restricted, 0o700);
+  }
 });
 
 test('installer migrates existing checkout and previous release command links', (t) => {
