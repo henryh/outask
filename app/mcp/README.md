@@ -26,6 +26,36 @@ Launch errors go to stderr and exit nonzero. Select a project in each tool call;
 the launcher accepts no project flags, because one session can work with
 different projects. Help is available even without the dependencies.
 
+### Codex on Linux/macOS
+
+After a successful installation, open a new terminal and check `tasks --version`.
+Register the installed stdio server with Codex:
+
+```bash
+codex mcp add tasks -- tasks mcp
+codex mcp list
+```
+
+The first `tasks` is the client-side server name; `tasks mcp` after `--` is the
+process Codex starts. Start a new Codex session, or restart the client application,
+to load the configuration. Use `/mcp` to inspect the active server. See the
+[official Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
+If Codex runs with a different PATH (for example an app launched before shell
+setup, or Node installed through nvm), register the resolved installed launcher
+and Node from the working terminal:
+
+```bash
+codex mcp add tasks -- "$(command -v node)" "$(command -v tasks)" mcp
+```
+
+This uses the installed `tasks` command, which survives removal of the download.
+Register again if the selected Node path changes. Keep any installation error
+visible and resolve it before registering MCP; copying the unpacked entry into
+a project does not complete the per-user installation.
+
+### Other stdio clients
+
 Configure a stdio-capable host with the following process definition (adapt the
 outer `mcpServers` container to the host's settings format):
 
@@ -43,7 +73,9 @@ outer `mcpServers` container to the host's settings format):
 }
 ```
 
-Replace `/absolute/path/to/tasks` with the result from `command -v tasks`. Use
+Replace `/absolute/path/to/tasks` with the result from `command -v tasks`.
+Node.js must also be on the client's PATH; an absolute launcher path alone does
+not supply Node. Use
 an explicit `project_path` in calls when the host's process working directory is
 unknown. No shell invocation is needed for tool calls. The registry and `env`
 entry are optional; registry format and resolution follow the [CLI

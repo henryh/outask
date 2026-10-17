@@ -268,6 +268,12 @@ choose Open Anyway for `Install.command`, then confirm Open. Alternatively,
 open the extracted `OutaskAI` directory in a terminal and run `sh ./install.sh`.
 Both routes use the same installer; do not disable Gatekeeper globally.
 
+Extraction alone does not install the command. A successful installer prints
+`Installed OutaskAI at ...` and the managed command path. Keep the exact command
+and stderr if installation fails. An agent may need permission to write the
+user installation directories; resolve that failure before continuing with
+[Codex/MCP setup](mcp/README.md#codex-on-linuxmacos).
+
 On Linux/macOS, the installer checks dependencies and creates `~/.local/bin/tasks`. Its default
 application directory is `~/Library/Application Support/OutaskAI` on macOS and
 `~/.local/share/task-tracker/releases/OutaskAI` on Linux. No administrator access

@@ -1,8 +1,8 @@
 ## Downloads
 
-- [Linux x64](https://github.com/henryh/outask/releases/download/v1.0/OutaskAI-1.0-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.0/OutaskAI-1.0-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/henryh/outask/releases/download/v1.0/OutaskAI-1.0-windows-x64.tar.gz)
+- [Linux x64](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-windows-x64.tar.gz)
 
 ## Current version
 
@@ -12,11 +12,11 @@ Apple silicon and Windows x64.
 
 ## What's new
 
-- First public release under GNU AGPL version 3 only.
-- Create, list, search, inspect, update and transition tasks through the CLI and
-  local MCP server, with project-defined fields, local blockers and validation.
-- Install per user, update or uninstall while preserving project tasks and
-  configuration; native Windows installation works without WSL.
+- Install successfully when an unrelated PATH directory cannot be searched,
+  while continuing to reject conflicting task commands.
+- Follow macOS installation and permission guidance directly from the archive.
+- Connect the installed MCP server to Codex with a short registration command
+  and guidance for clients with a different PATH.
 
 ## Install
 
@@ -49,6 +49,6 @@ tasks list --format table
 
 ## Documentation
 
-- [Basic use](https://github.com/henryh/outask/blob/v1.0/README.md#basic-use)
-- [Full operator reference](https://github.com/henryh/outask/blob/v1.0/app/README.md)
-- [MCP setup](https://github.com/henryh/outask/blob/v1.0/app/mcp/README.md)
+- [Basic use](https://github.com/henryh/outask/blob/v1.1/README.md#basic-use)
+- [Full operator reference](https://github.com/henryh/outask/blob/v1.1/app/README.md)
+- [MCP setup](https://github.com/henryh/outask/blob/v1.1/app/mcp/README.md)

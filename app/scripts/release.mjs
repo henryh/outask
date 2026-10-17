@@ -295,6 +295,12 @@ Extract this archive in a directory you will keep, open its OutaskAI directory, 
 \`\`\`
 
 ${target === 'macos-arm64' ? 'You can also double-click Install.command in Finder and press any key after reading the result.\nAfter success it attempts to close its own idle, single-tab Terminal window.\nIf the window stays open, use Cmd+W; failures retain their diagnostics.\nThe application is installed at ~/Library/Application Support/OutaskAI.' : 'The application is installed at ~/.local/share/task-tracker/releases/OutaskAI.'}
+Extraction alone does not install the command. A successful installer prints
+Installed OutaskAI at ... and the managed command path.
+If the shell reports Permission denied when starting ./install.sh, run sh ./install.sh.
+If installation itself fails, retain the command and error and resolve directory
+permissions before continuing; an agent may need access to the user installation directories.
+${target === 'macos-arm64' ? 'Install.command is unsigned and not notarised. For an Apple verification warning, follow https://support.apple.com/en-us/102445 to allow this launcher in Privacy & Security, or open a terminal here and run sh ./install.sh.\n' : ''}
 The command is ~/.local/bin/tasks. The installer configures PATH for future
 terminals in zsh .zprofile (also .zshrc on Linux, respecting ZDOTDIR) or bash
 .bashrc and the first login profile. Open a new terminal afterward. It prints an
@@ -312,6 +318,27 @@ tasks validate
 \`\`\`
 
 Run \`tasks --help\` for all commands.
+
+## Connect Codex (optional)
+
+After installation, open a new terminal and run:
+
+\`\`\`sh
+tasks --version
+codex mcp add tasks -- tasks mcp
+codex mcp list
+\`\`\`
+
+Start a new Codex session to load the server; use /mcp to inspect it.
+For a client with a different PATH, register the installed command and Node
+from the working terminal:
+
+\`\`\`sh
+codex mcp add tasks -- "$(command -v node)" "$(command -v tasks)" mcp
+\`\`\`
+
+Register again if the selected Node path changes. Other clients and MCP details:
+https://github.com/henryh/outask/blob/v${version}/app/mcp/README.md
 
 ## Update and remove
 
