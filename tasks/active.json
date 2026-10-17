@@ -2,7 +2,7 @@
   {
     "id": 1,
     "title": "Fix release installation with inaccessible PATH entries and clarify macOS/Codex setup",
-    "status": "in_progress",
+    "status": "review",
     "priority": "high",
     "blockers": [],
     "scope": "Fix the reproduced release-installer EACCES failure caused by an unrelated inaccessible PATH entry; add focused regression coverage; verify first install and command/MCP launch from a fresh supported shell without pre-seeding the command directory; clarify published macOS installation, permission failure handling, stable installed locations and Codex MCP registration in primary and packaged instructions. Preserve unrelated commands/data and explicit user-controlled client configuration. Do not claim the reported real-Mac incident is reproduced without its exact command/stderr; do not bypass sandbox or Gatekeeper restrictions, add project-local installation fallbacks, automatic client configuration or new CLI commands.",
@@ -20,5 +20,5 @@
       "verification": "Run the regression against original/fixed installer, native distribution acceptance with a fresh shell PATH, and inspect the actual packaged instructions."
     },
     "notes": "Reported Mac incident details are pending. Published v1.0 macOS asset downloaded anonymously (HTTP 200) with verified API SHA; installer and CLI modes are 0755. Both quoted warnings originate in installed Codex, not Outask. Separate PATH EACCES reproduced using the unchanged published archive on Linux; this is not evidence of native Mac incident root cause. Prior native CI preseeded PATH and used Bash plus direct SDK MCP launch. No changes to published v1.0 assets.",
-    "updated_at": "2026-10-17T05:33:26.630Z"
+    "updated_at": "2026-10-17T05:38:13.048Z"
   }]
