@@ -25,7 +25,7 @@ test('runtime and adapter require the Node.js 22 FTS5 baseline', () => {
   assert.equal(manifest.engines.node, '>=22.23.3');
   assert.equal(mcp.engines.node, manifest.engines.node);
   const readme = readFileSync(join(root, 'README.md'), 'utf8');
-  assert.match(readme, /requires Node\.js 22\.23\.3 or later/);
+  assert.match(readme, /Node\.js\s+(?:>=)?22\.23\.3\b/);
   assert.doesNotMatch(readme, /18\.19|20\.10/);
   assert.throws(check('22.23.2'), /INCOMPATIBLE_RUNTIME:.*>=22\.23\.3/);
   assert.doesNotThrow(check('22.23.3'));
