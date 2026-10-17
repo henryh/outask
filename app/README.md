@@ -24,9 +24,10 @@ Open a new terminal after installation; restart an editor with an old PATH.
 | macOS | `~/Library/Application Support/OutaskAI` | `~/.local/bin/tasks` |
 | Windows | `%USERPROFILE%\AppData\Local\Programs\OutaskAI` | `%USERPROFILE%\AppData\Local\OutaskAI\bin\tasks.cmd` |
 
-On macOS, Finder can run `Install.command`. If macOS blocks this unsigned
+On macOS, double-click `Install.command` in Finder or run `./Install.command`
+in a terminal. If macOS blocks this unsigned
 launcher, follow [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
-for a release you trust, or run `sh ./install.sh` in its extracted directory.
+for a release you trust.
 Keep Gatekeeper enabled. Node must be available to the installer.
 
 Update by running the new archive's installer; close running CLI/MCP processes
@@ -35,9 +36,10 @@ project tasks and configuration are preserved. Resolve an unrelated `tasks`
 command collision explicitly. Custom installations must reuse the same
 `--bin-dir` and `--release-root` options when updating or removing the command.
 
-To remove the command, run the installed application's installer with
-`uninstall`: `./install.sh uninstall`, `./install.cmd uninstall` in PowerShell,
-or `install.cmd uninstall` in cmd.exe. Application files and project data remain;
+From the installed application's directory, remove the command with
+`./install.sh uninstall` on Linux, `./Install.command uninstall` on macOS,
+`./Install.cmd uninstall` in PowerShell or `Install.cmd uninstall` in cmd.exe.
+Application files and project data remain;
 PATH/profile settings remain. Move any user files before removing the application.
 
 ## Selecting a project

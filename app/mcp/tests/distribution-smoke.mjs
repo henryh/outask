@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { basename, delimiter, dirname, join, resolve } from 'node:path';
@@ -14,6 +14,7 @@ import { hostTarget } from '../../../scripts/release-config.mjs';
 
 const windows = process.platform === 'win32';
 const target = hostTarget();
+const installerName = windows ? 'Install.cmd' : process.platform === 'darwin' ? 'Install.command' : 'install.sh';
 assert.equal(process.argv.length, 3, 'Pass the native host test archive path');
 const archive = resolve(process.argv[2]);
 const temporary = realpathSync(mkdtempSync(join(tmpdir(), 'outask-installed-smoke-')));
@@ -70,8 +71,8 @@ const powershell = windows ? join(process.env.SystemRoot, 'System32/WindowsPower
 function documentedInstall(source, shell) {
   const command = shell === 'powershell' ? powershell : join(process.env.SystemRoot, 'System32/cmd.exe');
   const args = shell === 'powershell'
-    ? ['-NoProfile', '-NonInteractive', '-Command', './install.cmd; exit $LASTEXITCODE']
-    : ['/d', '/c', 'install.cmd'];
+    ? ['-NoProfile', '-NonInteractive', '-Command', './Install.cmd; exit $LASTEXITCODE']
+    : ['/d', '/c', 'Install.cmd'];
   const result = spawnSync(command, args, { cwd: source, env, encoding: 'utf8', timeout: 60000 });
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -111,12 +112,17 @@ try {
   const architecture = windows ? registry('$env:PROCESSOR_ARCHITECTURE').trim() : run('uname', ['-m']).trim();
   assert.equal(architecture, windows ? 'AMD64' : process.platform === 'darwin' ? 'arm64' : 'x86_64', 'OS architecture must match native Node execution');
   const osVersion = process.platform === 'darwin' ? run('sw_vers', ['-productVersion']).trim() : release();
-  const installer = join(source, windows ? 'install.cmd' : 'install.sh');
-  const missingNode = invoke(installer, [], { ...env, PATH: '' });
-  assert.notEqual(missingNode.status, 0);
-  assert.match(missingNode.stderr, /DEPENDENCY_MISSING: install Node.js/);
-  if (!windows) {
-    const missingDirname = invoke(join(source, 'install.sh'), [], { ...env, PATH: tools });
+  assert.deepEqual(readdirSync(source).filter((name) => /^install/i.test(name)), [installerName]);
+  const installer = join(source, installerName);
+  // The Finder launcher also discovers Node in system Homebrew locations.
+  // Clearing PATH cannot hide those installations on a native Mac.
+  if (process.platform !== 'darwin') {
+    const missingNode = invoke(installer, [], { ...env, PATH: '' });
+    assert.notEqual(missingNode.status, 0);
+    assert.match(missingNode.stderr, /DEPENDENCY_MISSING: install Node.js/);
+  }
+  if (process.platform === 'linux') {
+    const missingDirname = invoke(installer, [], { ...env, PATH: tools });
     assert.notEqual(missingDirname.status, 0);
     assert.match(missingDirname.stderr, /DEPENDENCY_MISSING: dirname/);
   }
@@ -148,7 +154,7 @@ try {
   assert.equal(existsSync(releases), false, 'Explicit helper overrides must not write the default application directory');
   assert.deepEqual(JSON.parse(read('tasks/active.json')), [original]);
   assert.equal(readFileSync(config, 'utf8'), configuration);
-  const helperUninstall = invoke(process.execPath, [join(helperReleases, 'OutaskAI/install.mjs'), 'uninstall',
+  const helperUninstall = invoke(join(helperReleases, 'OutaskAI', installerName), ['uninstall',
     '--bin-dir', helperBin, '--release-root', helperReleases], helperEnv);
   assert.equal(helperUninstall.status, 0, helperUninstall.stderr || helperUninstall.stdout);
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), false,
@@ -284,14 +290,14 @@ try {
     const managedCommand = readFileSync(command, 'utf8');
     writeFileSync(command, '@echo unrelated user command\r\n');
     for (const action of ['install', 'uninstall']) {
-      const collision = invoke(join(updatedInstall, 'install.cmd'), [action]);
+      const collision = invoke(join(updatedInstall, installerName), [action]);
       assert.equal(collision.status, 1);
       assert.match(collision.stderr, /COMMAND_EXISTS/);
       assert.equal(readFileSync(command, 'utf8'), '@echo unrelated user command\r\n');
     }
     writeFileSync(command, managedCommand);
   }
-  run(join(updatedInstall, windows ? 'install.cmd' : 'install.sh'), ['uninstall']);
+  run(join(updatedInstall, installerName), ['uninstall']);
   assert.equal(existsSync(command), false);
   assert.equal(existsSync(updatedInstall), true);
   for (const [path, content] of retained) assert.equal(read(path), content);
@@ -301,7 +307,7 @@ try {
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive' } } : {}),
-    checks: [...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
+    checks: ['single-platform-installer', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);

@@ -19,6 +19,9 @@ const runtimeScripts = [
   'get-task.mjs',
   'get-tasks.mjs',
   'hook.mjs',
+  'install-launcher.mjs',
+  'install-path.mjs',
+  'install-release.mjs',
   'inspect-blockers.mjs',
   'lifecycle.mjs',
   'list-tasks.mjs',
@@ -124,21 +127,21 @@ function writeSupport(releaseRoot, version, target, nodeRange) {
   mkdirSync(join(releaseRoot, 'bin'), { recursive: true });
   // The installed link points directly to the app entry; this entry serves extracted archives.
   writeFileSync(join(releaseRoot, 'bin/tasks'), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
-  cpSync(join(appRoot, 'scripts/install-release.mjs'), join(releaseRoot, 'install.mjs'));
-  cpSync(join(appRoot, 'scripts/install-path.mjs'), join(releaseRoot, 'install-path.mjs'));
-  cpSync(join(appRoot, 'scripts/install-launcher.mjs'), join(releaseRoot, 'install-launcher.mjs'));
   if (target === 'windows-x64') {
-    writeFileSync(join(releaseRoot, 'install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0install.mjs" %*\r\nexit /b %errorlevel%\r\n`);
+    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nexit /b %errorlevel%\r\n`);
   }
   writeFileSync(join(releaseRoot, 'release.json'), JSON.stringify({ version, target }) + '\n');
-  writeFileSync(join(releaseRoot, 'install.sh'), `#!/bin/sh
+  if (target === 'linux-x64') {
+    writeFileSync(join(releaseRoot, 'install.sh'), `#!/bin/sh
 set -eu
 command -v node >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH" >&2; exit 1; }
 command -v dirname >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: dirname is required" >&2; exit 1; }
 root="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
 node "$root/app/runtime.cjs"
-exec node "$root/install.mjs" "$@"
+exec node "$root/app/scripts/install-release.mjs" "$@"
 `, { mode: 0o755 });
+    chmodSync(join(releaseRoot, 'install.sh'), 0o755);
+  }
   if (target === 'macos-arm64') {
     // A final status line preserves even newline-only diagnostics from ps.
     const sessionProbe = `expected="$1"
@@ -194,7 +197,14 @@ end run`;
 set -u
 PATH="\${PATH:-/usr/bin:/bin}:/opt/homebrew/bin:/usr/local/bin"
 export PATH
-root="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+runInstaller() {
+  command -v node >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH" >&2; return 1; }
+  command -v dirname >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: dirname is required" >&2; return 1; }
+  local root
+  root="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)" || return $?
+  node "$root/app/runtime.cjs" || return $?
+  node "$root/app/scripts/install-release.mjs" "$@"
+}
 session_pid=''
 session_complete=false
 if [ -t 0 ]; then
@@ -219,7 +229,7 @@ if [ -t 0 ]; then
     current_pid="$parent_pid"
   done
 fi
-"$root/install.sh" "$@"
+runInstaller "$@"
 status=$?
 if [ -t 0 ]; then
   if [ "$status" -eq 0 ]; then
@@ -247,7 +257,6 @@ fi
 exit "$status"
 `, { mode: 0o755 });
   }
-  chmodSync(join(releaseRoot, 'install.sh'), 0o755);
   chmodSync(join(releaseRoot, 'bin/tasks'), 0o755);
   if (target === 'windows-x64') {
     writeFileSync(join(releaseRoot, 'README.md'), `# Outask AI v${version} (Windows x64)
@@ -255,9 +264,9 @@ exit "$status"
 Requires native Windows x64 and installed Node.js ${nodeRange} on PATH.
 Extract the archive, open its OutaskAI directory in PowerShell or cmd.exe, then run:
 
-PowerShell: \`./install.cmd\`
+PowerShell: \`./Install.cmd\`
 
-cmd.exe: \`install.cmd\`
+cmd.exe: \`Install.cmd\`
 
 Application: \`%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\`. Command: \`%USERPROFILE%\\AppData\\Local\\OutaskAI\\bin\\tasks.cmd\`.
 Open a new terminal, then run from a project directory:
@@ -280,9 +289,9 @@ Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
 
 ## Update and remove
 
-Update: extract the new archive and rerun its installer.
-Uninstall (PowerShell): \`& "$env:USERPROFILE\\AppData\\Local\\Programs\\OutaskAI\\install.cmd" uninstall\`
-Uninstall (cmd.exe): \`"%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\\install.cmd" uninstall\`
+Update: extract the new archive and run \`./Install.cmd\` from its OutaskAI directory.
+Uninstall (PowerShell): \`& "$env:USERPROFILE\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall\`
+Uninstall (cmd.exe): \`"%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall\`
 Uninstall removes the managed launcher; application files, projects and configuration remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.
 `);
@@ -290,17 +299,18 @@ Use \`--bin-dir\` and \`--release-root\` for custom command and application-pare
   }
   const platform = target === 'macos-arm64' ? 'macOS Apple silicon' : 'Linux x64';
   const application = target === 'macos-arm64' ? '~/Library/Application Support/OutaskAI' : '~/.local/share/task-tracker/releases/OutaskAI';
-  const uninstall = target === 'macos-arm64' ? '"$HOME/Library/Application Support/OutaskAI/install.sh" uninstall' : '"$HOME/.local/share/task-tracker/releases/OutaskAI/install.sh" uninstall';
+  const installer = target === 'macos-arm64' ? 'Install.command' : 'install.sh';
+  const uninstall = `"${application.replace('~', '$HOME')}/${installer}" uninstall`;
   writeFileSync(join(releaseRoot, 'README.md'), `# Outask AI v${version} (${platform})
 
 Requires ${platform} and installed Node.js ${nodeRange} on PATH.
-Extract the archive, open its OutaskAI directory in a terminal, then run:
+${target === 'macos-arm64' ? 'Extract the archive, open its OutaskAI directory, then double-click `Install.command` or run in a terminal:' : 'Extract the archive, open its OutaskAI directory in a terminal, then run:'}
 
 \`\`\`sh
-./install.sh
+./${installer}
 \`\`\`
 
-If starting the installer reports Permission denied, run \`sh ./install.sh\`.
+If starting the installer reports Permission denied, run \`${target === 'macos-arm64' ? 'bash' : 'sh'} ./${installer}\`.
 ${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
 Open a new terminal, then run from a project directory:
 
@@ -321,7 +331,7 @@ Start a new Codex session; use \`/mcp\` to inspect the server.
 
 ## Update and remove
 
-Update: extract the new archive and run \`./install.sh\` from its OutaskAI directory.
+Update: extract the new archive and run \`./${installer}\` from its OutaskAI directory.
 Uninstall: \`${uninstall}\`
 Uninstall removes the managed command link; application files, projects and configuration remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.

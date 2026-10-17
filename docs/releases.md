@@ -48,14 +48,16 @@ Use these six `##` headings once each in order, without a repeated release title
 2. `Current version`: short product overview.
 3. `What's new`: user-visible release changes, including new commands/options.
 4. `Install`: Node.js 22.23.3 or later on PATH; extract and open the OutaskAI
-   directory in a terminal. Show `./install.sh` for Linux/macOS and one Windows
-   block with `./install.cmd  # PowerShell` and `install.cmd   & rem cmd.exe`.
+   directory in a terminal. Show `./install.sh` for Linux, `./Install.command`
+   for macOS and one Windows block with `./Install.cmd  # PowerShell` and
+   `Install.cmd   & rem cmd.exe`.
    Do not include extraction commands, `cd` or platform placeholders.
 5. `Run`: create and list from a project directory; open a new terminal after install.
 6. `Documentation`: Basic use, Full operator reference and MCP setup links.
 
 Use the actual repository, approved compact tag and archive names. CD validates
-and publishes the committed file without rewriting it. Generated archive README
+and publishes the committed file without rewriting it. Recovery preserves the
+approved installer commands from the original release. Generated archive README
 and installer help contain commands/defaults only for their destination platform.
 
 ## Check before merge and publish after merge

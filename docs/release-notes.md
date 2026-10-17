@@ -11,6 +11,7 @@ Outask AI keeps project tasks in local JSON files, with CLI and local MCP access
 ## What's new
 
 - Install despite an inaccessible unrelated PATH directory; conflicting commands remain protected.
+- Install, update and remove the command through one platform-specific installer.
 - Use concise installation, CLI and MCP instructions, with platform-specific archive guides.
 
 ## Install
@@ -18,15 +19,20 @@ Outask AI keeps project tasks in local JSON files, with CLI and local MCP access
 Requires Node.js 22.23.3 or later on PATH.
 Extract the archive. Open the directory OutaskAI in a terminal.
 
-Linux/macOS:
+Linux:
 ```sh
 ./install.sh
 ```
 
+macOS:
+```sh
+./Install.command
+```
+
 Windows:
 ```text
-./install.cmd  # PowerShell
-install.cmd   & rem cmd.exe
+./Install.cmd  # PowerShell
+Install.cmd   & rem cmd.exe
 ```
 
 ## Run

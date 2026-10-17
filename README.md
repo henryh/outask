@@ -9,13 +9,15 @@ Requires Node.js 22.23.3 or later. Download your platform's archive from
 [Releases](https://github.com/henryh/outask/releases), extract it and open
 `OutaskAI` in a terminal.
 
-Install on Linux/macOS:
+Install on Linux x64:
 
 ```bash
 ./install.sh
 ```
 
-On Windows x64, run `./install.cmd` in PowerShell or `install.cmd` in cmd.exe.
+On macOS Apple silicon, double-click `Install.command` in Finder or run
+`./Install.command` in a terminal.
+On Windows x64, run `./Install.cmd` in PowerShell or `Install.cmd` in cmd.exe.
 Open a new terminal after installation. No administrator access or WSL is needed.
 For macOS Finder/Gatekeeper, updates and removal, see the
 [installation guide](app/README.md#installation-and-updates).

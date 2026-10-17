@@ -29,7 +29,7 @@ survives removal of the extracted download.
 
 ## Windows
 
-Install with `./install.cmd` in PowerShell or `install.cmd` in cmd.exe.
+Install with `./Install.cmd` in PowerShell or `Install.cmd` in cmd.exe.
 Configure the Node entry directly, since clients differ in `.cmd` support:
 
 ```json

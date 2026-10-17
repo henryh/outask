@@ -12,8 +12,9 @@ const windows = process.platform === 'win32';
 // selects its JavaScript traversal without excluding any files or changing links.
 const copyOptions = { recursive: true, verbatimSymlinks: true, ...(windows ? { filter: () => true } : {}) };
 const defaults = installLocations();
-const root = dirname(fileURLToPath(import.meta.url));
-const payload = ['app', 'bin', 'install.sh', 'install.mjs', 'install-path.mjs', 'install-launcher.mjs', 'install.cmd', 'Install.command', 'release.json', 'README.md'];
+const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+const publicInstallers = { 'linux-x64': 'install.sh', 'macos-arm64': 'Install.command', 'windows-x64': 'Install.cmd' };
+const managedPayload = ['app', 'bin', 'install.sh', 'install.mjs', 'install-path.mjs', 'install-launcher.mjs', 'install.cmd', 'Install.command', 'Install.cmd', 'release.json', 'README.md'];
 function inspect(path) {
   try { return lstatSync(path); } catch (error) {
     if (error.code === 'ENOENT') return undefined;
@@ -63,7 +64,7 @@ try {
       : target === 'macos-arm64' ? '~/Library/Application Support/OutaskAI' : '~/.local/share/task-tracker/releases/OutaskAI';
     const command = target === 'windows-x64' ? '%USERPROFILE%\\AppData\\Local\\OutaskAI\\bin\\tasks.cmd' : '~/.local/bin/tasks';
     console.log(`Outask AI installer (${platform})
-Usage: ${target === 'windows-x64' ? './install.cmd (PowerShell), install.cmd (cmd.exe)' : './install.sh'} [install|uninstall] [--bin-dir <directory>] [--release-root <parent-directory>]
+Usage: ${target === 'windows-x64' ? './Install.cmd (PowerShell), Install.cmd (cmd.exe)' : `./${publicInstallers[target]}`} [install|uninstall] [--bin-dir <directory>] [--release-root <parent-directory>]
 Requires Node.js 22.23.3 or later on PATH. Open a new terminal after installation.
 Application: ${application}
 Command: ${command}
@@ -77,6 +78,8 @@ Uninstall removes the managed command link; application files, projects and conf
     const defaultRoot = defaults.releases;
     const releases = canonical(resolve(values['release-root'] ?? defaultRoot));
     if (!managed(root)) throw new Error('INVALID_RELEASE: invalid release metadata or application');
+    const releaseTarget = JSON.parse(readFileSync(join(root, 'release.json'), 'utf8')).target;
+    const payload = ['app', 'bin', publicInstallers[releaseTarget], 'release.json', 'README.md'];
     const destination = join(releases, 'OutaskAI');
     const target = join(bin, windows ? 'tasks.cmd' : 'tasks');
     function owned(path) {
@@ -114,7 +117,7 @@ Uninstall removes the managed command link; application files, projects and conf
       console.log(`Removed managed command link at ${target}. Application copies, project data and configuration are preserved.`);
     } else {
       accessSync(join(root, 'app/bin/tasks'), constants.X_OK);
-      await import('./app/cli.mjs');
+      await import('../cli.mjs');
       for (const part of (process.env.PATH ?? '').split(delimiter)) {
         for (const name of windows ? ['tasks.cmd', 'tasks.exe', 'tasks.bat', 'tasks.com', 'tasks.ps1', 'tasks'] : ['tasks']) {
           const candidate = resolve(part || '.', name);
@@ -138,7 +141,7 @@ Uninstall removes the managed command link; application files, projects and conf
         }
         if (inspect(destination)) {
           for (const name of readdirSync(destination)) {
-            if (!payload.includes(name)) cpSync(join(destination, name), join(staged, name), copyOptions);
+            if (!managedPayload.includes(name)) cpSync(join(destination, name), join(staged, name), copyOptions);
           }
         }
         const check = spawnSync(process.execPath, [join(staged, 'app/bin/tasks'), '--help'], { encoding: 'utf8', timeout: 60000 });
