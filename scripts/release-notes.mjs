@@ -53,15 +53,18 @@ export function releaseNotes(releaseVersion, packageVersion, repo, selected, val
   if (!section(notes, 'Current version', "What's new")) fail('INVALID_INPUT', 'Current version must contain a concise release overview');
   if (!section(notes, "What's new", 'Install')) fail('INVALID_INPUT', "What's new must contain user-visible release changes");
   const install = section(notes, 'Install', 'Run');
-  if (!/Node\.js 22\.23\.3 or later/.test(install) || !/directory you will keep/.test(install) || !/open (?:that|the) directory/i.test(install)) {
-    fail('INVALID_INPUT', 'Install must state the Node.js prerequisite, extraction into a directory the user will keep, and opening that directory');
+  if (!/Node\.js 22\.23\.3 or later/.test(install) || !/\bextract\b/i.test(install) || !/open (?:that|the) directory/i.test(install)) {
+    fail('INVALID_INPUT', 'Install must state the Node.js prerequisite, extracting the archive, and opening that directory');
   }
   const installCommands = [...install.matchAll(/```[^\n]*\n([\s\S]*?)```/g)]
     .flatMap((match) => match[1].trim().split('\n'))
     .map((line) => line.trim().replace(/\s+# PowerShell$|\s+& rem cmd\.exe$/g, ''));
-  const expected = selected.includes('windows-x64') ? ['./install.sh', './install.cmd', 'install.cmd'] : ['./install.sh'];
-  if (JSON.stringify(installCommands) !== JSON.stringify(expected)) {
-    fail('INVALID_INPUT', 'Install must show ./install.sh for Linux/macOS and ./install.cmd (PowerShell), install.cmd (cmd.exe) for Windows');
+  // Recovery validates the original approved notes without changing their commands.
+  const expected = selected.includes('windows-x64')
+    ? [['./install.sh', './Install.command', './Install.cmd', 'Install.cmd'], ['./install.sh', './install.cmd', 'install.cmd']]
+    : [['./install.sh', './Install.command'], ['./install.sh']];
+  if (!expected.some((commands) => JSON.stringify(installCommands) === JSON.stringify(commands))) {
+    fail('INVALID_INPUT', 'Install must show ./install.sh for Linux, ./Install.command for macOS and ./Install.cmd (PowerShell), Install.cmd (cmd.exe) for Windows, or retain the original approved installer commands');
   }
   if (selected.includes('windows-x64') && (!/PowerShell/.test(install) || !/cmd\.exe/.test(install))) {
     fail('INVALID_INPUT', 'Install must distinguish PowerShell and cmd.exe');
@@ -80,4 +83,3 @@ export function releaseNotes(releaseVersion, packageVersion, repo, selected, val
   }
   return { notes };
 }
-

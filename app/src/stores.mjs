@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { prepareService } from './service.mjs';
+import { knownCounter, prepareService, readService } from './service.mjs';
 import { fail } from './errors.mjs';
 import { validateFieldRules } from './field-rules.mjs';
 import { validateTimestamp } from './timestamps.mjs';
@@ -225,10 +225,24 @@ export function checkSelection({ stores = [], group } = {}) {
   }
 }
 
+function isUninitialised(project) {
+  if (project.config !== undefined) return false;
+  const service = readService(project);
+  if (knownCounter(service) !== 0) return false;
+  if (service.validated === undefined) return true;
+  const { validated } = service;
+  if (!isObject(validated) || validated.counter !== 0 || !isObject(validated.files)) return false;
+  const schema = projectRelative(project.root, project.schemaPath);
+  return Object.entries(validated.files).every(([path, hash]) => path === schema && hash === null);
+}
+
 export function selectStoreFiles(project, { stores = [], group } = {}) {
   checkPending(project.directory);
   checkSelection({ stores, group });
-  if (!project.available.length) fail('READ_ERROR', `${project.directory}: no task stores exist; create a task first`);
+  const uninitialised = !project.available.length && isUninitialised(project);
+  if (!project.available.length && !uninitialised) {
+    fail('READ_ERROR', `${project.directory}: no task stores exist; create a task first`);
+  }
   const selectedGroup = stores.length ? undefined : (group ?? 'Active');
   const known = [...new Set([...Object.keys(project.stores), ...project.available])].sort();
   let files;
@@ -249,7 +263,7 @@ export function selectStoreFiles(project, { stores = [], group } = {}) {
       return name;
     }))].sort();
   }
-  return { files, selectedGroup };
+  return { files: uninitialised ? [] : files, selectedGroup };
 }
 
 export function recordEntries(project, options = {}) {

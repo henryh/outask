@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, readFileSync, truncateSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -37,6 +37,37 @@ async function connect(t, root, command = executable, env) {
   return { client, call };
 }
 
+test('MCP list and count read an uninitialised project without creating task records', async (t) => {
+  const root = fixture(t, []);
+  rmSync(join(root, 'tasks'), { recursive: true });
+  const { client, call } = await connect(t, root);
+  assert.deepEqual(await call('list_tasks', { count: true }), { count: 0 });
+  for (const no_cache of [false, true]) {
+    for (let repeat = 0; repeat < 2; repeat++) {
+      const page = await call('list_tasks', { group: 'Active', fields: ['id', 'title', 'status'], limit: 50, no_cache });
+      assert.deepEqual(page.tasks, []);
+      assert.equal(page.total, 0);
+      assert.equal(page.hasMore, false);
+      assert.equal(page.nextOffset, null);
+      assert.deepEqual(await call('list_tasks', { count: true, no_cache }), { count: 0 });
+    }
+    const rejected = await client.callTool({ name: 'list_tasks', arguments: { limit: 100, no_cache } });
+    assert.equal(rejected.isError, true);
+    await call('get_task', { id: 1, no_cache }, 'TASK_NOT_FOUND');
+  }
+  assert.deepEqual(readdirSync(root), ['tasks']);
+  assert.deepEqual(readdirSync(join(root, 'tasks')), ['.task-tracker.json']);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, 'tasks/.task-tracker.json'))), {});
+  const created = await call('create_task', { task: { title: 'First real task' } });
+  assert.equal(created.id, 1);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, 'tasks/active.json'))), [created]);
+  assert.deepEqual((await call('list_tasks', { fields: ['id'] })).tasks, [{ id: 1 }]);
+  assert.deepEqual(await call('list_tasks', { count: true }), { count: 1 });
+  rmSync(join(root, 'tasks/active.json'));
+  await call('list_tasks', { fields: ['id'] }, 'READ_ERROR');
+  await call('list_tasks', { count: true, no_cache: true }, 'READ_ERROR');
+});
+
 test('MCP validation and writes share the external project lock with core', async (t) => {
   const root = fixture(t, [task(1)]);
   const { call } = await connect(t, root);
@@ -72,9 +103,36 @@ test('installed stdio SDK client discovers tools and maintains a full lifecycle 
   const installed = spawnSync(process.execPath, [installer, 'install', '--bin-dir', join(root, 'bin')], { encoding: 'utf8' });
   assert.equal(installed.status, 0, installed.stderr);
   const { client, call } = await connect(t, root, join(root, 'bin/tasks'));
-  assert.deepEqual((await client.listTools()).tools.map((tool) => tool.name).sort(), [
+  const { tools } = await client.listTools();
+  assert.deepEqual(tools.map((tool) => tool.name).sort(), [
     'create_task', 'delete_task', 'get_task', 'get_tasks', 'inspect_blockers', 'inspect_schema', 'list_tasks', 'materialise_schema', 'search_tasks', 'transition_task', 'update_task', 'validate_project',
   ]);
+  for (const name of ['list_tasks', 'get_task', 'get_tasks', 'search_tasks', 'inspect_blockers']) {
+    const { inputSchema } = tools.find((tool) => tool.name === name);
+    const noCache = inputSchema.properties.no_cache;
+    assert.equal(noCache.type, 'boolean');
+    assert.ok(!inputSchema.required?.includes('no_cache'));
+    for (const guidance of [/default\s+false/i, /omit.*normal reads/i, /fresh.*cache|cache.*freshness/i, /cache.*when enabled/i,
+      /fall\s*back.*authoritative JSON/i, /true.*only.*JSON-only.*cache diagnostics/i, /never.*open.*refresh.*cache/i]) {
+      assert.match(noCache.description, guidance, name);
+    }
+    if (inputSchema.properties.limit) {
+      const resultLimit = inputSchema.properties.limit;
+      assert.equal(resultLimit.type, 'integer');
+      assert.equal(resultLimit.minimum, 1);
+      assert.equal(resultLimit.maximum, 50);
+      assert.ok(!inputSchema.required?.includes('limit'));
+      for (const guidance of [/integer.*1.*50/i, /default\s+10/i]) {
+        assert.match(resultLimit.description, guidance, name);
+      }
+      if (name === 'inspect_blockers') {
+        assert.match(resultLimit.description, /graph edges/i);
+        assert.match(resultLimit.description, /truncat/i);
+        assert.doesNotMatch(resultLimit.description, /continuation/i);
+      } else assert.match(resultLimit.description, /continuation/i, name);
+    }
+  }
+  assert.match(tools.find((tool) => tool.name === 'list_tasks').description, /max(?:imum)?(?:\s+limit)?\s+50/i);
   assert.ok(client.getServerCapabilities().tools);
   const schema = await call('inspect_schema');
   assert.deepEqual(schema, JSON.parse(cli(root, ['schema']).stdout));

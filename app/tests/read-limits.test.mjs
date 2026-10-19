@@ -40,11 +40,11 @@ test('page limits are mandatory in reusable operations and both list/count scrip
   assert.deepEqual(final.tasks.map(({ id }) => id), [51]);
   assert.equal(final.hasMore, false);
   assert.equal(final.nextOffset, null);
-  for (const limit of [0, -1, 51, Number.MAX_SAFE_INTEGER, 1.5, '10']) {
+  for (const limit of [0, -1, 51, 100, Number.MAX_SAFE_INTEGER, 1.5, '10']) {
     assert.throws(() => listTasks(root, { limit }), { code: 'INVALID_INPUT' });
     assert.throws(() => countTasks(root, { limit }), { code: 'INVALID_INPUT' });
   }
-  for (const limit of ['0', '51', '999999999999999999999']) {
+  for (const limit of ['0', '51', '100', '999999999999999999999']) {
     for (const count of [[], ['--count']]) {
       rejected(run('list-tasks', [root, '--limit', limit, ...count]), 'INVALID_INPUT', /1 to 50/);
     }

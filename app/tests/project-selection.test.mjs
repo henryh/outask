@@ -70,23 +70,42 @@ test('one detail positional is always an ID even when a numeric directory exists
   assert.deepEqual(snapshot(numeric), { ...beforeNumeric, '.task-tracker.json': Buffer.from('{}\n') });
 });
 
-test('missing reads and validation prepare only the selected service state; creation prepares Active', (t) => {
+test('fresh reads prepare only the selected service state; creation prepares Active', (t) => {
   const parent = fixture(t, [task(1)]);
   const before = snapshot(parent);
   for (const [name, args] of commands) {
     for (const explicit of [false, true]) {
       const empty = join(parent, `${name}-${explicit}`);
       mkdirSync(empty);
-      const result = run(name, [...(explicit ? [empty] : []), ...args], { cwd: explicit ? parent : empty });
-      assert.equal(result.status, name === 'create-task' ? 0 : 1, result.stderr);
-      if (name !== 'create-task') {
+      const prefix = explicit ? [empty] : [];
+      const cwd = explicit ? parent : empty;
+      const result = run(name, [...prefix, ...args, '--format', 'json'], { cwd });
+      const succeeds = ['list-tasks', 'get-tasks', 'create-task'].includes(name);
+      assert.equal(result.status, succeeds ? 0 : 1, result.stderr);
+      if (succeeds) {
+        assert.equal(result.stderr, '');
+        const data = JSON.parse(result.stdout);
+        if (name === 'create-task') {
+          assert.equal(data.id, 1);
+          assert.equal(data.title, 'New task');
+        } else {
+          assert.deepEqual(data.tasks, []);
+          assert.equal(data.hasMore, false);
+          if (name === 'get-tasks') assert.deepEqual(data.not_found, [1]);
+          else {
+            assert.equal(data.total, 0);
+            assert.equal(jsonResult(name, [...prefix, '--count'], cwd), 0);
+          }
+        }
+      } else {
         assert.equal(result.stdout, '');
-        assert.match(result.stderr, /^READ_ERROR:/);
-        assert.ok(result.stderr.includes(join(empty, 'tasks')), result.stderr);
+        assert.match(result.stderr, name === 'validate-task-stores' ? /^READ_ERROR:/ : /^TASK_NOT_FOUND:/);
+        if (name === 'validate-task-stores') assert.ok(result.stderr.includes(join(empty, 'tasks')), result.stderr);
       }
       assert.deepEqual(readdirSync(empty), ['tasks']);
       assert.deepEqual(readdirSync(join(empty, 'tasks')).sort(), name === 'create-task'
         ? ['.task-tracker.json', 'active.json'] : ['.task-tracker.json']);
+      if (name !== 'create-task') assert.deepEqual(JSON.parse(readFileSync(join(empty, 'tasks/.task-tracker.json'))), {});
       assert.deepEqual(snapshot(parent), before);
     }
   }

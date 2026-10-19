@@ -16,7 +16,7 @@ try {
     if (process.env.RELEASE_ROOT) args.push('--release-root', process.env.RELEASE_ROOT);
     const installation = join(outDir, 'OutaskAI');
     run(process.execPath, [join(installation, 'app/runtime.cjs')]);
-    run(process.execPath, [join(installation, 'install.mjs'), ...args]);
+    run(process.execPath, [join(installation, 'app/scripts/install-release.mjs'), ...args]);
   } finally {
     rmSync(outDir, { recursive: true, force: true });
   }

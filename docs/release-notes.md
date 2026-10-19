@@ -1,47 +1,45 @@
 ## Downloads
 
-- [Linux x64](https://github.com/henryh/outask/releases/download/v1.0/OutaskAI-1.0-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.0/OutaskAI-1.0-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/henryh/outask/releases/download/v1.0/OutaskAI-1.0-windows-x64.tar.gz)
+- [Linux x64](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-windows-x64.tar.gz)
 
 ## Current version
 
-Outask AI keeps project tasks with your code in readable local JSON files. Use
-the CLI directly or connect a local AI agent through MCP on Linux x64, macOS
-Apple silicon and Windows x64.
+Outask AI keeps project tasks in local JSON files, with CLI and local MCP access.
 
 ## What's new
 
-- First public release under GNU AGPL version 3 only.
-- Create, list, search, inspect, update and transition tasks through the CLI and
-  local MCP server, with project-defined fields, local blockers and validation.
-- Install per user, update or uninstall while preserving project tasks and
-  configuration; native Windows installation works without WSL.
+- List and count tasks in a fresh project before the first write.
+- See cache defaults and supported page sizes in MCP tool descriptions.
+- Install despite an inaccessible unrelated PATH directory; conflicting commands remain protected.
+- Install, update and remove the command through one platform-specific installer.
+- Use concise installation, CLI and MCP instructions, with platform-specific archive guides.
 
 ## Install
 
 Requires Node.js 22.23.3 or later on PATH.
+Extract the archive. Open the directory OutaskAI in a terminal.
 
-Download the archive for your platform, extract it into a directory you will keep,
-and open that directory's OutaskAI folder in a terminal.
-
-Linux/macOS:
-
+Linux:
 ```sh
 ./install.sh
 ```
 
-Windows:
+macOS:
+```sh
+./Install.command
+```
 
+Windows:
 ```text
-./install.cmd  # PowerShell
-install.cmd   & rem cmd.exe
+./Install.cmd  # PowerShell
+Install.cmd   & rem cmd.exe
 ```
 
 ## Run
 
-From a project directory:
-
+Open a new terminal. From a project directory:
 ```sh
 tasks create --title "Write release notes"
 tasks list --format table
@@ -49,6 +47,6 @@ tasks list --format table
 
 ## Documentation
 
-- [Basic use](https://github.com/henryh/outask/blob/v1.0/README.md#basic-use)
-- [Full operator reference](https://github.com/henryh/outask/blob/v1.0/app/README.md)
-- [MCP setup](https://github.com/henryh/outask/blob/v1.0/app/mcp/README.md)
+- [Basic use](https://github.com/henryh/outask/blob/v1.1/README.md#basic-use)
+- [Full operator reference](https://github.com/henryh/outask/blob/v1.1/app/README.md)
+- [MCP setup](https://github.com/henryh/outask/blob/v1.1/app/mcp/README.md)

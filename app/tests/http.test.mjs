@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { request } from 'node:http';
-import { linkSync, mkdirSync, readFileSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { createHttpServer } from '../http.mjs';
 import { inspectBlockers } from '../src/blockers.mjs';
+import { createTask } from '../src/create.mjs';
 import { projectBytes, responseBytes } from '../src/limits.mjs';
 import { projectLockPath } from '../src/project-lock.mjs';
 import { databaseSync } from '../src/sqlite.mjs';
@@ -45,6 +46,36 @@ async function expectError(call, status, code) {
   assert.equal(result.status, status, JSON.stringify(result));
   assert.equal(result.data.error.code, code);
 }
+
+test('HTTP reads an uninitialised project as empty without writing task records', async (t) => {
+  const root = fixture(t, []);
+  rmSync(join(root, 'tasks'), { recursive: true });
+  const api = await serve(t, root);
+  assert.deepEqual((await api('/tasks?count=true')).data, { count: 0 });
+  for (const suffix of ['', '&no-cache=true']) {
+    for (let repeat = 0; repeat < 2; repeat++) {
+      const page = await api(`/tasks?group=Active&fields=id,title,status&limit=50${suffix}`);
+      assert.equal(page.status, 200);
+      assert.deepEqual(page.data.tasks, []);
+      assert.equal(page.data.hasMore, false);
+      assert.equal(page.data.nextOffset, null);
+      const count = await api(`/tasks?count=true${suffix}`);
+      assert.equal(count.status, 200);
+      assert.deepEqual(count.data, { count: 0 });
+    }
+    await expectError(api(`/tasks?limit=100${suffix}`), 400, 'INVALID_INPUT');
+    await expectError(api(`/tasks/1?fields=id${suffix}`), 404, 'TASK_NOT_FOUND');
+  }
+  assert.deepEqual(readdirSync(root), ['tasks']);
+  assert.deepEqual(readdirSync(join(root, 'tasks')), ['.task-tracker.json']);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, 'tasks/.task-tracker.json'))), {});
+  assert.equal(createTask(root, { title: 'First real task' }).id, 1);
+  assert.deepEqual((await api('/tasks?fields=id')).data.tasks, [{ id: 1 }]);
+  assert.deepEqual((await api('/tasks?count=true')).data, { count: 1 });
+  rmSync(join(root, 'tasks/active.json'));
+  await expectError(api('/tasks?fields=id'), 500, 'READ_ERROR');
+  await expectError(api('/tasks?count=true&no-cache=true'), 500, 'READ_ERROR');
+});
 
 test('HTTP uses the shared project byte boundary without exposing writes', async (t) => {
   const root = fixture(t, [task(1)]);

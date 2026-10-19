@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { projectLockPath } from '../../src/project-lock.mjs';
@@ -14,6 +14,7 @@ import { hostTarget } from '../../../scripts/release-config.mjs';
 
 const windows = process.platform === 'win32';
 const target = hostTarget();
+const installerName = windows ? 'Install.cmd' : process.platform === 'darwin' ? 'Install.command' : 'install.sh';
 assert.equal(process.argv.length, 3, 'Pass the native host test archive path');
 const archive = resolve(process.argv[2]);
 const temporary = realpathSync(mkdtempSync(join(tmpdir(), 'outask-installed-smoke-')));
@@ -25,8 +26,8 @@ const releases = windows ? join(home, 'AppData/Local/Programs') : process.platfo
 const config = join(home, '.config/task-tracker/config.json');
 const tools = join(temporary, 'tools');
 const env = {
-  ...process.env, USERPROFILE: windows ? home : process.env.USERPROFILE, HOME: home, SHELL: '/bin/bash', ZDOTDIR: undefined, XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'),
-  PATH: windows ? process.env.PATH : `${bin}:${tools}:/usr/bin:/bin`,
+  ...process.env, USERPROFILE: windows ? home : process.env.USERPROFILE, HOME: home, SHELL: process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash', ZDOTDIR: undefined, XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'),
+  PATH: windows ? process.env.PATH : `${tools}:/usr/bin:/bin`,
 };
 delete env.TASK_TRACKER_CONFIG;
 
@@ -64,13 +65,15 @@ let lock;
 let stderr = '';
 let evidence;
 let registryBackup;
+let commandEnv = env;
+let shellNode;
 const extraLocks = [];
 const powershell = windows ? join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe') : undefined;
 function documentedInstall(source, shell) {
   const command = shell === 'powershell' ? powershell : join(process.env.SystemRoot, 'System32/cmd.exe');
   const args = shell === 'powershell'
-    ? ['-NoProfile', '-NonInteractive', '-Command', './install.cmd; exit $LASTEXITCODE']
-    : ['/d', '/c', 'install.cmd'];
+    ? ['-NoProfile', '-NonInteractive', '-Command', './Install.cmd; exit $LASTEXITCODE']
+    : ['/d', '/c', 'Install.cmd'];
   const result = spawnSync(command, args, { cwd: source, env, encoding: 'utf8', timeout: 60000 });
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -110,12 +113,17 @@ try {
   const architecture = windows ? registry('$env:PROCESSOR_ARCHITECTURE').trim() : run('uname', ['-m']).trim();
   assert.equal(architecture, windows ? 'AMD64' : process.platform === 'darwin' ? 'arm64' : 'x86_64', 'OS architecture must match native Node execution');
   const osVersion = process.platform === 'darwin' ? run('sw_vers', ['-productVersion']).trim() : release();
-  const installer = join(source, windows ? 'install.cmd' : 'install.sh');
-  const missingNode = invoke(installer, [], { ...env, PATH: '' });
-  assert.notEqual(missingNode.status, 0);
-  assert.match(missingNode.stderr, /DEPENDENCY_MISSING: install Node.js/);
-  if (!windows) {
-    const missingDirname = invoke(join(source, 'install.sh'), [], { ...env, PATH: tools });
+  assert.deepEqual(readdirSync(source).filter((name) => /^install/i.test(name)), [installerName]);
+  const installer = join(source, installerName);
+  // The Finder launcher also discovers Node in system Homebrew locations.
+  // Clearing PATH cannot hide those installations on a native Mac.
+  if (process.platform !== 'darwin') {
+    const missingNode = invoke(installer, [], { ...env, PATH: '' });
+    assert.notEqual(missingNode.status, 0);
+    assert.match(missingNode.stderr, /DEPENDENCY_MISSING: install Node.js/);
+  }
+  if (process.platform === 'linux') {
+    const missingDirname = invoke(installer, [], { ...env, PATH: tools });
     assert.notEqual(missingDirname.status, 0);
     assert.match(missingDirname.stderr, /DEPENDENCY_MISSING: dirname/);
   }
@@ -130,10 +138,12 @@ try {
   assert.equal(existsSync(bin), false);
 
   const localHelper = fileURLToPath(new URL('../../../scripts/install-local-release.mjs', import.meta.url));
+  const helperHome = join(temporary, 'helper home');
+  mkdirSync(helperHome);
   const helperBin = join(home, 'custom helper bin');
   const helperReleases = join(home, 'custom helper releases');
   const helperEnv = {
-    ...env, BIN_DIR: helperBin, RELEASE_ROOT: helperReleases,
+    ...env, HOME: helperHome, BIN_DIR: helperBin, RELEASE_ROOT: helperReleases,
     PATH: windows ? env.PATH : `${dirname(process.execPath)}:${env.PATH}`,
   };
   const localInstall = invoke(process.execPath, [localHelper], helperEnv);
@@ -145,14 +155,37 @@ try {
   assert.equal(existsSync(releases), false, 'Explicit helper overrides must not write the default application directory');
   assert.deepEqual(JSON.parse(read('tasks/active.json')), [original]);
   assert.equal(readFileSync(config, 'utf8'), configuration);
-  const helperUninstall = invoke(process.execPath, [join(helperReleases, 'OutaskAI/install.mjs'), 'uninstall',
+  const helperUninstall = invoke(join(helperReleases, 'OutaskAI', installerName), ['uninstall',
     '--bin-dir', helperBin, '--release-root', helperReleases], helperEnv);
   assert.equal(helperUninstall.status, 0, helperUninstall.stderr || helperUninstall.stdout);
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), false,
     'The helper launcher must not mask the default command in later PATH checks');
 
+  if (!windows) {
+    assert.equal(env.PATH.split(delimiter).includes(bin), false, 'First installation must not inherit the installed command directory');
+    assert.equal(existsSync(join(home, process.platform === 'darwin' ? '.zprofile' : '.bashrc')), false, 'First installation must start with fresh shell startup files');
+  }
   if (windows) documentedInstall(source, 'powershell'); else run(installer);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
+  if (!windows) {
+    // macOS login startup can prepend a system Node ahead of the matrix runtime.
+    // Restore only the Node fixture; the installer profile must still supply tasks.
+    const script = `export PATH="$OUTASK_SMOKE_TOOLS:$PATH"; discovered=$(command -v tasks) && reported=$(tasks --version) && node -e 'console.log("OUTASK_FRESH_SHELL:" + JSON.stringify({ command: process.argv[1], version: process.argv[2], path: process.env.PATH, home: process.env.HOME, node: { execPath: process.execPath, version: process.version } }))' "$discovered" "$reported"`;
+    const shell = invoke(env.SHELL, [process.platform === 'darwin' ? '-lc' : '-ic', script], { ...env, OUTASK_SMOKE_TOOLS: tools });
+    assert.equal(shell.status, 0, `Fresh shell could not run the installed command:\n${shell.stdout}\n${shell.stderr}`);
+    // System shell startup may print a banner independently of the test command.
+    const output = shell.stdout.split(/\r?\n/).find((line) => line.startsWith('OUTASK_FRESH_SHELL:'));
+    assert.ok(output, `Fresh shell did not report its command environment:\n${shell.stdout}\n${shell.stderr}`);
+    const inherited = JSON.parse(output.slice('OUTASK_FRESH_SHELL:'.length));
+    assert.equal(inherited.command, command, 'A new shell must discover the installed tasks by name');
+    assert.equal(inherited.version, metadata.version);
+    assert.equal(inherited.home, home, 'Fresh shell must use the isolated installation HOME');
+    assert.equal(inherited.node.execPath, process.execPath, 'Fresh shell must use the selected matrix Node');
+    assert.equal(inherited.node.version, process.version);
+    assert.ok(inherited.path.split(delimiter).includes(bin), 'Shell startup must add the installed command directory');
+    shellNode = inherited.node;
+    commandEnv = { ...env, PATH: inherited.path };
+  }
   if (windows) documentedInstall(source, 'cmd'); else run(installer);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
   if (windows) {
@@ -200,7 +233,7 @@ try {
   assert.equal(cli('validate', '--format', 'json').valid, true);
 
   client = new Client({ name: 'outask-distribution-smoke', version: '1.0.0' });
-  const transport = new StdioClientTransport({ command: windows ? process.execPath : command, args: windows ? [join(releases, name, 'app/bin/tasks'), 'mcp'] : ['mcp'], cwd: project, env, stderr: 'pipe' });
+  const transport = new StdioClientTransport({ command: windows ? process.execPath : 'tasks', args: windows ? [join(releases, name, 'app/bin/tasks'), 'mcp'] : ['mcp'], cwd: project, env: commandEnv, stderr: 'pipe' });
   transport.stderr.on('data', (chunk) => { stderr += chunk; });
   await client.connect(transport);
   async function call(name, args, errorCode) {
@@ -211,6 +244,22 @@ try {
     } else assert.notEqual(result.isError, true, JSON.stringify(result));
     return result.structuredContent;
   }
+  const freshProject = join(temporary, 'Fresh project 東京');
+  mkdirSync(freshProject);
+  extraLocks.push(projectLockPath(freshProject));
+  const freshPage = cli('list', '--project-path', freshProject, '--store', 'all', '--no-cache', '--format', 'json');
+  assert.deepEqual(freshPage.tasks, []);
+  assert.equal(freshPage.total, 0);
+  const freshSelection = { project_path: freshProject, stores: ['all'], no_cache: true };
+  assert.deepEqual(await call('list_tasks', { ...freshSelection, count: true, limit: 50, fields: ['all'] }), { count: 0 });
+  await call('get_task', { ...freshSelection, id: 1 }, 'TASK_NOT_FOUND');
+  assert.deepEqual(readdirSync(join(freshProject, 'tasks')), ['.task-tracker.json']);
+  const firstTask = await call('create_task', { project_path: freshProject, task: { title: 'First task', extra: { keep: true } } });
+  assert.equal(firstTask.id, 1);
+  assert.deepEqual(cli('get', '1', '--project-path', freshProject, '--no-cache', '--format', 'json'), firstTask);
+  assert.deepEqual(await call('list_tasks', { ...freshSelection, count: true }), { count: 1 });
+  rmSync(join(freshProject, 'tasks/active.json'));
+  await call('list_tasks', { ...freshSelection, count: true }, 'READ_ERROR');
   assert.ok((await call('search_tasks', { query: 'Updated', stores: ['all'], fields: ['id'] })).tasks.some((task) => task.id === created.id));
   assert.deepEqual(await call('get_task', { id: created.id, stores: ['all'], fields: ['all'] }), completed);
   await call('create_task', { task: { title: 'MCP missing required field' } }, 'INVALID_STORE');
@@ -263,14 +312,14 @@ try {
     const managedCommand = readFileSync(command, 'utf8');
     writeFileSync(command, '@echo unrelated user command\r\n');
     for (const action of ['install', 'uninstall']) {
-      const collision = invoke(join(updatedInstall, 'install.cmd'), [action]);
+      const collision = invoke(join(updatedInstall, installerName), [action]);
       assert.equal(collision.status, 1);
       assert.match(collision.stderr, /COMMAND_EXISTS/);
       assert.equal(readFileSync(command, 'utf8'), '@echo unrelated user command\r\n');
     }
     writeFileSync(command, managedCommand);
   }
-  run(join(updatedInstall, windows ? 'install.cmd' : 'install.sh'), ['uninstall']);
+  run(join(updatedInstall, installerName), ['uninstall']);
   assert.equal(existsSync(command), false);
   assert.equal(existsSync(updatedInstall), true);
   for (const [path, content] of retained) assert.equal(read(path), content);
@@ -279,7 +328,8 @@ try {
     result: 'PASS', os: { platform: process.platform, version: osVersion, architecture },
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
-    checks: [...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : []), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
+    ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
+    checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);

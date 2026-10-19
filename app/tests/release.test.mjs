@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test, before, after } from 'node:test';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,8 @@ import { distributionVersion } from '../src/version.mjs';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const version = JSON.parse(readFileSync(join(repo, 'app/package.json'))).version;
 const releaseVersion = distributionVersion(version);
+const installerEntries = { 'linux-x64': 'install.sh', 'macos-arm64': 'Install.command', 'windows-x64': 'Install.cmd' };
+const internalInstaller = (source) => join(source, 'app/scripts/install-release.mjs');
 let root;
 let archives;
 function run(command, args = [], options = {}) {
@@ -89,7 +91,9 @@ function fixture(t, target = 'linux-x64') {
   mkdirSync(tools);
   symlinkSync(process.execPath, join(tools, 'node'));
   const env = { ...process.env, HOME: home, SHELL: '/bin/bash', ZDOTDIR: undefined, PATH: `${bin}:${tools}:/usr/bin:/bin` };
-  const install = (...args) => run(join(source, 'install.sh'), args, { env });
+  const install = (...args) => target === 'windows-x64'
+    ? run(process.execPath, [internalInstaller(source), ...args], { env })
+    : run(join(source, installerEntries[target]), args, { env });
   return { home, downloads, source, bin, releases, installed, env, install, tools };
 }
 
@@ -112,9 +116,11 @@ test('archives contain app resources without runtimes, HTTP, plugins, developmen
     const entries = ok(run('tar', ['-tzf', archive])).split('\n').filter(Boolean);
     assert.deepEqual([...new Set(entries.map((path) => path.split('/')[0]))], ['OutaskAI']);
     assert.deepEqual(JSON.parse(ok(run('tar', ['-xOf', archive, 'OutaskAI/release.json']))), { version: releaseVersion, target });
-    assert.ok(entries.some((path) => path.endsWith('/install.sh')));
-    assert.equal(entries.includes('OutaskAI/install.cmd'), target === 'windows-x64');
-    assert.ok(entries.includes('OutaskAI/install-launcher.mjs'));
+    const publicInstallers = entries.filter((path) => /^OutaskAI\/install[^/]*$/i.test(path));
+    assert.deepEqual(publicInstallers, [`OutaskAI/${installerEntries[target]}`], target);
+    for (const helper of ['install-release.mjs', 'install-path.mjs', 'install-launcher.mjs']) {
+      assert.ok(entries.includes(`OutaskAI/app/scripts/${helper}`), `${target}: ${helper}`);
+    }
     assert.ok(entries.some((path) => /\/node_modules\/.+\/(?:LICENSE|License|license)(?:\.[^/]*)?$/.test(path)));
     assert.equal(entries.includes('OutaskAI/Install.command'), target === 'macos-arm64');
     assert.ok(entries.some((path) => path.endsWith('/app/cli.mjs')));
@@ -128,31 +134,59 @@ test('archives contain app resources without runtimes, HTTP, plugins, developmen
   assert.equal(existsSync(join(archives, 'SHA256SUMS')), false);
 });
 
-test('archive README starts with installation and covers runtime, use, PATH, update and removal', () => {
+test('each archive README and installer help describe only their destination platform', (t) => {
   const nodeRange = JSON.parse(readFileSync(join(repo, 'app/package.json'), 'utf8')).engines.node;
-  for (const target of ['linux-x64', 'macos-arm64']) {
-    const archive = `OutaskAI-${releaseVersion}-${target}.tar.gz`;
-    const readme = ok(run('tar', ['-xOf', join(archives, archive), 'OutaskAI/README.md']));
-    assert.ok(readme.startsWith(`# Outask AI v${releaseVersion} (`));
-    const runtime = readme.indexOf(nodeRange);
-    assert.ok(runtime >= 0);
-    assert.ok(readme.indexOf('Extract this archive in a directory you will keep') >= 0 && readme.indexOf('Extract this archive') < runtime);
-    assert.ok(readme.indexOf('./install.sh') >= 0 && readme.indexOf('./install.sh') < runtime);
-    assert.match(readme, /configures PATH for future\nterminals/);
-    assert.match(readme, target === 'macos-arm64' ? /Library\/Application Support\/OutaskAI/ : /task-tracker\/releases\/OutaskAI/);
-    if (target === 'macos-arm64') {
-      assert.match(readme, /press any key/);
-      assert.match(readme, /If the window stays open, use Cmd\+W/);
+  const platforms = {
+    'linux-x64': {
+      name: 'Linux x64', application: '~/.local/share/task-tracker/releases/OutaskAI',
+      foreign: /macOS|Apple|Windows|PowerShell|cmd\.exe|Install\.cmd|Install\.command|Library\/Application Support|AppData/,
+    },
+    'macos-arm64': {
+      name: 'macOS Apple silicon', application: '~/Library/Application Support/OutaskAI',
+      foreign: /Linux|Windows|PowerShell|cmd\.exe|Install\.cmd|install\.sh|\.local\/share\/task-tracker\/releases|AppData/,
+    },
+    'windows-x64': {
+      name: 'Windows x64', application: '%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI',
+      foreign: /Linux|macOS|Apple|install\.sh|Install\.command|~\/|\.local\/|Library\/Application Support/,
+    },
+  };
+  for (const [target, platform] of Object.entries(platforms)) {
+    const f = fixture(t, target);
+    const readme = readFileSync(join(f.source, 'README.md'), 'utf8');
+    // Metadata, rather than the host OS, must determine cross-built archive help.
+    const help = ok(f.install('--help'));
+    assert.ok(readme.startsWith(`# Outask AI v${releaseVersion} (${platform.name})\n`));
+    assert.ok(readme.trimEnd().split('\n').length < 200, target);
+    assert.ok(readme.includes(`Node.js ${nodeRange}`));
+    assert.match(help, /Node\.js\s+(?:>=)?22\.23\.3\b/);
+    for (const instructions of [readme, help]) {
+      assert.ok(instructions.includes(platform.name));
+      assert.ok(instructions.includes(platform.application));
+      assert.doesNotMatch(instructions, platform.foreign);
     }
-    assert.match(readme, /## Use/);
-    assert.match(readme, /tasks create --title "Write release notes"/);
-    assert.match(readme, /tasks list --format table/);
-    assert.match(readme, /tasks validate/);
-    assert.match(readme, /Run `tasks --help` for all commands/);
-    assert.match(readme, /## Update and remove/);
-    assert.match(readme, /To update, download the new archive, extract it in a directory you will keep/);
-    assert.match(readme, /Updates replace the managed application files/);
-    assert.match(readme, /To uninstall, run \.\/install\.sh uninstall/);
+    assert.ok(readme.indexOf(nodeRange) < readme.indexOf(installerEntries[target]), target);
+    assert.match(readme, /^tasks create --title (?:"[^"\n]+"|'[^'\n]+'|\S+)$/m);
+    assert.match(readme, /^tasks list(?: --format table)?$/m);
+    assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/mcp/README.md`));
+    assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/README.md`));
+    assert.match(help, /\[--bin-dir <directory>\] \[--release-root <parent-directory>\]/);
+    if (target === 'windows-x64') {
+      assert.match(readme, /PowerShell: `\.\/Install\.cmd`/);
+      assert.match(readme, /cmd.exe: `Install\.cmd`/);
+      const config = JSON.parse(readme.match(/```json\n([\s\S]*?)\n```/)[1]);
+      assert.deepEqual(config, { command: 'node', args: ['C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\OutaskAI\\app\\bin\\tasks', 'mcp'] });
+      assert.ok(readme.includes('& "$env:USERPROFILE\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall'));
+      assert.ok(readme.includes('"%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall'));
+      assert.match(help, /\.\/Install\.cmd \(PowerShell\), Install\.cmd \(cmd\.exe\)/);
+    } else {
+      assert.ok(readme.includes(`\`\`\`sh\n./${installerEntries[target]}\n\`\`\``), target);
+      assert.match(readme, /codex mcp add tasks -- tasks mcp\ncodex mcp list/);
+      assert.equal((readme.match(/codex mcp add/g) || []).length, 1);
+      const installed = platform.application.replace('~', '$HOME');
+      assert.ok(readme.includes(`"${installed}/${installerEntries[target]}" uninstall`));
+      assert.ok(help.includes(`Usage: ./${installerEntries[target]} [install|uninstall]`));
+      for (const [, commands] of readme.matchAll(/```sh\n([\s\S]*?)\n```/g)) ok(run('/bin/sh', ['-n'], { input: commands }));
+    }
   }
 });
 
@@ -232,6 +266,58 @@ test('download install, repeat, update and uninstall preserve project data and s
   assert.deepEqual(JSON.parse(readFileSync(join(project, 'docs/task-schema.json'))), schema);
 });
 
+test('managed upgrades replace the previous root installers and preserve user data and unknown files', (t) => {
+  for (const target of Object.keys(installerEntries)) {
+    const f = fixture(t, target);
+    // Reconstruct the previous managed layout without depending on an old download.
+    cpSync(f.source, f.installed, { recursive: true });
+    rmSync(join(f.installed, installerEntries[target]));
+    const oldInstallers = ['install.mjs', 'install-path.mjs', 'install-launcher.mjs', 'install.sh',
+      ...(target === 'macos-arm64' ? ['Install.command'] : target === 'windows-x64' ? ['install.cmd'] : [])];
+    for (const name of oldInstallers) writeFileSync(join(f.installed, name), `Previous managed ${name}\n`);
+    for (const helper of ['install-release.mjs', 'install-path.mjs', 'install-launcher.mjs']) {
+      rmSync(join(f.installed, 'app/scripts', helper), { force: true });
+    }
+    writeFileSync(join(f.installed, 'release.json'), JSON.stringify({ version: '0.0.1', target }));
+    mkdirSync(f.bin, { recursive: true });
+    symlinkSync(join(f.installed, 'app/bin/tasks'), join(f.bin, 'tasks'));
+    const project = join(f.home, 'project');
+    mkdirSync(project);
+    ok(run(join(f.bin, 'tasks'), ['create', project, '--json', JSON.stringify({ title: 'Existing task', extra: { retained: ['unknown', 42] } })], { env: f.env }));
+    const dataPath = join(project, 'tasks/active.json');
+    const data = readFileSync(dataPath, 'utf8');
+    const userFiles = {
+      'user-note.txt': 'retain user content\n',
+      'install-custom.mjs': 'retain similarly named unknown file\n',
+      'user-data/settings.json': '{"unknown":{"retained":true}}\n',
+    };
+    for (const [name, content] of Object.entries(userFiles)) {
+      mkdirSync(dirname(join(f.installed, name)), { recursive: true });
+      writeFileSync(join(f.installed, name), content);
+    }
+    const config = join(f.home, '.codex/config.toml');
+    mkdirSync(dirname(config));
+    const configuration = '[mcp_servers.existing]\ncommand = "keep-this"\n';
+    writeFileSync(config, configuration);
+    assert.match(ok(f.install()), /Installed/);
+    assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
+    assert.equal(JSON.parse(readFileSync(join(f.installed, 'release.json'), 'utf8')).version, releaseVersion);
+    const installedNames = readdirSync(f.installed);
+    for (const name of oldInstallers.filter((name) => name !== installerEntries[target])) {
+      assert.equal(installedNames.includes(name), false, `${target}: obsolete ${name}`);
+    }
+    assert.equal(installedNames.includes(installerEntries[target]), true, target);
+    for (const helper of ['install-release.mjs', 'install-path.mjs', 'install-launcher.mjs']) {
+      assert.equal(existsSync(join(f.installed, 'app/scripts', helper)), true, `${target}: ${helper}`);
+    }
+    for (const [name, content] of Object.entries(userFiles)) assert.equal(readFileSync(join(f.installed, name), 'utf8'), content, `${target}: ${name}`);
+    assert.equal(readFileSync(dataPath, 'utf8'), data, target);
+    assert.deepEqual(JSON.parse(data)[0].extra, { retained: ['unknown', 42] });
+    assert.equal(readFileSync(config, 'utf8'), configuration, target);
+    ok(run(join(f.bin, 'tasks'), ['validate', project], { env: f.env }));
+  }
+});
+
 test('preflight rejects missing Node and incompatible Node before writing installation', (t) => {
   const f = fixture(t);
   const empty = join(f.home, 'empty');
@@ -277,7 +363,7 @@ syncBuiltinESMExports();
 const entry = process.argv[1];
 process.argv.splice(1, 1);
 await import(entry);`;
-  const result = run(process.execPath, ['--input-type=module', '-e', module, join(f.source, 'install.mjs')],
+  const result = run(process.execPath, ['--input-type=module', '-e', module, internalInstaller(f.source)],
     { env: { ...f.env, TEST_COMMAND_PATH: join(f.bin, 'tasks') } });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /simulated command replacement refusal/);
@@ -294,6 +380,17 @@ test('installer refuses an unrelated destination before replacing user files', (
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /INSTALL_EXISTS/);
   assert.equal(readFileSync(join(f.installed, 'user-note.txt'), 'utf8'), 'retain this');
+  assert.equal(existsSync(f.bin), false);
+  // Legacy installer filenames and release metadata alone do not prove ownership.
+  writeFileSync(join(f.installed, 'release.json'), JSON.stringify({ version: '0.0.1', target: 'linux-x64' }));
+  mkdirSync(join(f.installed, 'app'));
+  writeFileSync(join(f.installed, 'app/package.json'), JSON.stringify({ name: 'unrelated-application' }));
+  writeFileSync(join(f.installed, 'install.mjs'), 'retain unrelated installer');
+  const metadataOnly = f.install();
+  assert.notEqual(metadataOnly.status, 0);
+  assert.match(metadataOnly.stderr, /INSTALL_EXISTS/);
+  assert.equal(readFileSync(join(f.installed, 'user-note.txt'), 'utf8'), 'retain this');
+  assert.equal(readFileSync(join(f.installed, 'install.mjs'), 'utf8'), 'retain unrelated installer');
   assert.equal(existsSync(f.bin), false);
 });
 
@@ -331,11 +428,41 @@ test('macOS Finder launcher delegates installation from paths containing spaces'
   ok(run('/bin/bash', ['-n', launcher]));
   ok(run(launcher, [], { env: f.env }));
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
+  // A failed runtime preflight must stop before invoking the managed installer.
+  rmSync(join(f.tools, 'node'));
+  writeFileSync(join(f.tools, 'node'), '#!/bin/sh\ncase "$1" in */app/runtime.cjs) echo "INCOMPATIBLE_RUNTIME: test old Node" >&2; exit 17 ;; *) echo "INSTALLER_REACHED" >&2; exit 23 ;; esac\n', { mode: 0o755 });
+  const incompatible = run(launcher, [], { env: f.env });
+  assert.equal(incompatible.status, 17);
+  assert.match(incompatible.stderr, /INCOMPATIBLE_RUNTIME: test old Node/);
+  assert.doesNotMatch(incompatible.stderr, /INSTALLER_REACHED/);
+  rmSync(join(f.tools, 'node'));
+  symlinkSync(process.execPath, join(f.tools, 'node'));
   // The wrapper must preserve a failed install's diagnostic and exit status.
-  writeFileSync(join(f.source, 'install.sh'), '#!/bin/sh\necho "DEPENDENCY_MISSING: install Node.js and put node on PATH" >&2\nexit 1\n', { mode: 0o755 });
+  writeFileSync(internalInstaller(f.source), 'console.error("DEPENDENCY_MISSING: install Node.js and put node on PATH"); process.exit(7);\n');
   const missing = run(launcher, [], { env: f.env });
-  assert.equal(missing.status, 1);
+  assert.equal(missing.status, 7);
   assert.match(missing.stderr, /DEPENDENCY_MISSING: install Node.js/);
+});
+
+test('Finder launcher rejects missing Node and dirname before writing installation', (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const hook = join(f.home, 'dependency-lookup.bash');
+  // Override only lookup, so fixed Homebrew PATH additions cannot satisfy the dependency.
+  writeFileSync(hook, `command() {
+  if [ "$1" = -v ] && [ "$2" = "$TEST_MISSING_DEPENDENCY" ]; then return 1; fi
+  builtin command "$@"
+}
+`);
+  for (const dependency of ['node', 'dirname']) {
+    const result = run(join(f.source, 'Install.command'), [], {
+      env: { ...f.env, BASH_ENV: hook, TEST_MISSING_DEPENDENCY: dependency },
+    });
+    assert.equal(result.status, 1, dependency);
+    assert.match(result.stderr, /DEPENDENCY_MISSING/);
+    assert.match(result.stderr, dependency === 'node' ? /install Node\.js/ : /dirname is required/);
+    assert.equal(existsSync(f.releases), false, dependency);
+    assert.equal(existsSync(f.bin), false, dependency);
+  }
 });
 
 test('Finder launcher accepts one non-Return key and preserves terminal state and failed diagnostics', async (t) => {
@@ -345,7 +472,7 @@ test('Finder launcher accepts one non-Return key and preserves terminal state an
   const command = `saved=$(stty -g); ${quoted}; result=$?; if [ "$(stty -g)" = "$saved" ]; then echo TTY_RESTORED; fi; echo WRAPPER_STATUS:$result`;
   const env = { ...f.env, TERM_PROGRAM: 'OutaskTest' };
   for (const status of [0, 1]) {
-    writeFileSync(join(f.source, 'install.sh'), `#!/bin/sh\necho INSTALL_RESULT_${status}\nexit ${status}\n`, { mode: 0o755 });
+    writeFileSync(internalInstaller(f.source), `console.log('INSTALL_RESULT_${status}'); process.exit(${status});\n`);
     const result = await terminal(command, 'x', env);
     assert.equal(result.status, 0, result.output);
     assert.match(result.output, /TTY_RESTORED/);
@@ -422,7 +549,7 @@ fs.renameSync(report + '.tmp', report);`;
 test('a manual wrapper ending does not authorise closure while its Terminal session shell lives', async (t) => {
   const f = fixture(t, 'macos-arm64');
   const launcher = join(f.source, 'Install.command');
-  writeFileSync(join(f.source, 'install.sh'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  writeFileSync(internalInstaller(f.source), 'process.exit(0);\n');
   const hook = join(f.home, 'observe-session.bash');
   const trace = join(f.home, 'session.pid');
   const wrapper = join(f.home, 'wrapper.pid');
@@ -446,7 +573,7 @@ test('macOS directory selection recognises its stable destination and previous d
   symlinkSync(join(legacy, 'app/bin/tasks'), join(f.bin, 'tasks'));
   // Test platform-dependent path selection; native acceptance runs separately on macOS.
   const module = "Object.defineProperty(process, 'platform', { value: 'darwin' }); const entry = process.argv[1]; process.argv.splice(1, 1); await import(entry);";
-  ok(run(process.execPath, ['--input-type=module', '-e', module, join(f.source, 'install.mjs')], { env: f.env }));
+  ok(run(process.execPath, ['--input-type=module', '-e', module, internalInstaller(f.source)], { env: f.env }));
   const installed = join(f.home, 'Library/Application Support/OutaskAI');
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(installed, 'app/bin/tasks'));
   assert.equal(existsSync(legacy), true);
@@ -508,6 +635,23 @@ test('installer preserves unrelated commands including dangling symlinks and PAT
   assert.equal(existsSync(f.releases), false);
 });
 
+test('installer ignores an unrelated non-searchable PATH directory', {
+  skip: process.getuid?.() === 0 ? 'Root bypasses POSIX directory search permissions; run this regression as an unprivileged user.' : false,
+}, (t) => {
+  const f = fixture(t);
+  const restricted = join(f.home, 'restricted path');
+  mkdirSync(restricted);
+  chmodSync(restricted, 0o000);
+  try {
+    assert.throws(() => lstatSync(join(restricted, 'tasks')), { code: 'EACCES' });
+    const env = { ...f.env, PATH: `${restricted}:${f.env.PATH}` };
+    assert.match(ok(run(join(f.source, 'install.sh'), [], { env })), /Installed OutaskAI/);
+    assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env })).trim(), releaseVersion);
+  } finally {
+    chmodSync(restricted, 0o700);
+  }
+});
+
 test('installer migrates existing checkout and previous release command links', (t) => {
   const f = fixture(t);
   mkdirSync(f.bin, { recursive: true });
@@ -524,18 +668,10 @@ test('installer migrates existing checkout and previous release command links', 
   assert.equal(existsSync(join(old, 'bin/tasks')), true);
 });
 
-test('Windows archive describes native installation, persistent user PATH and packaged MCP', () => {
+test('Windows archive installer checks Node before delegating to the managed installer', () => {
   const archive = join(archives, `OutaskAI-${releaseVersion}-windows-x64.tar.gz`);
-  const readme = ok(run('tar', ['-xOf', archive, 'OutaskAI/README.md']));
-  assert.match(readme, /PowerShell: `\.\/install.cmd`/);
-  assert.match(readme, /cmd.exe: `install.cmd`/);
-  assert.match(readme, /AppData\\Local\\Programs\\OutaskAI/);
-  assert.match(readme, /existing user PATH entries/);
-  assert.match(readme, /already-open session/);
-  assert.match(readme, /unrelated files, project tasks and configuration are preserved/);
-  assert.match(readme, /For packaged MCP, configure command node/);
-  const installer = ok(run('tar', ['-xOf', archive, 'OutaskAI/install.cmd']));
+  const installer = ok(run('tar', ['-xOf', archive, 'OutaskAI/Install.cmd']));
   assert.match(installer, /DEPENDENCY_MISSING/);
   assert.match(installer, /runtime.cjs/);
-  assert.match(installer, /install.mjs/);
+  assert.match(installer, /app\\scripts\\install-release\.mjs/);
 });

@@ -1,43 +1,30 @@
 # Outask AI
 
-Outask AI keeps project tasks with your code as readable, repository-local
-JSON. Use the `tasks` command yourself or connect a local AI agent through MCP.
+Keep project tasks with your code as readable JSON. Use `tasks` yourself or
+connect a local agent through MCP.
 
 ## Install the CLI
 
-Outask AI requires Node.js 22.23.3 or later.
+Requires Node.js 22.23.3 or later. Download your platform's archive from
+[Releases](https://github.com/henryh/outask/releases), extract it and open
+`OutaskAI` in a terminal.
 
-1. Open [Releases](https://github.com/henryh/outask/releases) and download the
-   archive for your platform from the release description.
-2. Extract the archive in a directory you will keep and open a terminal there.
-3. Open the extracted `OutaskAI` directory. On Linux/macOS, install it:
+Install on Linux x64:
 
-   ```bash
-   ./install.sh
-   ```
+```bash
+./install.sh
+```
 
-On native Windows x64, run `./install.cmd` in PowerShell or `install.cmd` in
-cmd.exe. The Windows archive is `OutaskAI-<version>-windows-x64.tar.gz`; Windows
-includes [tar for extraction](https://learn.microsoft.com/en-us/windows/tar/).
-Node.js must be installed on PATH; WSL and administrator access are unnecessary.
-
-The Linux/macOS installer creates `~/.local/bin/tasks`. Windows installs the
-application at `%USERPROFILE%\AppData\Local\Programs\OutaskAI` and its launcher
-at `%USERPROFILE%\AppData\Local\OutaskAI\bin\tasks.cmd`. It adds that command
-directory to the current user's persistent Windows PATH, preserves existing
-entries, and avoids duplicates on repeat installs. Open a new PowerShell or
-cmd.exe terminal afterward; an already-open terminal keeps its old PATH. If PATH
-setup fails, the installer prints the absolute launcher path for immediate use.
-For updates, run the new archive's installer. To uninstall on Windows, run
-`./install.cmd uninstall` in PowerShell or `install.cmd uninstall` in cmd.exe
-from the installed application directory. Only the managed launcher is removed;
-application files, PATH entries, project tasks, configuration and unrelated files
-remain. See [Windows installation](app/README.md#windows-installation) for details.
+On macOS Apple silicon, double-click `Install.command` in Finder or run
+`./Install.command` in a terminal.
+On Windows x64, run `./Install.cmd` in PowerShell or `Install.cmd` in cmd.exe.
+Open a new terminal after installation. No administrator access or WSL is needed.
+For macOS Finder/Gatekeeper, updates and removal, see the
+[installation guide](app/README.md#installation-and-updates).
 
 ## Basic use
 
-Run these commands in a project directory. No setup command or manual JSON edit
-is required:
+Run in your project directory:
 
 ```bash
 tasks create --title "Write release notes"
@@ -46,37 +33,34 @@ tasks search "release notes"
 tasks transition 1 --status done
 ```
 
-The first command creates task `1` in a project with no existing tasks. Replace
-`1` with the ID shown by `tasks create` when using an existing project.
+Use the ID returned by `create` in place of `1`. The first write prepares task
+storage; no setup command is needed. Discover commands with `tasks --help`,
+or use the [operator cookbook](app/README.md).
 
-For more commands, run `tasks --help` or see the
-[operator reference](app/README.md).
+## Use with an agent
 
-## Use with an agent (optional)
+On Linux/macOS, register the installed adapter with Codex:
 
-The release includes the local stdio MCP adapter. Configure an MCP-capable
-client to launch the installed command as `tasks mcp`; MCP requires Node.js
-22.23.3 or later. See the [MCP setup and tool schemas](app/mcp/README.md).
+```bash
+codex mcp add tasks -- tasks mcp
+codex mcp list
+```
 
-For planning, task selection and session continuation, point the agent to the
-maintained [Outask AI agent skill guide](docs/outask-ai-skill.md) and use one
-prompt such as:
+Start a new Codex session. For Windows, client PATH differences and other hosts,
+see [MCP setup](app/mcp/README.md). Point the agent to the
+[Outask AI agent skill guide](docs/outask-ai-skill.md), for example:
 
 > Use the Outask AI agent skill guide for this project. Prefer the connected
-> `tasks` MCP server, or use the installed CLI if MCP is unavailable. Respect
-> the project's instructions and existing tracker, and plan and track this
-> request: _describe the work_.
+> `tasks` MCP server and respect the project's instructions. Plan and track
+> this request: _describe the work_.
 
-Outask AI manages task data only. Git commits, branches and publishing remain
-under your project or agent workflow.
+Outask AI manages task data. Your project workflow controls Git and publishing.
 
 ## Contributing
 
-See [contributor setup and PR delivery](docs/contributing.md) for local checks,
-explicit push-guard installation and the owner-merged workflow.
+See [contributor setup and delivery](docs/contributing.md).
 
 ## License
 
 Copyright (c) 2026 Henry <me@henrydev.me>.
-
-Outask AI is licensed under the [GNU Affero General Public License version 3 only](LICENSE).
+Licensed under [GNU AGPL version 3 only](LICENSE).
