@@ -17,7 +17,8 @@ import { inspectSchema, materialiseSchema } from '../src/schema.mjs';
 
 const text = z.string().min(1);
 const id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
-const limit = z.number().int().min(1).max(maxLimit).optional();
+const limit = z.number().int().min(1).max(maxLimit).optional()
+  .describe(`Integer limit from 1 to ${maxLimit}; default 10. For more paged results, use the returned continuation.`);
 const selection = {
   project: text.optional().describe('Configured project name; exclusive with project_path.'),
   project_path: text.optional().describe('Project directory; defaults to server working directory.'),
@@ -28,7 +29,7 @@ const reading = {
   stores: z.array(text).optional().describe('Store names; ["all"] includes retained history. Exclusive with group.'),
   group: z.enum(['Active', 'Done', 'Archive']).optional(),
   fields: z.array(text).optional().describe('Field projection; ["all"] includes extension fields.'),
-  no_cache: z.boolean().optional().describe('Read authoritative JSON only; never open or refresh the SQLite cache.'),
+  no_cache: z.boolean().optional().describe('Default false; omit for normal reads, which can use a freshness-checked cache when enabled and otherwise fall back to authoritative JSON. Set true only for explicit JSON-only reads or cache diagnostics; true never opens or refreshes the cache.'),
 };
 const writing = {
   store: text.optional().describe('Destination store, when ambiguous.'),
@@ -72,7 +73,7 @@ export function createServer() {
       }
     });
   }
-  register('list_tasks', 'List tasks (Active by default), with bounded pagination. Defaults: id,title,status; limit 10; offset 0; sort id.', {
+  register('list_tasks', `List tasks (Active by default), with bounded pagination (maximum limit ${maxLimit}). Defaults: id,title,status; limit 10; offset 0; sort id.`, {
     ...reading, limit, offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
     filters: z.array(z.strictObject({ field: text, value: z.string() })).optional(),
     status: text.optional().describe('Exact case-sensitive status filter.'),
@@ -109,8 +110,9 @@ export function createServer() {
     ...writing, id, status: text.optional(),
   }, (path, args) => deleteTask(path, args.id, { ...writes(args), status: args.status, schemaPath: args.schemaPath }));
   register('inspect_blockers', 'Inspect exact Active blockers and eligibility, plus a bounded graph. Cycles are diagnostics; defaults: depth 1, limit 10.', {
-    id, limit, depth: z.number().int().min(1).max(maxDepth).optional(),
-    no_cache: z.boolean().optional().describe('Read authoritative JSON only; never open or refresh the SQLite cache.'),
+    id, limit: limit.describe(`Integer limit from 1 to ${maxLimit} graph edges; default 10. Additional edges are omitted and reported by graph.truncated.limit.`),
+    depth: z.number().int().min(1).max(maxDepth).optional(),
+    no_cache: reading.no_cache,
   }, (path, { id, ...args }) => inspectBlockers(path, id, reads(args)), true);
   register('validate_project', 'Validate retained stores after manual edits and refresh service metadata without rewriting task records.', {}, validateProject);
   register('inspect_schema', 'Inspect the complete effective project task schema as editable JSON; no task stores required.', {}, inspectSchema);
