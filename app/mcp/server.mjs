@@ -76,7 +76,8 @@ export function createServer() {
     ...reading, limit, offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
     filters: z.array(z.strictObject({ field: text, value: z.string() })).optional(),
     status: text.optional().describe('Exact case-sensitive status filter.'),
-    ids: z.array(id).optional(), sort: text.optional(), desc: z.boolean().optional(), count: z.boolean().optional(),
+    ids: z.array(id).optional(), sort: text.optional(), desc: z.boolean().optional(),
+    count: z.boolean().optional().describe('Return only the matching count; omit pagination and projection arguments.'),
   }, (path, { desc, count, status, filters = [], ...args }) => {
     const query = { ...reads(args), descending: desc, filters: [...filters, ...(status === undefined ? [] : [{ field: 'status', value: status }])] };
     return count ? { count: countTasks(path, query) } : listTasks(path, query);

@@ -74,8 +74,12 @@ unread. Active is the default; no Active mapping is a configuration error.
 all records in those stores regardless of group. `stores: ["all"]` includes
 configured files and other discovered `tasks/*.json` files; unconfigured stores
 are otherwise available only by explicit selection. Selected missing stores
-fail. Missing standard files are skipped by full validation; missing configured
-custom files remain errors. There is no search elsewhere for missing storage.
+fail. Default/group reads and store selections `all` or `active` instead read as
+empty when there is no schema or task JSON, and valid service metadata has no
+evidence of previous task storage. List/search/batch return no tasks, count
+returns `0`, and individual lookups return `TASK_NOT_FOUND`. Missing standard
+files are skipped by full validation; missing configured custom files remain
+errors. There is no search elsewhere for missing storage.
 
 `tasks/.task-tracker.json` is reserved service metadata, excluded from discovery
 and forbidden as a task store. After safe project/schema selection, operations

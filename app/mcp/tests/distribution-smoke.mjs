@@ -238,6 +238,22 @@ try {
     } else assert.notEqual(result.isError, true, JSON.stringify(result));
     return result.structuredContent;
   }
+  const freshProject = join(temporary, 'Fresh project 東京');
+  mkdirSync(freshProject);
+  extraLocks.push(projectLockPath(freshProject));
+  const freshPage = cli('list', '--project-path', freshProject, '--store', 'all', '--no-cache', '--format', 'json');
+  assert.deepEqual(freshPage.tasks, []);
+  assert.equal(freshPage.total, 0);
+  const freshSelection = { project_path: freshProject, stores: ['all'], no_cache: true };
+  assert.deepEqual(await call('list_tasks', { ...freshSelection, count: true, limit: 50, fields: ['all'] }), { count: 0 });
+  await call('get_task', { ...freshSelection, id: 1 }, 'TASK_NOT_FOUND');
+  assert.deepEqual(readdirSync(join(freshProject, 'tasks')), ['.task-tracker.json']);
+  const firstTask = await call('create_task', { project_path: freshProject, task: { title: 'First task', extra: { keep: true } } });
+  assert.equal(firstTask.id, 1);
+  assert.deepEqual(cli('get', '1', '--project-path', freshProject, '--no-cache', '--format', 'json'), firstTask);
+  assert.deepEqual(await call('list_tasks', { ...freshSelection, count: true }), { count: 1 });
+  rmSync(join(freshProject, 'tasks/active.json'));
+  await call('list_tasks', { ...freshSelection, count: true }, 'READ_ERROR');
   assert.ok((await call('search_tasks', { query: 'Updated', stores: ['all'], fields: ['id'] })).tasks.some((task) => task.id === created.id));
   assert.deepEqual(await call('get_task', { id: created.id, stores: ['all'], fields: ['all'] }), completed);
   await call('create_task', { task: { title: 'MCP missing required field' } }, 'INVALID_STORE');
@@ -307,7 +323,7 @@ try {
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive' } } : {}),
-    checks: ['single-platform-installer', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
+    checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);

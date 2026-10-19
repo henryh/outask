@@ -10,6 +10,7 @@ Outask AI keeps project tasks in local JSON files, with CLI and local MCP access
 
 ## What's new
 
+- List and count tasks in a fresh project before the first write.
 - Install despite an inaccessible unrelated PATH directory; conflicting commands remain protected.
 - Install, update and remove the command through one platform-specific installer.
 - Use concise installation, CLI and MCP instructions, with platform-specific archive guides.

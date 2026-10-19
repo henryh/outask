@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, readFileSync, truncateSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -36,6 +36,37 @@ async function connect(t, root, command = executable, env) {
   };
   return { client, call };
 }
+
+test('MCP list and count read an uninitialised project without creating task records', async (t) => {
+  const root = fixture(t, []);
+  rmSync(join(root, 'tasks'), { recursive: true });
+  const { client, call } = await connect(t, root);
+  assert.deepEqual(await call('list_tasks', { count: true }), { count: 0 });
+  for (const no_cache of [false, true]) {
+    for (let repeat = 0; repeat < 2; repeat++) {
+      const page = await call('list_tasks', { group: 'Active', fields: ['id', 'title', 'status'], limit: 50, no_cache });
+      assert.deepEqual(page.tasks, []);
+      assert.equal(page.total, 0);
+      assert.equal(page.hasMore, false);
+      assert.equal(page.nextOffset, null);
+      assert.deepEqual(await call('list_tasks', { count: true, no_cache }), { count: 0 });
+    }
+    const rejected = await client.callTool({ name: 'list_tasks', arguments: { limit: 100, no_cache } });
+    assert.equal(rejected.isError, true);
+    await call('get_task', { id: 1, no_cache }, 'TASK_NOT_FOUND');
+  }
+  assert.deepEqual(readdirSync(root), ['tasks']);
+  assert.deepEqual(readdirSync(join(root, 'tasks')), ['.task-tracker.json']);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, 'tasks/.task-tracker.json'))), {});
+  const created = await call('create_task', { task: { title: 'First real task' } });
+  assert.equal(created.id, 1);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, 'tasks/active.json'))), [created]);
+  assert.deepEqual((await call('list_tasks', { fields: ['id'] })).tasks, [{ id: 1 }]);
+  assert.deepEqual(await call('list_tasks', { count: true }), { count: 1 });
+  rmSync(join(root, 'tasks/active.json'));
+  await call('list_tasks', { fields: ['id'] }, 'READ_ERROR');
+  await call('list_tasks', { count: true, no_cache: true }, 'READ_ERROR');
+});
 
 test('MCP validation and writes share the external project lock with core', async (t) => {
   const root = fixture(t, [task(1)]);

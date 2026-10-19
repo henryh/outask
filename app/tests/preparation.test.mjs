@@ -10,7 +10,8 @@ import { openProject } from '../src/stores.mjs';
 import { withProjectLock } from '../src/service.mjs';
 import { projectLockPath } from '../src/project-lock.mjs';
 import { createTask } from '../src/create.mjs';
-import { getTask, listTasks } from '../src/tasks.mjs';
+import { countTasks, getTask, getTasks, listTasks } from '../src/tasks.mjs';
+import { searchTasks } from '../src/search.mjs';
 import { inspectBlockers } from '../src/blockers.mjs';
 import { deleteTask, transitionTask } from '../src/transition.mjs';
 import { updateTask } from '../src/update.mjs';
@@ -36,9 +37,68 @@ function execute(command, args, root) {
 }
 const state = (root) => JSON.parse(readFileSync(join(root, 'tasks/.task-tracker.json')));
 
-test('every first core read or failed mutation prepares only uncertified service metadata', (t) => {
-  for (const [operation, code] of [[listTasks, 'READ_ERROR'], [(root) => getTask(root, 1), 'READ_ERROR'],
-    [(root) => inspectBlockers(root, 1), 'READ_ERROR'], [validateProject, 'READ_ERROR'],
+test('first core task reads return an empty project without creating records or schema', (t) => {
+  for (const noCache of [false, true]) {
+    for (const first of [listTasks, countTasks]) {
+      const root = empty(t);
+      const options = { noCache };
+      const initial = first(root, options);
+      if (first === countTasks) assert.equal(initial, 0);
+      else assert.deepEqual(initial.tasks, []);
+      for (let repeat = 0; repeat < 2; repeat++) {
+        const page = listTasks(root, { ...options, group: 'Active', fields: ['id', 'title', 'status'], limit: 50 });
+        assert.deepEqual(page.tasks, []);
+        assert.equal(page.total, 0);
+        assert.equal(page.hasMore, false);
+        assert.equal(page.nextOffset, null);
+        assert.equal(countTasks(root, options), 0);
+        const search = searchTasks(root, 'anything', options);
+        assert.deepEqual(search.tasks, []);
+        assert.equal(search.hasMore, false);
+        const batch = getTasks(root, [1, 2], options);
+        assert.deepEqual(batch.tasks, []);
+        assert.deepEqual(batch.not_found, [1, 2]);
+        assert.throws(() => getTask(root, 1, options), { code: 'TASK_NOT_FOUND' });
+      }
+      assert.throws(() => listTasks(root, { ...options, limit: 100 }), { code: 'INVALID_INPUT' });
+      assert.throws(() => listTasks(root, { ...options, stores: ['unknown'] }), { code: 'INVALID_INPUT' });
+      for (const selector of [{ stores: ['active'] }, { stores: ['all'] }, { group: 'Done' }, { group: 'Archive' }]) {
+        assert.deepEqual(listTasks(root, { ...options, ...selector }).tasks, []);
+      }
+      assert.deepEqual(readdirSync(root), ['tasks']);
+      assert.deepEqual(readdirSync(join(root, 'tasks')), ['.task-tracker.json']);
+      assert.deepEqual(state(root), {});
+      const created = createTask(root, { title: 'First real task' });
+      assert.equal(created.id, 1);
+      assert.deepEqual(JSON.parse(readFileSync(join(root, 'tasks/active.json'))), [created]);
+      assert.equal(countTasks(root, options), 1);
+      assert.deepEqual(listTasks(root, options).tasks, [{ id: 1, title: 'First real task', status: 'pending' }]);
+      assert.deepEqual(readdirSync(join(root, 'tasks')).sort(), ['.task-tracker.json', 'active.json']);
+    }
+  }
+});
+
+test('valid service metadata with no prior storage evidence leaves first reads empty and unchanged', (t) => {
+  for (const service of [
+    { counter: 0, extension: { keep: true } },
+    { counter: 0, validated: { counter: 0, files: { 'tasks/task-schema.json': null }, extension: 'kept' } },
+    { validated: { counter: 0, files: {} } },
+  ]) {
+    const root = empty(t);
+    mkdirSync(join(root, 'tasks'));
+    writeStore(root, '.task-tracker.json', service);
+    const before = readFileSync(join(root, 'tasks/.task-tracker.json'));
+    for (const noCache of [false, true]) {
+      assert.equal(countTasks(root, { noCache }), 0);
+      assert.deepEqual(listTasks(root, { noCache }).tasks, []);
+    }
+    assert.deepEqual(readdirSync(join(root, 'tasks')), ['.task-tracker.json']);
+    assert.deepEqual(readFileSync(join(root, 'tasks/.task-tracker.json')), before);
+  }
+});
+
+test('first failed mutations and validation prepare only uncertified service metadata', (t) => {
+  for (const [operation, code] of [[(root) => inspectBlockers(root, 1), 'TASK_NOT_FOUND'], [validateProject, 'READ_ERROR'],
     [(root) => transitionTask(root, 1, 'done'), 'TASK_NOT_FOUND'], [(root) => deleteTask(root, 1), 'TASK_NOT_FOUND'],
     [(root) => updateTask(root, 1, { set: { title: 'Changed' } }), 'READ_ERROR']]) {
     const root = empty(t);
@@ -46,6 +106,63 @@ test('every first core read or failed mutation prepares only uncertified service
     assert.deepEqual(readdirSync(root), ['tasks']);
     assert.deepEqual(readdirSync(join(root, 'tasks')), ['.task-tracker.json']);
     assert.deepEqual(state(root), {});
+  }
+});
+
+test('missing stores in configured, partial or previously populated projects remain errors', (t) => {
+  const roots = [];
+  const configured = empty(t);
+  mkdirSync(join(configured, 'docs'));
+  writeFileSync(join(configured, 'docs/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } } }));
+  roots.push(configured);
+  const partial = empty(t);
+  mkdirSync(join(partial, 'tasks'));
+  writeStore(partial, 'done.json', []);
+  roots.push(partial);
+  const deleted = empty(t);
+  createTask(deleted, { title: 'Previously stored' });
+  assert.equal(countTasks(deleted), 1);
+  rmSync(join(deleted, 'tasks/active.json'));
+  roots.push(deleted);
+  for (const retained of [
+    { counter: 1 },
+    { validated: { counter: 1, files: { 'tasks/task-schema.json': null } } },
+    { counter: 0, validated: { counter: 0, files: { 'tasks/task-schema.json': null, 'tasks/active.json': 'a'.repeat(64) } } },
+    { validated: { counter: 0 } },
+  ]) {
+    const root = empty(t);
+    mkdirSync(join(root, 'tasks'));
+    writeStore(root, '.task-tracker.json', retained);
+    roots.push(root);
+  }
+  for (const root of roots) {
+    for (const noCache of [false, true]) {
+      for (const operation of [listTasks, countTasks, (path, options) => getTask(path, 1, options),
+        (path, options) => getTasks(path, [1], options), (path, options) => searchTasks(path, 'anything', options)]) {
+        assert.throws(() => operation(root, { noCache }), { code: 'READ_ERROR' });
+      }
+    }
+    assert.equal(existsSync(join(root, 'tasks/active.json')), false);
+  }
+});
+
+test('malformed task data and pending recovery are never treated as a fresh project', (t) => {
+  for (const [name, source, code] of [
+    ['active.json', '[broken', 'INVALID_JSON'],
+    ['active.json', '{}', 'INVALID_STORE'],
+    ['.task-tracker.json', '[broken', 'INVALID_JSON'],
+    ['.task-tracker.json', '[]', 'INVALID_SERVICE'],
+    ['.task-tracker.pending', '{}', 'RECOVERY_REQUIRED'],
+  ]) {
+    const root = empty(t);
+    mkdirSync(join(root, 'tasks'));
+    writeStore(root, '.task-tracker.json', {});
+    writeFileSync(join(root, 'tasks', name), source);
+    for (const noCache of [false, true]) {
+      assert.throws(() => listTasks(root, { noCache }), { code });
+      assert.throws(() => countTasks(root, { noCache }), { code });
+    }
+    assert.equal(readFileSync(join(root, 'tasks', name), 'utf8'), source);
   }
 });
 
