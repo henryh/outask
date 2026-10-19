@@ -66,6 +66,7 @@ let stderr = '';
 let evidence;
 let registryBackup;
 let commandEnv = env;
+let shellNode;
 const extraLocks = [];
 const powershell = windows ? join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe') : undefined;
 function documentedInstall(source, shell) {
@@ -167,8 +168,10 @@ try {
   if (windows) documentedInstall(source, 'powershell'); else run(installer);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
   if (!windows) {
-    const script = `discovered=$(command -v tasks) && reported=$(tasks --version) && "$OUTASK_SMOKE_NODE" -e 'console.log("OUTASK_FRESH_SHELL:" + JSON.stringify({ command: process.argv[1], version: process.argv[2], path: process.env.PATH, home: process.env.HOME }))' "$discovered" "$reported"`;
-    const shell = invoke(env.SHELL, [process.platform === 'darwin' ? '-lc' : '-ic', script], { ...env, OUTASK_SMOKE_NODE: process.execPath });
+    // macOS login startup can prepend a system Node ahead of the matrix runtime.
+    // Restore only the Node fixture; the installer profile must still supply tasks.
+    const script = `export PATH="$OUTASK_SMOKE_TOOLS:$PATH"; discovered=$(command -v tasks) && reported=$(tasks --version) && node -e 'console.log("OUTASK_FRESH_SHELL:" + JSON.stringify({ command: process.argv[1], version: process.argv[2], path: process.env.PATH, home: process.env.HOME, node: { execPath: process.execPath, version: process.version } }))' "$discovered" "$reported"`;
+    const shell = invoke(env.SHELL, [process.platform === 'darwin' ? '-lc' : '-ic', script], { ...env, OUTASK_SMOKE_TOOLS: tools });
     assert.equal(shell.status, 0, `Fresh shell could not run the installed command:\n${shell.stdout}\n${shell.stderr}`);
     // System shell startup may print a banner independently of the test command.
     const output = shell.stdout.split(/\r?\n/).find((line) => line.startsWith('OUTASK_FRESH_SHELL:'));
@@ -177,7 +180,10 @@ try {
     assert.equal(inherited.command, command, 'A new shell must discover the installed tasks by name');
     assert.equal(inherited.version, metadata.version);
     assert.equal(inherited.home, home, 'Fresh shell must use the isolated installation HOME');
+    assert.equal(inherited.node.execPath, process.execPath, 'Fresh shell must use the selected matrix Node');
+    assert.equal(inherited.node.version, process.version);
     assert.ok(inherited.path.split(delimiter).includes(bin), 'Shell startup must add the installed command directory');
+    shellNode = inherited.node;
     commandEnv = { ...env, PATH: inherited.path };
   }
   if (windows) documentedInstall(source, 'cmd'); else run(installer);
@@ -322,7 +328,7 @@ try {
     result: 'PASS', os: { platform: process.platform, version: osVersion, architecture },
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
-    ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive' } } : {}),
+    ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
     checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
   };
 } catch (error) {
