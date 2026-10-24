@@ -44,28 +44,4 @@
     },
     "notes": "User approved task creation only, not implementation. The exact error is the only reporter evidence. Earlier discussion of how Homebrew entered the dependency chain is a hypothesis, not a verified diagnosis. Related completed task 1 addressed other installation issues; this task owns the newly reported fixed-library-path failure.",
     "updated_at": "2026-10-24T19:14:06.076Z"
-  },
-  {
-    "id": 4,
-    "title": "Deliver PATH-based MCP instructions and clear dependency audit failures",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Deliver the approved documentation changes for PATH-based installed CLI/MCP setup and mandatory post-release owner-PC update offers; update vulnerable MCP dependencies and lockfile so required CI can pass without changing task-operation contracts.",
-    "acceptance": [
-      "Installed Linux/macOS CLI and MCP instructions use tasks from PATH; absolute-path fallback requires a confirmed client limitation; Windows/source checkout exceptions remain explicit.",
-      "Release policy requires offering the owner a PC update after successful release/download checks, followed by agreed installation and CLI/MCP verification.",
-      "MCP dependency audit, full core/MCP regression and installed distribution smoke pass on the updated candidate; independent review and documentation checks pass.",
-      "Candidate task closes before final push; hosted native PR checks and owner merge remain delivery gates."
-    ],
-    "values": {
-      "goal": "Keep owner use aligned with the public distribution and unblock verified documentation delivery.",
-      "result": "Operators can follow PATH-based setup and the CI dependency audit reports no vulnerabilities.",
-      "measurement": "Review instructions against the working tasks mcp connection; run make ci.",
-      "scope_decision": "Include the approved dependency fix in this same candidate; retain existing task planning records without starting their implementation."
-    },
-    "notes": [
-      "NO_RELEASE: contributor instructions and an audit compatibility fix in the same corrective candidate; no new CLI/task-operation contract. Public release remains a separately owned release candidate."
-    ],
-    "updated_at": "2026-10-24T19:36:26.962Z"
   }]
