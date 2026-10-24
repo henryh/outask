@@ -81,6 +81,16 @@ do not authorise replacing published contents. After all destination/task/releas
 checks pass, synchronise the clean checkout under [contributor delivery](contributing.md#task-delivery).
 No additional publication approval or release/closure PR is needed.
 
+After every successful release and its required downloaded-archive checks,
+explicitly offer to update the owner's PC to that exact published version so
+the owner uses the current public distribution and can observe installation and
+runtime problems firsthand. Include the installed and published versions in the
+offer. After the owner agrees, use the published archive for the PC's platform
+and its installer, restart affected MCP clients/processes, and verify that both
+`tasks --version` and MCP use the released installation with a successful task
+read. Report any remaining version/path mismatch; publication alone does not
+confirm the owner's PC is current.
+
 ## Retry and private rehearsal
 
 For a publisher code fix, the owner explicitly requests real Actions recovery in

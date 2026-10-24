@@ -22,6 +22,13 @@ Write English, command-first documentation. Keep READMEs under 200 lines and
 archive instructions specific to their target platform. Record current decisions
 in their owning document and acceptance evidence in the task; avoid duplicate reports.
 
+For installed CLI commands and MCP setup on Linux/macOS, use `tasks` from PATH
+and `tasks mcp`, including during post-release updates. Check PATH and restart
+the client before proposing absolute executable paths; use those only for a
+confirmed client limitation and explain the reason. Keep source-checkout and
+Windows-specific commands in their explicit [MCP setup](app/mcp/README.md) routes.
+This does not change the required absolute task `project_path` selector.
+
 ## Task workflow
 
 Only PM edits contributor tasks. Follow [task management](docs/task-management.md),
