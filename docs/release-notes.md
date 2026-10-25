@@ -1,8 +1,8 @@
 ## Downloads
 
-- [Linux x64](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/henryh/outask/releases/download/v1.1/OutaskAI-1.1-windows-x64.tar.gz)
+- [Linux x64](https://github.com/henryh/outask/releases/download/v1.2.1/OutaskAI-1.2.1-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.2.1/OutaskAI-1.2.1-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/henryh/outask/releases/download/v1.2.1/OutaskAI-1.2.1-windows-x64.tar.gz)
 
 ## Current version
 
@@ -10,11 +10,10 @@ Outask AI keeps project tasks in local JSON files, with CLI and local MCP access
 
 ## What's new
 
-- List and count tasks in a fresh project before the first write.
-- See cache defaults and supported page sizes in MCP tool descriptions.
-- Install despite an inaccessible unrelated PATH directory; conflicting commands remain protected.
-- Install, update and remove the command through one platform-specific installer.
-- Use concise installation, CLI and MCP instructions, with platform-specific archive guides.
+- Keep new and changed task arrays and objects readable with multiline, two-space JSON formatting.
+- Preserve untouched task fields and neighbouring records, including their original formatting; no-op updates leave files and timestamps unchanged.
+- Update MCP dependencies to patched releases.
+- Connect installed MCP clients through `tasks mcp` on PATH, with clearer setup and restart guidance.
 
 ## Install
 
@@ -47,6 +46,6 @@ tasks list --format table
 
 ## Documentation
 
-- [Basic use](https://github.com/henryh/outask/blob/v1.1/README.md#basic-use)
-- [Full operator reference](https://github.com/henryh/outask/blob/v1.1/app/README.md)
-- [MCP setup](https://github.com/henryh/outask/blob/v1.1/app/mcp/README.md)
+- [Basic use](https://github.com/henryh/outask/blob/v1.2.1/README.md#basic-use)
+- [Full operator reference](https://github.com/henryh/outask/blob/v1.2.1/app/README.md)
+- [MCP setup](https://github.com/henryh/outask/blob/v1.2.1/app/mcp/README.md)

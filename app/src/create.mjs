@@ -8,6 +8,7 @@ import { projectBudget, readArray } from './input.mjs';
 import { inputBytes, projectBytes, responseBytes } from './limits.mjs';
 import { jsonBytes } from './response.mjs';
 import { knownCounter, readService, recoverMove, replaceFile, serviceState, withProjectLock } from './service.mjs';
+import { finishStore, formatValue } from './storage-format.mjs';
 import { openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
 import { scanProject, validateCycles, validateRecord } from './validation.mjs';
 
@@ -110,16 +111,15 @@ export function createTask(projectPath, input, options = {}) {
       if (jsonBytes(task) + 1 > responseBytes) {
         fail('OUTPUT_TOO_LARGE', 'the complete created task exceeds 32 KiB; shorten the task input before creating it');
       }
-      const result = `${JSON.stringify(task, null, 2)}\n`;
       // Append to the original array so unrelated numeric literals and formatting survive.
       const end = selected.source.lastIndexOf(0x5d);
       let contentEnd = end;
       while ([0x20, 0x09, 0x0a, 0x0d].includes(selected.source[contentEnd - 1])) contentEnd--;
-      const record = Buffer.from(result.trimEnd().split('\n').map((line) => `  ${line}`).join('\n'));
-      const source = Buffer.concat([
+      const record = Buffer.from(`  ${formatValue(task, '  ')}`);
+      const source = finishStore(Buffer.concat([
         selected.source.subarray(0, contentEnd), Buffer.from(`${selected.count ? ',' : ''}\n`),
         record, Buffer.from('\n'), selected.source.subarray(end),
-      ]);
+      ]));
       if (source.length - selected.source.length > project.budget.remaining) {
         fail('INPUT_TOO_LARGE', `creating this task would exceed the ${projectBytes / 1024 / 1024} MiB project source budget; reduce retained input first`);
       }
