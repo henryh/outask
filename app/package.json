@@ -1,6 +1,6 @@
 {
   "name": "task-tracker-local",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Outask AI local tasks CLI for repository-local JSON task tracking",
   "private": true,
   "author": "Henry <me@henrydev.me>",
