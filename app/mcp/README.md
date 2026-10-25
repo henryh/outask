@@ -17,8 +17,12 @@ Start a new Codex session; `/mcp` shows active servers. The first `tasks` is the
 server name; `tasks mcp` is the process it launches. See
 [Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
-If the client has a different PATH, register absolute paths from a working
-terminal instead:
+Use `tasks` from PATH for the installed adapter. If startup fails, check that
+both `tasks` and `node` are available in the client's environment, then restart
+the client after correcting PATH. Verify the connection in a new session.
+
+Only when a confirmed client limitation prevents PATH-based startup, register
+absolute paths from a working terminal and record the concrete reason:
 
 ```bash
 codex mcp add tasks -- "$(command -v node)" "$(command -v tasks)" mcp
@@ -50,7 +54,7 @@ Replace `YOUR_USER` or use your custom installation path. Node must be on the
 client's PATH; an absolute `node.exe` path also works. JSON doubles backslashes.
 Restart a client opened before installation if it needs the new PATH.
 
-## Other stdio clients
+## Other stdio clients on Linux/macOS
 
 Adapt the outer settings container to your client:
 
@@ -58,15 +62,16 @@ Adapt the outer settings container to your client:
 {
   "mcpServers": {
     "tasks": {
-      "command": "/absolute/path/to/tasks",
+      "command": "tasks",
       "args": ["mcp"]
     }
   }
 }
 ```
 
-Use `command -v tasks` for the installed path. Node must also be available to the
-client. Remove the entry and stop its process to disconnect the adapter.
+Both `tasks` and `node` must be available on the client's PATH; follow the PATH
+checks above if startup fails. For Windows, use the Node entry described above.
+Remove the entry and stop its process to disconnect the adapter.
 
 ## Tools and selection
 
