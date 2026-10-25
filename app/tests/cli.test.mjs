@@ -31,13 +31,13 @@ function config(path, value) {
   return path;
 }
 
-test('top-level version options report the distribution version without preparing a project', (t) => {
+test('top-level version options report the program name and distribution version without preparing a project', (t) => {
   const root = fixture(t, []);
   const empty = join(root, 'empty');
   mkdirSync(empty);
   for (const option of ['--version', '-v']) {
     const result = success(cli([option], { cwd: empty }));
-    assert.equal(result.stdout, `${cliVersion}\n`);
+    assert.equal(result.stdout, `Outask AI v${cliVersion}\n`);
     assert.equal(result.stderr, '');
     assert.deepEqual(readdirSync(empty), []);
   }

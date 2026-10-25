@@ -86,9 +86,15 @@ explicitly offer to update the owner's PC to that exact published version so
 the owner uses the current public distribution and can observe installation and
 runtime problems firsthand. Include the installed and published versions in the
 offer. After the owner agrees, use the published archive for the PC's platform
-and its installer, restart affected MCP clients/processes, and verify that both
-`tasks --version` and MCP use the released installation with a successful task
-read. Report any remaining version/path mismatch; publication alone does not
+and its installer. Preserve existing MCP/HTTP sessions and let active writes
+finish during compatible updates; do not kill processes or force an immediate
+reconnect. Those sessions may keep their old loaded version until the launching
+client restarts them normally. Verify `tasks --version` reports
+`Outask AI v<released-version>` and a fresh MCP connection uses the released
+installation with a successful task read. Follow the
+[project lock rules](../app/README.md#project-locks-and-upgrades) separately for
+coordination-file cleanup or an incompatible coordination-protocol migration.
+Report any remaining fresh-launch version/path mismatch; publication alone does not
 confirm the owner's PC is current.
 
 ## Retry and private rehearsal

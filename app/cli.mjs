@@ -70,7 +70,7 @@ export async function main(args) {
     const [name, ...rest] = args;
     if (['--version', '-v'].includes(name)) {
       if (rest.length) fail('INVALID_INPUT', 'tasks --version accepts no arguments');
-      process.stdout.write(`${version}\n`);
+      process.stdout.write(`Outask AI v${version}\n`);
       return;
     }
     if (name === undefined) {

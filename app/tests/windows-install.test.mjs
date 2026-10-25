@@ -46,7 +46,7 @@ test('Windows Node bootstrap preserves CLI options and JSON arguments from a Uni
     return result.stdout;
   };
   const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
-  assert.equal(invoke('--version').trim(), distributionVersion(version));
+  assert.equal(invoke('--version').trim(), `Outask AI v${distributionVersion(version)}`);
   assert.match(invoke('--help'), /Usage: tasks/);
   const task = JSON.parse(invoke('create', '--json', JSON.stringify({ title: '東京 task', extra: { preserved: true } })));
   assert.equal(task.title, '東京 task');

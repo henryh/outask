@@ -73,6 +73,16 @@ Both `tasks` and `node` must be available on the client's PATH; follow the PATH
 checks above if startup fails. For Windows, use the Node entry described above.
 Remove the entry and stop its process to disconnect the adapter.
 
+## Compatible updates
+
+Run the new archive's installer while existing sessions remain connected. Let
+active writes finish; do not kill MCP processes or force an immediate reconnect.
+Existing sessions may use their old loaded version until the launching client
+restarts them in its normal lifecycle. Verify `tasks --version` and a fresh MCP
+connection with a task read to check the updated installation independently.
+See [project locks and upgrades](../README.md#project-locks-and-upgrades)
+for coordination-file cleanup and incompatible protocol migrations.
+
 ## Tools and selection
 
 Select a project in each tool call. `tasks mcp` takes no project flags. Supply

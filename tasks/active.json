@@ -22,4 +22,5 @@
     },
     "notes": "User approved task creation only, not implementation. The exact error is the only reporter evidence. Earlier discussion of how Homebrew entered the dependency chain is a hypothesis, not a verified diagnosis. Related completed task 1 addressed other installation issues; this task owns the newly reported fixed-library-path failure.",
     "updated_at": "2026-10-24T19:14:06.076Z"
-  }]
+  }
+]

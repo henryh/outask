@@ -342,7 +342,7 @@ test('failed staged startup keeps the installed application and user files usabl
   const result = f.install();
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /INVALID_RELEASE: staged application failed startup/);
-  assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env: f.env })).trim(), releaseVersion);
+  assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env: f.env })).trim(), `Outask AI v${releaseVersion}`);
   assert.equal(readFileSync(join(f.installed, 'user-note.txt'), 'utf8'), 'retain this');
 });
 
@@ -368,7 +368,7 @@ await import(entry);`;
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /simulated command replacement refusal/);
   assert.equal(JSON.parse(readFileSync(join(f.installed, 'release.json'), 'utf8')).version, releaseVersion);
-  assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env: f.env })).trim(), releaseVersion);
+  assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env: f.env })).trim(), `Outask AI v${releaseVersion}`);
   assert.equal(readFileSync(join(f.installed, 'user-note.txt'), 'utf8'), 'retain this');
 });
 
@@ -405,7 +405,7 @@ test('legacy versioned installations migrate the command without deleting old co
   ok(f.install());
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
   assert.equal(readFileSync(join(legacy, 'user-note.txt'), 'utf8'), 'legacy user content');
-  assert.equal(ok(run(join(legacy, 'app/bin/tasks'), ['--version'], { env: f.env })).trim(), releaseVersion);
+  assert.equal(ok(run(join(legacy, 'app/bin/tasks'), ['--version'], { env: f.env })).trim(), `Outask AI v${releaseVersion}`);
 });
 
 test('custom root is the installation parent and ownership requires the selected root', (t) => {
@@ -611,7 +611,7 @@ test('CLI install does not require optional MCP dependencies and reports PATH ac
   const original = readFileSync(profile, 'utf8');
   ok(run(join(f.source, 'install.sh'), [], { env }));
   assert.equal(readFileSync(profile, 'utf8'), original);
-  assert.equal(ok(run('/bin/bash', ['-c', '. "$1"; tasks --version', 'bash', profile], { env })).trim(), releaseVersion);
+  assert.equal(ok(run('/bin/bash', ['-c', '. "$1"; tasks --version', 'bash', profile], { env })).trim(), `Outask AI v${releaseVersion}`);
   rmSync(profile);
   mkdirSync(profile);
   assert.match(ok(run(join(f.source, 'install.sh'), [], { env })), /Command installed.*PATH setup failed/);
@@ -646,7 +646,7 @@ test('installer ignores an unrelated non-searchable PATH directory', {
     assert.throws(() => lstatSync(join(restricted, 'tasks')), { code: 'EACCES' });
     const env = { ...f.env, PATH: `${restricted}:${f.env.PATH}` };
     assert.match(ok(run(join(f.source, 'install.sh'), [], { env })), /Installed OutaskAI/);
-    assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env })).trim(), releaseVersion);
+    assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env })).trim(), `Outask AI v${releaseVersion}`);
   } finally {
     chmodSync(restricted, 0o700);
   }
