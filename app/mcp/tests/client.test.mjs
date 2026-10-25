@@ -169,6 +169,7 @@ test('installed stdio SDK client discovers tools and maintains a full lifecycle 
   assert.equal(created.status, 'pending');
   const changed = await call('update_task', { id: 2, patch: { add: { tags: ['b', 'b'] }, set: { priority: 'high' } } });
   assert.deepEqual(changed.tags, ['a', 'b']);
+  assert.ok(readFileSync(join(root, 'tasks/active.json'), 'utf8').includes('"tags": [\n      "a",\n      "b"\n    ]'));
   assert.deepEqual(changed.custom, { keep: true });
   assert.equal(changed.parent, 'external/8');
   assert.deepEqual(await call('update_task', { id: 2, patch: { add: { tags: ['b'] } } }), changed);

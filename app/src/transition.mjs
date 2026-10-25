@@ -7,6 +7,7 @@ import { inputBytes, projectBytes, responseBytes } from './limits.mjs';
 import { jsonBytes } from './response.mjs';
 import { fingerprint, knownCounter, readService, recoverMove, saveMove, serviceState, withProjectLock } from './service.mjs';
 import { changeFields } from './source.mjs';
+import { finishStore } from './storage-format.mjs';
 import { openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
 import { nextTimestamp, timestampValue, validateTimestamp } from './timestamps.mjs';
 import { scanProject, validateCycles, validateRecord } from './validation.mjs';
@@ -133,7 +134,11 @@ export function moveTask(projectPath, id, status, options, deleting, patch) {
       const selected = sources.get(found.file);
       const fields = Object.fromEntries(Object.entries(task).filter(([key, value]) => !Object.hasOwn(found.task, key) || !same(value, found.task[key])));
       const removed = Object.keys(found.task).filter((key) => !Object.hasOwn(task, key));
-      const record = Buffer.from(changeFields(selected.source.toString('utf8', found.start, found.end), fields, removed));
+      const lineStart = selected.source.lastIndexOf(0x0a, found.start - 1) + 1;
+      const prefix = selected.source.toString('utf8', lineStart, found.start);
+      const indent = target === found.file
+        ? prefix.match(/^[ \t]*/)[0] : '  ';
+      const record = Buffer.from(changeFields(selected.source.toString('utf8', found.start, found.end), fields, removed, indent));
       const replacements = new Map();
       if (target === found.file) {
         replacements.set(target, Buffer.concat([
@@ -147,7 +152,8 @@ export function moveTask(projectPath, id, status, options, deleting, patch) {
       let growth = 0;
       const fingerprints = { ...snapshot.fingerprints };
       const writes = [];
-      for (const [file, source] of replacements) {
+      for (const [file, replacement] of replacements) {
+        const source = finishStore(replacement);
         growth += Buffer.byteLength(source) - Buffer.byteLength(sources.get(file).source);
         const path = join(project.directory, file);
         fingerprints[projectRelative(project.root, path)] = fingerprint(source);

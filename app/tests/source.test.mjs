@@ -26,7 +26,7 @@ test('field edits change only effective keys and retain untouched lexemes', () =
   assert.equal(changeFields(source, {}), source);
   assert.equal(
     changeFields(source, { title: 'new', nested: { ok: true }, added: ['x'] }, ['drop']),
-    '{"id":1 , "\\u0074itle":"old","title":"new","n":9007199254740993,"fraction":1.2300,"exp":1e+03,"nested":{"ok":true}, "added": ["x"]}',
+    '{"id":1 , "\\u0074itle":"old","title":"new","n":9007199254740993,"fraction":1.2300,"exp":1e+03,"nested":{\n    "ok": true\n  },\n  "added": [\n    "x"\n  ]}',
   );
 });
 

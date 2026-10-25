@@ -355,8 +355,14 @@ checks all records; certificates are freshness metadata, not authentication.
 
 Creation/status changes select a configured destination allowing the final status;
 ambiguity requires explicit `store`. Missing standard destinations are created
-on demand; missing custom stores fail. Creation appends with two-space formatting
-while preserving existing array source, numeric literals and other records.
+on demand; missing custom stores fail. Creation uses two-space indentation.
+New or changed nonempty arrays and objects are written across multiple lines
+with two-space indentation at each nesting level; empty arrays and objects stay
+inline as `[]` and `{}`. Updates align these values with their field indentation.
+Creation, updates and lifecycle moves put the store's closing bracket on a
+separate line and end with a newline. They preserve untouched fields and
+records byte-for-byte, including numeric/string lexemes and existing formatting;
+equal values are not reformatted. No-ops preserve all store and service bytes.
 Lifecycle source edits preserve shadowed duplicate keys and change only effective
 requested fields/date. Invalid records, collisions, blockers, stale requests and
 size failures leave existing task/service bytes unchanged, apart from normal

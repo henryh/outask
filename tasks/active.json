@@ -1,27 +1,5 @@
 [
   {
-    "id": 2,
-    "title": "Keep task JSON readable by default during mutations",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Make readable repository-local task JSON the default output of Outask mutations across core/standalone, CLI and MCP. Format new records and changed nonempty arrays/objects with two-space indentation and multiline layout, including string and ID arrays; keep empty collections inline. Preserve bytes of untouched fields/records and avoid whole-store normalization. Align creation, update and lifecycle transfers; retain correct record indentation and a separate closing store bracket/final newline. Do not change console/MCP response formatting, task semantics or add a formatting toggle/global migration.",
-    "values": "Goal: Outask keeps human-readable repository-local JSON usable without the tracker. Value: contributors can read and review task requirements directly and see bounded meaningful Git diffs after mutations. Immediate verification: inspect actual created/updated/transferred fixture stores and assert readable changed values, byte-identical untouched content and no writes on semantic no-ops.",
-    "acceptance": [
-      "New task records and changed nonempty arrays/objects use readable multiline JSON with two-space indentation at the correct nesting level; string arrays and blocker-ID arrays are not compressed. Empty arrays/objects remain []/{}.",
-      "Creating, updating and transferring a task between stores follow the same readable-output contract; task/store closing delimiters have the correct indentation, store closing bracket is on its own line and the file ends with a newline.",
-      "Updating one field preserves untouched fields and neighboring records byte-for-byte, including existing formatting and lexemes. Do not reformat entire stores or rewrite legacy compact records outside the mutation scope.",
-      "A semantic no-op does not rewrite task stores or advance updated_at; unchanged replacement values retain their original bytes. Preserve existing no-op behavior, validation, IDs, extension fields and concurrency guarantees.",
-      "Add regression checks for changed multiline arrays, new arrays and nested objects, creation, transfer, neighboring-record preservation, unchanged fields and semantic no-op byte/timestamp stability. Test actual persisted output through the relevant shared core/public boundaries; existing CLI/MCP behavior remains aligned.",
-      "Update the owning storage contract documentation and run focused affected checks plus the repository-required delivery gates. This backlog creation does not authorize implementation, push, PR or publication."
-    ],
-    "sources": [
-      "Owner request in wayro-web on 2026-10-24: task JSON must be easy to read and not compressed by default; record the proposed tool formatting change and regression checks in Outask Public.",
-      "Observed wayro-web task-store diff: changed array serialization was compact while the committed equivalent records were multiline. Source investigation reproduced compact field output in the currently connected tracker; verify the equivalent Outask Public implementation during delivery rather than assuming identical source paths."
-    ],
-    "updated_at": "2026-10-25T21:48:25.887Z"
-  },
-  {
     "id": 3,
     "title": "Make macOS installation independent of fixed Homebrew library paths",
     "status": "pending",

@@ -5,7 +5,81 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { updateTask } from '../src/update.mjs';
+import { createTask } from '../src/create.mjs';
+import { transitionTask } from '../src/transition.mjs';
 import { fixture, task, snapshot, run } from './fixtures.mjs';
+
+test('persisted collection edits are readable while untouched source and no-ops survive', (t) => {
+  const root = fixture(t, []);
+  const path = join(root, 'tasks/active.json');
+  const neighbor = '{"id":2e0,"title":"Neighbor","status":"pending","number":1.2300}';
+  const retained = '"extension":{"escaped":"\\u0041","number":1e+03,"items":[1,2]}';
+  writeFileSync(path, `[\n  {\n    "id": 1,\n    "title": "Task",\n    "status": "pending",\n    ${retained},\n    "items": ["old"],\n    "settings": {"old":true}\n  },\n  ${neighbor}\n]\n`);
+  const result = updateTask(root, 1, {
+    add: { items: ['new'] },
+    set: { settings: { nested: [1, { ok: true }], empty: {} }, added: ['line\nbreak', []] },
+  });
+  const source = readFileSync(path, 'utf8');
+  assert.ok(source.includes('"items": [\n      "old",\n      "new"\n    ]'));
+  assert.ok(source.includes('"settings": {\n      "nested": [\n        1,\n        {\n          "ok": true\n        }\n      ],\n      "empty": {}\n    }'));
+  assert.ok(source.includes('"added": [\n      "line\\nbreak",\n      []\n    ]'));
+  assert.ok(source.includes(retained));
+  assert.ok(source.includes(neighbor));
+  assert.ok(source.endsWith('\n]\n'));
+  assert.deepEqual(JSON.parse(source)[0], result);
+  const before = snapshot(root);
+  assert.deepEqual(updateTask(root, 1, { set: { settings: { empty: {}, nested: [1, { ok: true }] } }, add: { items: ['new'] } }), result);
+  assert.deepEqual(snapshot(root), before);
+  updateTask(root, 1, { remove: { items: ['old'] }, set: { settings: {}, added: [] } });
+  const emptied = readFileSync(path, 'utf8');
+  assert.ok(emptied.includes('"items": [\n      "new"\n    ]'));
+  assert.ok(emptied.includes('"settings": {}'));
+  assert.ok(emptied.includes('"added": []'));
+});
+
+test('creation and lifecycle transfer retain readable nested collections and store boundaries', (t) => {
+  const root = fixture(t, []);
+  const created = createTask(root, { title: 'Created', details: { list: ['one', { two: [] }] } });
+  const activePath = join(root, 'tasks/active.json');
+  const active = readFileSync(activePath, 'utf8');
+  assert.ok(active.includes('    "details": {\n      "list": [\n        "one",\n        {\n          "two": []\n        }\n      ]\n    }'));
+  assert.ok(active.endsWith('\n  }\n]\n'));
+  const moved = updateTask(root, created.id, { set: { status: 'done', evidence: [{ checks: ['passed'] }] } });
+  const donePath = join(root, 'tasks/done.json');
+  const done = readFileSync(donePath, 'utf8');
+  assert.ok(done.includes('    "evidence": [\n      {\n        "checks": [\n          "passed"\n        ]\n      }\n    ]'));
+  assert.deepEqual(JSON.parse(done).find((row) => row.id === created.id), moved);
+  assert.ok(done.endsWith('\n  }\n]\n'));
+  transitionTask(root, created.id, 'pending');
+  assert.ok(readFileSync(activePath, 'utf8').includes('    "evidence": [\n      {\n        "checks": [\n          "passed"\n        ]\n      }\n    ]'));
+});
+
+test('writes separate compact store endings without rewriting equal fields or neighboring records', (t) => {
+  const root = fixture(t, []);
+  const path = join(root, 'tasks/active.json');
+  const equal = '"equal":{"a":1e0,"b":[2,3]}';
+  const multiline = '"multiline": {\n      "kept": [1,2]\n    }';
+  const neighbor = '{"id":2,"title":"Other","status":"pending"}';
+  writeFileSync(path, `[{"id":1,"title":"Task","status":"pending",${equal},${multiline}},${neighbor}]`);
+  const unchanged = snapshot(root);
+  updateTask(root, 1, { set: { equal: { b: [2, 3], a: 1 } } });
+  assert.deepEqual(snapshot(root), unchanged);
+  updateTask(root, 1, { set: { equal: { b: [2, 3], a: 1 }, added: [true] } });
+  const changed = readFileSync(path, 'utf8');
+  assert.ok(changed.includes(equal));
+  assert.ok(changed.includes(multiline));
+  assert.ok(changed.includes(neighbor));
+  assert.ok(changed.endsWith(`${neighbor}\n]\n`));
+  writeFileSync(join(root, 'tasks/done.json'), '[]');
+  updateTask(root, 1, { set: { status: 'done', evidence: [{ passed: true }] } });
+  const moved = readFileSync(join(root, 'tasks/done.json'), 'utf8');
+  assert.ok(moved.includes('    "evidence": [\n      {\n        "passed": true\n      }\n    ]'));
+  assert.ok(moved.endsWith('\n]\n'));
+  assert.ok(readFileSync(path, 'utf8').endsWith('\n]\n'));
+  writeFileSync(path, `[${neighbor}]`);
+  createTask(root, { title: 'Append', list: [1] });
+  assert.ok(readFileSync(path, 'utf8').endsWith('\n  }\n]\n'));
+});
 
 test('partial replacements, structural array equality and removals preserve untouched source', (t) => {
   const root = fixture(t, [task(1, { extension: { untouched: true }, settings: { old: true }, items: [{ a: 1, b: 2 }, 'x', 'x'], optional: 1 }), task(2)]);
@@ -80,6 +154,7 @@ test('object/array replacements and field removal handle duplicate keys safely',
   const persisted = JSON.parse(readFileSync(join(root, 'tasks/active.json')))[0];
   assert.deepEqual(persisted, result);
   assert.match(readFileSync(join(root, 'tasks/active.json'), 'utf8'), /"extension":\{"keep":\[1,2\]\}/);
+  assert.match(readFileSync(join(root, 'tasks/active.json'), 'utf8'), /"value":\{"old":1\},"value":\{\n/);
 });
 
 test('combined content and status patches satisfy destination requirements atomically', (t) => {

@@ -74,6 +74,9 @@ test('field flags and JSON share patch validation, full no-op responses and stal
   }
   const first = json(cli(root, ['update', '1', '--title', 'Changed', '--json', '{"set":{"settings":{"new":true}},"add":{"items":["new","new"]},"unset":["optional"]}']));
   assert.deepEqual(first.items, [{ a: 1, b: 2 }, 'new']);
+  const persisted = readFileSync(join(root, 'tasks/active.json'), 'utf8');
+  assert.ok(persisted.includes('"items": [\n      {\n        "a": 1,\n        "b": 2\n      },\n      "new"\n    ]'));
+  assert.ok(persisted.includes('"settings": {\n      "new": true\n    }'));
   assert.equal('optional' in first, false);
   const before = snapshot(root);
   assert.deepEqual(json(cli(root, ['update', '1', '--json', '{"add":{"items":[{"b":2,"a":1},"new"]}}'])), first);
