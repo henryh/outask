@@ -30,9 +30,13 @@ launcher, follow [Apple's Open Anyway instructions](https://support.apple.com/en
 for a release you trust.
 Keep Gatekeeper enabled. Node must be available to the installer.
 
-Update by running the new archive's installer; close running CLI/MCP processes
-first on Windows. Managed application files are replaced; unrelated files,
-project tasks and configuration are preserved. Resolve an unrelated `tasks`
+Update by running the new archive's installer. Keep existing MCP/HTTP sessions
+alive and let active writes finish; compatible updates replace installed files
+without terminating processes or forcing clients to reconnect. Existing sessions
+may keep their loaded version until their launching client restarts them normally.
+Fresh CLI/MCP launches use the updated installation; `tasks --version` reports
+`Outask AI v<version>`. Managed files are replaced; unrelated files, project tasks
+and configuration are preserved. Resolve an unrelated `tasks`
 command collision explicitly. Custom installations must reuse the same
 `--bin-dir` and `--release-root` options when updating or removing the command.
 
@@ -142,9 +146,12 @@ The tracker never stages or commits files. Correct invalid metadata and retry.
 ## Project locks and upgrades
 
 All cooperating writers must run as the same OS user on one host with local
-filesystems. Upgrade every writer together, including long-running MCP/HTTP
-processes. Stop older writers before removing a legacy
-`tasks/.task-tracker.json.lock`; its presence fails closed with `PROJECT_BUSY`.
+filesystems. Ordinary compatible upgrades preserve running sessions and writes.
+For a release requiring an incompatible coordination-protocol migration, let
+active writes finish and arrange for affected clients to close their old sessions
+normally before starting writers using the new protocol. Stop old presence-lock
+writers before removing a legacy `tasks/.task-tracker.json.lock`; its presence
+fails closed with `PROJECT_BUSY`.
 An absent legacy file does not establish that older writers have stopped.
 
 Retained SQLite coordination files do not mean a lock is held. Never remove or

@@ -22,32 +22,5 @@
     },
     "notes": "User approved task creation only, not implementation. The exact error is the only reporter evidence. Earlier discussion of how Homebrew entered the dependency chain is a hypothesis, not a verified diagnosis. Related completed task 1 addressed other installation issues; this task owns the newly reported fixed-library-path failure.",
     "updated_at": "2026-10-24T19:14:06.076Z"
-  },
-  {
-    "id": 5,
-    "title": "Identify CLI version output and preserve running MCP sessions during upgrades",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Print the program name and distribution version for both tasks -v and --version, using the existing Outask AI product name. Correct installation, upgrade, MCP and post-release operator instructions so existing MCP sessions remain alive during normal compatible upgrades and finish active writes; clients restart them in their normal lifecycle when convenient. Preserve live sessions rather than signalling or forcing their clients to reconnect. Keep genuine lock-file cleanup and incompatible coordination-protocol migration requirements separate from ordinary updates. Align affected installed-archive checks and documentation with the branded version output. Verify a live installed MCP session continues reads and writes across a compatible reinstall/update and a fresh client uses the updated installation. No changes to task semantics, automatic client/process management, or unrelated macOS dependency work.",
-    "acceptance": [
-      "tasks -v and tasks --version print the Outask AI name and current distribution version on one line; both aliases agree, exit successfully, and do not prepare task/project files. Existing compact zero-patch version rules remain unchanged.",
-      "CLI, native installer/archive smoke checks and any version consumers accept the complete branded output without confusing it with archive/tag/package identifiers.",
-      "Owning operator/MCP/contract/post-release update instructions explicitly preserve existing MCP sessions and in-flight writes during ordinary compatible updates. Sessions may temporarily use their old loaded version until the launching client restarts them. Do not terminate processes or force an immediate reconnect as an update step.",
-      "Keep precise coordination-file cleanup or genuinely incompatible protocol-migration requirements where necessary, without a blanket stop-all-writers rule for every upgrade. Handle native installer limitations concretely without instructing operators to kill sessions or interrupt active writes.",
-      "Focused regression/installed-distribution verification demonstrates a live MCP connection remains usable for reading and writing across compatible installation replacement, and fresh CLI/MCP launches use the replaced installation. Existing concurrency, data-preservation and installer checks continue to pass.",
-      "Update affected documentation and exact release notes, pass independent review, QA and required candidate gates, and record evidence in this task. Follow the owner preference for a patch release for this small correction; prepare 1.2.2. Remote push, draft PR and CI/ready actions need exact candidate agreement."
-    ],
-    "values": {
-      "goal": "Outask AI is identifiable and usable as a local CLI and MCP tracker without interrupting repository work.",
-      "value": "Users see which program reports a version and can update installed files while ongoing MCP work finishes normally.",
-      "observable_result": "Branded version output and a live MCP session that continues working through a compatible update, with fresh launches using the new installation.",
-      "verification": "Run both version aliases from an empty directory and an installed archive; exercise read/write requests on one persistent MCP client before and after replacing its installed files, then verify a fresh client."
-    },
-    "sources": [
-      "Owner correction after the v1.2.1 PC update: version output must include the program name; existing MCP sessions must not be killed for reinstallation, may keep the old version until their launching client restarts them, and active writes must not be interrupted."
-    ],
-    "notes": "Owner directly authorized implementation of these corrections. The earlier PC update stopped 39 installed MCP processes and closed the current connection; this task corrects the instructions that caused that behavior. Do not stop any current MCP processes while delivering or verifying this task; use isolated verification clients.",
-    "updated_at": "2026-10-25T22:58:03.225Z"
   }
 ]

@@ -301,9 +301,14 @@ directory are rejected for writes. Different projects have independent locks.
 The retained external SQLite coordination files contain no task data. Completion,
 exceptions and process death release the OS lock; a retained file is not evidence
 of ownership. Never remove/replace coordination files while tracker processes
-may run. Stop all writers before cleanup or upgrades, including persistent
-MCP/HTTP. Legacy `tasks/.task-tracker.json.lock` fails closed and is never
-automatically deleted; remove it only after stopping old presence-lock writers,
+may run. Optional cleanup requires all that user's tracker processes to stop.
+Ordinary compatible upgrades preserve persistent MCP/HTTP sessions and in-flight
+writes; do not terminate them or force an immediate reconnect. Sessions may keep
+their old loaded code until their launching client restarts them normally; fresh
+launches use the updated installation. Only an incompatible coordination-protocol
+migration requires arranging for affected clients to close old sessions after
+active writes finish before new-protocol writers start. Legacy
+`tasks/.task-tracker.json.lock` fails closed and is never automatically deleted; remove it only after stopping old presence-lock writers,
 then restart upgraded writers together. Absence alone does not prove old writers
 stopped. See [upgrade commands](../app/README.md#project-locks-and-upgrades).
 

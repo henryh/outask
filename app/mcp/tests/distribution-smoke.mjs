@@ -178,7 +178,7 @@ try {
     assert.ok(output, `Fresh shell did not report its command environment:\n${shell.stdout}\n${shell.stderr}`);
     const inherited = JSON.parse(output.slice('OUTASK_FRESH_SHELL:'.length));
     assert.equal(inherited.command, command, 'A new shell must discover the installed tasks by name');
-    assert.equal(inherited.version, metadata.version);
+    assert.equal(inherited.version, `Outask AI v${metadata.version}`);
     assert.equal(inherited.home, home, 'Fresh shell must use the isolated installation HOME');
     assert.equal(inherited.node.execPath, process.execPath, 'Fresh shell must use the selected matrix Node');
     assert.equal(inherited.node.version, process.version);
@@ -197,19 +197,19 @@ try {
     for (const entry of String(registryBackup.value).split(';').filter(Boolean)) assert.ok(entries.includes(entry));
     const expandedPath = registry("[Environment]::ExpandEnvironmentVariables([Environment]::GetEnvironmentVariable('Path','User'))").trim();
     const freshEnv = { ...env, PATH: expandedPath + ';' + process.env.PATH };
-    assert.equal(invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/c', 'tasks --version'], freshEnv).stdout.trim(), metadata.version);
+    assert.equal(invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/c', 'tasks --version'], freshEnv).stdout.trim(), `Outask AI v${metadata.version}`);
     assert.match(readFileSync(command, 'utf8'), /^[\x00-\x7f]*$/, 'The managed batch launcher must be independent of the console code page');
     // Save/restore the test console code page; the launcher itself must leave 437 intact.
     const legacyScript = `for /f "tokens=2 delims=:" %c in ('chcp') do set "OUTASK_OLD_CP=%c" & chcp 437 >nul & call "%OUTASK_COMMAND%" --version & set "OUTASK_EXIT=!errorlevel!" & chcp & chcp !OUTASK_OLD_CP! >nul & exit /b !OUTASK_EXIT!`;
     const legacy = invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/v:on', '/c', legacyScript], { ...freshEnv, OUTASK_COMMAND: command });
     assert.equal(legacy.status, 0, legacy.stderr || legacy.stdout);
-    assert.ok(legacy.stdout.split(/\r?\n/).some((line) => line.trim() === metadata.version));
+    assert.ok(legacy.stdout.split(/\r?\n/).some((line) => line.trim() === `Outask AI v${metadata.version}`));
     assert.match(legacy.stdout, /\b437\b/, 'Running a launcher in a Unicode install directory must preserve CP437');
-    assert.equal(invoke(powershell, ['-NoProfile', '-Command', 'tasks --version; exit $LASTEXITCODE'], freshEnv).stdout.trim(), metadata.version);
+    assert.equal(invoke(powershell, ['-NoProfile', '-Command', 'tasks --version; exit $LASTEXITCODE'], freshEnv).stdout.trim(), `Outask AI v${metadata.version}`);
   }
   rmSync(downloads, { recursive: true, force: true });
 
-  assert.equal(run(command, ['--version']).trim(), metadata.version);
+  for (const option of ['--version', '-v']) assert.equal(run(command, [option]).trim(), `Outask AI v${metadata.version}`);
   const rejected = invoke(command, ['create', '--json', JSON.stringify({ title: 'Missing required field' })]);
   assert.notEqual(rejected.status, 0);
   assert.match(rejected.stderr, /INVALID_STORE/);
@@ -258,8 +258,10 @@ try {
   assert.equal(firstTask.id, 1);
   assert.deepEqual(cli('get', '1', '--project-path', freshProject, '--no-cache', '--format', 'json'), firstTask);
   assert.deepEqual(await call('list_tasks', { ...freshSelection, count: true }), { count: 1 });
+  const freshActive = readFileSync(join(freshProject, 'tasks/active.json'));
   rmSync(join(freshProject, 'tasks/active.json'));
   await call('list_tasks', { ...freshSelection, count: true }, 'READ_ERROR');
+  writeFileSync(join(freshProject, 'tasks/active.json'), freshActive);
   assert.ok((await call('search_tasks', { query: 'Updated', stores: ['all'], fields: ['id'] })).tasks.some((task) => task.id === created.id));
   assert.deepEqual(await call('get_task', { id: created.id, stores: ['all'], fields: ['all'] }), completed);
   await call('create_task', { task: { title: 'MCP missing required field' } }, 'INVALID_STORE');
@@ -273,9 +275,7 @@ try {
   assert.deepEqual(await call('get_task', { id: mcpCreated.id, stores: ['all'], fields: ['all'] }), mcpCompleted);
   assert.equal((await call('validate_project', {})).valid, true);
   if (windows) await checkWriters(call, join(releases, name, 'app'));
-  await client.close();
-  client = undefined;
-  assert.equal(stderr, '');
+  const originalServerVersion = client.getServerVersion();
 
   assert.deepEqual(JSON.parse(read('tasks/active.json')), [original]);
   assert.deepEqual(JSON.parse(read('tasks/done.json')), [completed, mcpCompleted]);
@@ -299,6 +299,9 @@ try {
   writeFileSync(join(source, 'release.json'), JSON.stringify({ version: updateVersion, target }));
   packageJson.version = updateVersion;
   writeFileSync(join(source, 'app/package.json'), JSON.stringify(packageJson));
+  // Distinguish newly loaded adapter bytes without changing its production metadata contract.
+  const serverPath = join(source, 'app/mcp/server.mjs');
+  writeFileSync(serverPath, readFileSync(serverPath, 'utf8').replace("version: '0.1.0'", `version: '${updateVersion}'`));
   run(installer);
   const updatedInstall = join(releases, 'OutaskAI');
   if (!windows) assert.equal(readlinkSync(command), join(updatedInstall, 'app/bin/tasks'));
@@ -306,7 +309,25 @@ try {
   assert.equal(readFileSync(join(updatedInstall, 'user-note.txt'), 'utf8'), 'Retain local note');
   assert.equal(readFileSync(join(updatedInstall, localDirectory, 'note.txt'), 'utf8'), 'Retain nested local note');
   rmSync(downloads, { recursive: true, force: true });
-  assert.equal(run(command, ['--version']).trim(), updateVersion);
+  for (const option of ['--version', '-v']) assert.equal(run(command, [option]).trim(), `Outask AI v${updateVersion}`);
+  assert.deepEqual(client.getServerVersion(), originalServerVersion);
+  assert.deepEqual(await call('get_task', { id: original.id, fields: ['all'], no_cache: true }), original);
+  const afterUpdate = await call('create_task', { project_path: freshProject, task: { title: 'Existing MCP writes after update' } });
+  assert.deepEqual(cli('get', String(afterUpdate.id), '--project-path', freshProject, '--no-cache', '--format', 'json'), afterUpdate);
+  const freshClient = new Client({ name: 'outask-updated-smoke', version: '1.0.0' });
+  const freshTransport = new StdioClientTransport({ command: windows ? process.execPath : 'tasks', args: windows ? [join(updatedInstall, 'app/bin/tasks'), 'mcp'] : ['mcp'], cwd: project, env: commandEnv, stderr: 'pipe' });
+  freshTransport.stderr.on('data', (chunk) => { stderr += chunk; });
+  try {
+    await freshClient.connect(freshTransport);
+    assert.equal(freshClient.getServerVersion().version, updateVersion);
+    const result = await freshClient.callTool({ name: 'get_task', arguments: { project_path: freshProject, id: afterUpdate.id, fields: ['all'], no_cache: true } });
+    assert.notEqual(result.isError, true, JSON.stringify(result));
+    assert.deepEqual(result.structuredContent, afterUpdate);
+  } finally { await freshClient.close(); }
+  assert.equal((await call('validate_project', {})).valid, true);
+  await client.close();
+  client = undefined;
+  assert.equal(stderr, '');
   assert.equal(cli('validate', '--format', 'json').valid, true);
   if (windows) {
     const managedCommand = readFileSync(command, 'utf8');
@@ -329,7 +350,7 @@ try {
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
-    checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation'],
+    checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);
