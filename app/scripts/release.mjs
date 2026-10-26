@@ -195,14 +195,27 @@ fi`;
 end run`;
     writeFileSync(join(releaseRoot, 'Install.command'), `#!/bin/bash
 set -u
-PATH="\${PATH:-/usr/bin:/bin}:/opt/homebrew/bin:/usr/local/bin"
-export PATH
+nodeGuidance() {
+  printf '%s\\n' "Install or upgrade Node.js ${nodeRange} using the macOS installer from https://nodejs.org/en/download, then open a new terminal and retry." >&2
+  printf '%s\\n' 'Put the working node executable on PATH. Homebrew is optional; repair a package-manager installation using that manager rather than linking incompatible dylibs.' >&2
+}
 runInstaller() {
-  command -v node >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH" >&2; return 1; }
+  command -v node >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH" >&2; nodeGuidance; return 1; }
   command -v dirname >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: dirname is required" >&2; return 1; }
   local root
   root="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)" || return $?
-  node "$root/app/runtime.cjs" || return $?
+  local diagnostic status
+  # Probe before loading the installer; a found executable may have broken dylib dependencies.
+  diagnostic="$( { node "$root/app/runtime.cjs"; } 2>&1)"
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    case "$diagnostic" in
+      *INCOMPATIBLE_RUNTIME:*) printf '%s\\n' "INCOMPATIBLE_RUNTIME: Node.js ${nodeRange} is required." >&2 ;;
+      *) printf '%s\\n' "DEPENDENCY_UNAVAILABLE: Node.js at $(command -v node) could not start (exit $status)." >&2 ;;
+    esac
+    nodeGuidance
+    return "$status"
+  fi
   node "$root/app/scripts/install-release.mjs" "$@"
 }
 session_pid=''
@@ -311,7 +324,7 @@ ${target === 'macos-arm64' ? 'Extract the archive, open its OutaskAI directory, 
 \`\`\`
 
 If starting the installer reports Permission denied, run \`${target === 'macos-arm64' ? 'bash' : 'sh'} ./${installer}\`.
-${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
+${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\nInstall or upgrade Node.js with the [macOS installer](https://nodejs.org/en/download), then open a new terminal. Homebrew is optional. The installer checks the Node.js version and whether it can start before installation. If its native dependencies are broken, reinstall Node.js using its provider; do not link incompatible dylibs.\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
 Open a new terminal, then run from a project directory:
 
 \`\`\`sh

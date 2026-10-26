@@ -433,7 +433,7 @@ test('macOS Finder launcher delegates installation from paths containing spaces'
   writeFileSync(join(f.tools, 'node'), '#!/bin/sh\ncase "$1" in */app/runtime.cjs) echo "INCOMPATIBLE_RUNTIME: test old Node" >&2; exit 17 ;; *) echo "INSTALLER_REACHED" >&2; exit 23 ;; esac\n', { mode: 0o755 });
   const incompatible = run(launcher, [], { env: f.env });
   assert.equal(incompatible.status, 17);
-  assert.match(incompatible.stderr, /INCOMPATIBLE_RUNTIME: test old Node/);
+  assert.match(incompatible.stderr, /INCOMPATIBLE_RUNTIME: Node.js/);
   assert.doesNotMatch(incompatible.stderr, /INSTALLER_REACHED/);
   rmSync(join(f.tools, 'node'));
   symlinkSync(process.execPath, join(f.tools, 'node'));
@@ -444,10 +444,46 @@ test('macOS Finder launcher delegates installation from paths containing spaces'
   assert.match(missing.stderr, /DEPENDENCY_MISSING: install Node.js/);
 });
 
+test('Finder launcher explains broken Node dependencies without exposing loader errors', (t) => {
+  const f = fixture(t, 'macos-arm64');
+  rmSync(join(f.tools, 'node'));
+  writeFileSync(join(f.tools, 'node'), '#!/bin/sh\necho "dyld: Library not loaded: /opt/homebrew/opt/simdjson/lib/libsimdjson.33.dylib" >&2\nexit 134\n', { mode: 0o755 });
+  const result = f.install();
+  assert.equal(result.status, 134);
+  assert.match(result.stderr, /DEPENDENCY_UNAVAILABLE/);
+  assert.ok(result.stderr.includes(join(f.tools, 'node')));
+  assert.match(result.stderr, /https:\/\/nodejs.org\/en\/download/);
+  assert.match(result.stderr, /Homebrew is optional/);
+  assert.doesNotMatch(result.stderr, /dyld:|Library not loaded/);
+  assert.equal(existsSync(f.installed), false);
+});
+
+test('Finder launcher checks minimum Node and accepts newer versions outside Homebrew', (t) => {
+  for (const [version, accepted] of [['22.23.2', false], ['22.23.3', true], ['24.0.0', true]]) {
+    const f = fixture(t, 'macos-arm64');
+    rmSync(join(f.tools, 'node'));
+    // Run the shipped version check with a controlled runtime version, then use real Node.
+    const node = "'" + process.execPath.replaceAll("'", "'\\''") + "'";
+    writeFileSync(join(f.tools, 'node'), `#!/bin/sh
+case "$1" in
+  */app/runtime.cjs) exec ${node} -e 'Object.defineProperty(process.versions, "node", {value: "${version}"}); require(process.argv[1])' "$1" ;;
+  *) exec ${node} "$@" ;;
+esac
+`, { mode: 0o755 });
+    const result = f.install();
+    assert.equal(result.status === 0, accepted, result.stderr);
+    assert.equal(existsSync(f.installed), accepted);
+    if (!accepted) {
+      assert.match(result.stderr, /INCOMPATIBLE_RUNTIME/);
+      assert.match(result.stderr, /Install or upgrade Node.js/);
+    }
+  }
+});
+
 test('Finder launcher rejects missing Node and dirname before writing installation', (t) => {
   const f = fixture(t, 'macos-arm64');
   const hook = join(f.home, 'dependency-lookup.bash');
-  // Override only lookup, so fixed Homebrew PATH additions cannot satisfy the dependency.
+  // Override only lookup to isolate each missing dependency from host programs.
   writeFileSync(hook, `command() {
   if [ "$1" = -v ] && [ "$2" = "$TEST_MISSING_DEPENDENCY" ]; then return 1; fi
   builtin command "$@"

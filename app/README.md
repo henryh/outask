@@ -24,6 +24,14 @@ Open a new terminal after installation; restart an editor with an old PATH.
 | macOS | `~/Library/Application Support/OutaskAI` | `~/.local/bin/tasks` |
 | Windows | `%USERPROFILE%\AppData\Local\Programs\OutaskAI` | `%USERPROFILE%\AppData\Local\OutaskAI\bin\tasks.cmd` |
 
+On macOS, install Node.js 22.23.3 or later using the
+[official macOS installer](https://nodejs.org/en/download), or another provider,
+and put `node` on PATH. Homebrew is optional. Open a new terminal after setup.
+The installer checks that Node starts and meets the minimum version. If Node
+cannot load its native libraries, reinstall it using its provider; do not create
+symlinks between incompatible dylib versions. Outask includes no Node binary or
+Homebrew libraries and needs no npm or Homebrew command to install or run.
+
 On macOS, double-click `Install.command` in Finder or run `./Install.command`
 in a terminal. If macOS blocks this unsigned
 launcher, follow [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
