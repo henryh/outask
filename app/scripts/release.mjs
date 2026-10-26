@@ -331,6 +331,7 @@ runInstaller() {
           action_status=$?
           if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
           if "$provider_action_attempted"; then return "$action_status"; fi
+          return "$status"
         else
           formula="$(homebrewNodeFormula "$node_path")" || formula=''
           if ! "$attempted_repair" && [ -n "$formula" ] && runHomebrewAction reinstall "$formula"; then
@@ -348,6 +349,7 @@ runInstaller() {
           action_status=$?
           if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
           if "$provider_action_attempted"; then return "$action_status"; fi
+          return "$status"
         else
           formula="$(homebrewNodeFormula "$node_path")" || formula=''
           if ! "$attempted_repair" && [ -n "$formula" ] && runHomebrewAction upgrade "$formula"; then
@@ -366,6 +368,7 @@ runInstaller() {
           action_status=$?
           if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
           if "$provider_action_attempted"; then return "$action_status"; fi
+          return "$status"
         fi
         nvmGuidance "$node_path" || nodeGuidance
         ;;
@@ -480,7 +483,7 @@ ${target === 'macos-arm64' ? 'Extract the archive, open its OutaskAI directory, 
 \`\`\`
 
 If starting the installer reports Permission denied, run \`${target === 'macos-arm64' ? 'bash' : 'sh'} ./${installer}\`.
-${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\nInstall or upgrade Node.js with the [macOS installer](https://nodejs.org/en/download), then open a new terminal. Homebrew is optional. The installer checks the Node.js version and whether it can start before installation. It can offer a confirmed Homebrew repair after asking; for NVM it prints terminal commands. Other failures retain the original Node.js diagnostic. Do not link incompatible dylibs.\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
+${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\nInstall Node.js with the [macOS installer](https://nodejs.org/en/download) or another provider. Homebrew is optional. The installer checks Node.js and can repair it through installed Homebrew or NVM after confirmation, then checks again. Other failures retain the original diagnostic.\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
 Open a new terminal, then run from a project directory:
 
 \`\`\`sh

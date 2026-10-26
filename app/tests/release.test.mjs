@@ -474,9 +474,9 @@ test('Finder launcher gives NVM repair instructions without loading shell profil
     env: { ...f.env, PATH: `${nvmBin}:/usr/bin:/bin` },
   });
   assert.equal(result.status, 134);
-  assert.match(result.stderr, /NVM: run/);
   assert.match(result.stderr, /nvm install 'lts\/\*'/);
   assert.match(result.stderr, /nvm alias default 'lts\/\*'/);
+  assert.equal(result.stderr.match(/nvm install/g)?.length, 1);
   assert.match(result.stderr, /Run it in a terminal/);
   assert.doesNotMatch(result.stderr, /Homebrew can repair/);
   assert.equal(existsSync(unexpectedNvm), false);
@@ -491,18 +491,22 @@ test('Finder launcher uses installed NVM after confirmation and rechecks Node', 
   const hook = join(f.home, 'hide-node.bash');
   const unexpectedBrew = join(f.home, 'unexpected-brew');
   const nvmAction = join(f.home, 'nvm-installed');
+  const nvmUse = join(f.home, 'nvm-used');
   mkdirSync(nvmBin, { recursive: true });
   writeFileSync(join(nvmDir, 'nvm.sh'), `nvm() {
   case "$1" in
     install) /bin/ln -s "$TEST_NODE_SOURCE" "$TEST_NODE_TARGET"; : > "$TEST_NVM_ACTION" ;;
-    alias|use) ;;
+    alias) ;;
+    use) export PATH="$TEST_NODE_BIN:$PATH"; : > "$TEST_NVM_USE" ;;
     *) return 64 ;;
   esac
 }
 `);
   writeFileSync(join(f.tools, 'brew'), `#!/bin/sh\n: > '${unexpectedBrew}'\nexit 99\n`, { mode: 0o755 });
   writeFileSync(hook, `command() {
-  if [ "$1" = -v ] && [ "$2" = node ] && [ ! -x "$TEST_NODE_TARGET" ]; then return 1; fi
+  if [ "$1" = -v ] && [ "$2" = node ]; then
+    case ":$PATH:" in *":$TEST_NODE_BIN:"*) ;; *) return 1 ;; esac
+  fi
   builtin command "$@"
 }
 `);
@@ -516,16 +520,19 @@ test('Finder launcher uses installed NVM after confirmation and rechecks Node', 
     ...f.env,
     BASH_ENV: hook,
     NVM_DIR: nvmDir,
-    PATH: `${nvmBin}:${f.tools}:/usr/bin:/bin`,
+    PATH: `${f.tools}:/usr/bin:/bin`,
     TERM_PROGRAM: 'OutaskTest',
     TEST_NODE_SOURCE: process.execPath,
+    TEST_NODE_BIN: nvmBin,
     TEST_NODE_TARGET: installedNode,
     TEST_NVM_ACTION: nvmAction,
+    TEST_NVM_USE: nvmUse,
   });
   assert.equal(result.status, 0, result.output);
   assert.match(result.output, /NVM can install Node\.js/);
   assert.doesNotMatch(result.output, /Homebrew|nodejs\.org/);
   assert.equal(existsSync(nvmAction), true);
+  assert.equal(existsSync(nvmUse), true);
   assert.equal(existsSync(unexpectedBrew), false);
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
 });
