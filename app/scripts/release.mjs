@@ -259,12 +259,15 @@ runInstaller() {
   local attempted_install=false attempted_repair=false
   while ! command -v node >/dev/null 2>&1; do
     echo "DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH" >&2
+    if [ -n "\${NVM_DIR:-}" ] && [ -s "$NVM_DIR/nvm.sh" ]; then
+      nvmGuidance "$NVM_DIR/versions/node/unknown/bin/node" || true
+      return 1
+    fi
     nodeGuidance
     if ! "$attempted_install" && offerNodeInstall; then
       attempted_install=true
       continue
     fi
-    if [ -n "\${NVM_DIR:-}" ] && [ -s "$NVM_DIR/nvm.sh" ]; then nvmGuidance "$NVM_DIR/versions/node/unknown/bin/node" || true; fi
     return 1
   done
   command -v dirname >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: dirname is required" >&2; return 1; }
