@@ -27,20 +27,23 @@ function windowWorker(launcher) {
   return JSON.parse(launcher.match(/^const script = (".+");$/m)[1]);
 }
 
-function terminal(command, key, env) {
+function terminal(command, interaction, env) {
   const args = process.platform === 'darwin'
     ? ['-q', '/dev/null', '/bin/sh', '-c', command]
     : ['-q', '-e', '-c', command, '/dev/null'];
+  const interactions = Array.isArray(interaction)
+    ? interaction
+    : [{ prompt: 'Press any key', input: interaction }];
   return new Promise((resolveTerminal, reject) => {
     const child = spawn('script', args, { env, timeout: 10000 });
     let output = '';
-    let sent = false;
+    let nextInteraction = 0;
     child.on('error', reject);
     child.stdout.on('data', (data) => {
       output += data;
-      if (!sent && output.includes('Press any key')) {
-        sent = true;
-        child.stdin.write(key);
+      while (nextInteraction < interactions.length && output.includes(interactions[nextInteraction].prompt)) {
+        child.stdin.write(interactions[nextInteraction].input);
+        nextInteraction += 1;
       }
     });
     child.stderr.on('data', (data) => { output += data; });
@@ -444,18 +447,69 @@ test('macOS Finder launcher delegates installation from paths containing spaces'
   assert.match(missing.stderr, /DEPENDENCY_MISSING: install Node.js/);
 });
 
-test('Finder launcher explains broken Node dependencies without exposing loader errors', (t) => {
+test('Finder launcher identifies a missing Node library and preserves its diagnostic', (t) => {
   const f = fixture(t, 'macos-arm64');
   rmSync(join(f.tools, 'node'));
   writeFileSync(join(f.tools, 'node'), '#!/bin/sh\necho "dyld: Library not loaded: /opt/homebrew/opt/simdjson/lib/libsimdjson.33.dylib" >&2\nexit 134\n', { mode: 0o755 });
   const result = f.install();
   assert.equal(result.status, 134);
-  assert.match(result.stderr, /DEPENDENCY_UNAVAILABLE/);
+  assert.match(result.stderr, /DEPENDENCY_LIBRARY_MISSING/);
   assert.ok(result.stderr.includes(join(f.tools, 'node')));
+  assert.match(result.stderr, /Missing library: \/opt\/homebrew\/opt\/simdjson\/lib\/libsimdjson\.33\.dylib/);
+  assert.match(result.stderr, /Original Node\.js diagnostic:/);
+  assert.match(result.stderr, /dyld: Library not loaded:/);
   assert.match(result.stderr, /https:\/\/nodejs.org\/en\/download/);
   assert.match(result.stderr, /Homebrew is optional/);
-  assert.doesNotMatch(result.stderr, /dyld:|Library not loaded/);
   assert.equal(existsSync(f.installed), false);
+});
+
+test('Finder launcher gives NVM repair instructions without loading shell profiles', (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const nvmBin = join(f.home, '.nvm/versions/node/v22.23.3/bin');
+  mkdirSync(nvmBin, { recursive: true });
+  writeFileSync(join(nvmBin, 'node'), '#!/bin/sh\necho "dyld: Library not loaded: /missing/libnode-test.dylib" >&2\nexit 134\n', { mode: 0o755 });
+  const result = run(join(f.source, 'Install.command'), [], {
+    env: { ...f.env, PATH: `${nvmBin}:/usr/bin:/bin` },
+  });
+  assert.equal(result.status, 134);
+  assert.match(result.stderr, /Node\.js is managed by NVM/);
+  assert.match(result.stderr, /nvm install 'lts\/\*'/);
+  assert.match(result.stderr, /nvm alias default 'lts\/\*'/);
+  assert.doesNotMatch(result.stderr, /Homebrew can repair/);
+  assert.equal(existsSync(f.installed), false);
+});
+
+test('Finder launcher repairs a broken Homebrew Node only after confirmation', async (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const prefix = join(f.home, 'homebrew-node@22');
+  const node = join(prefix, 'bin/node');
+  const repaired = join(f.home, 'homebrew-repaired');
+  mkdirSync(dirname(node), { recursive: true });
+  writeFileSync(node, '#!/bin/sh\necho "dyld: Library not loaded: /opt/homebrew/opt/simdjson/lib/libsimdjson.34.dylib" >&2\nexit 134\n', { mode: 0o755 });
+  writeFileSync(join(f.tools, 'brew'), `#!/bin/sh
+if [ "$1" = list ] && [ "$2" = --formula ]; then
+  echo node@22
+elif [ "$1" = --prefix ] && [ "$2" = --installed ] && [ "$3" = node@22 ]; then
+  echo '${prefix}'
+elif [ "$1" = reinstall ] && [ "$2" = --formula ] && [ "$3" = node@22 ]; then
+  /bin/rm -f '${node}'
+  /bin/ln -s '${process.execPath}' '${node}'
+  : > '${repaired}'
+else
+  exit 64
+fi
+`, { mode: 0o755 });
+  const launcher = join(f.source, 'Install.command');
+  const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
+  const result = await terminal(quoted, [
+    { prompt: 'Run this Homebrew command now?', input: 'y\n' },
+    { prompt: 'Press any key', input: 'x' },
+  ], { ...f.env, PATH: `${dirname(node)}:${f.tools}:/usr/bin:/bin`, TERM_PROGRAM: 'OutaskTest' });
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /DEPENDENCY_LIBRARY_MISSING/);
+  assert.match(result.output, /brew reinstall --formula node@22/);
+  assert.equal(existsSync(repaired), true);
+  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
 });
 
 test('Finder launcher checks minimum Node and accepts newer versions outside Homebrew', (t) => {
@@ -483,6 +537,8 @@ esac
 test('Finder launcher rejects missing Node and dirname before writing installation', (t) => {
   const f = fixture(t, 'macos-arm64');
   const hook = join(f.home, 'dependency-lookup.bash');
+  const unexpectedBrew = join(f.home, 'unexpected-brew');
+  writeFileSync(join(f.tools, 'brew'), `#!/bin/sh\n: > '${unexpectedBrew}'\nexit 99\n`, { mode: 0o755 });
   // Override only lookup to isolate each missing dependency from host programs.
   writeFileSync(hook, `command() {
   if [ "$1" = -v ] && [ "$2" = "$TEST_MISSING_DEPENDENCY" ]; then return 1; fi
@@ -496,6 +552,10 @@ test('Finder launcher rejects missing Node and dirname before writing installati
     assert.equal(result.status, 1, dependency);
     assert.match(result.stderr, /DEPENDENCY_MISSING/);
     assert.match(result.stderr, dependency === 'node' ? /install Node\.js/ : /dirname is required/);
+    if (dependency === 'node') {
+      assert.match(result.stderr, /brew install --formula node/);
+      assert.equal(existsSync(unexpectedBrew), false);
+    }
     assert.equal(existsSync(f.releases), false, dependency);
     assert.equal(existsSync(f.bin), false, dependency);
   }
