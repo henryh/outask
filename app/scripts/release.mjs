@@ -215,23 +215,58 @@ homebrewNodeFormula() {
 nvmGuidance() {
   local node_path="\${1:-}"
   case "$node_path" in
-    "$HOME"/.nvm/versions/node/*/bin/node)
-      printf '%s\\n' 'Node.js is managed by NVM. In a normal terminal, run:' >&2
-      printf '%s\\n' "  nvm install 'lts/*'" "  nvm alias default 'lts/*'" >&2
-      printf '%s\\n' 'Then open a new terminal and run Install.command again.' >&2
-      return 0
+    "$HOME"/.nvm/versions/node/*/bin/node) ;;
+    "\${XDG_CONFIG_HOME:-$HOME/.config}"/nvm/versions/node/*/bin/node) ;;
+    *)
+      if [ -z "\${NVM_DIR:-}" ]; then return 1; fi
+      case "$node_path" in "$NVM_DIR"/versions/node/*/bin/node) ;; *) return 1 ;; esac
       ;;
   esac
-  if [ -n "\${NVM_DIR:-}" ]; then
-    case "$node_path" in
-      "$NVM_DIR"/versions/node/*/bin/node)
-        printf '%s\\n' 'Node.js is managed by NVM. In a normal terminal, run:' >&2
-        printf '%s\\n' "  nvm install 'lts/*'" "  nvm alias default 'lts/*'" >&2
-        printf '%s\\n' 'Then open a new terminal and run Install.command again.' >&2
-        return 0
-        ;;
+  printf '%s\\n' "NVM: run nvm install 'lts/*' && nvm alias default 'lts/*', then retry." >&2
+}
+installedNvmRoot() {
+  local candidate
+  for candidate in "\${NVM_DIR:-}" "\${XDG_CONFIG_HOME:-$HOME/.config}/nvm" "$HOME/.nvm"; do
+    [ -n "$candidate" ] && [ -s "$candidate/nvm.sh" ] || continue
+    printf '%s' "$candidate"
+    return 0
+  done
+  return 1
+}
+nvmRootForNode() {
+  local node_path="$1" candidate
+  for candidate in "\${NVM_DIR:-}" "\${XDG_CONFIG_HOME:-$HOME/.config}/nvm" "$HOME/.nvm"; do
+    [ -n "$candidate" ] && [ -s "$candidate/nvm.sh" ] || continue
+    case "$node_path" in "$candidate"/versions/node/*/bin/node)
+      printf '%s' "$candidate"
+      return 0
+      ;;
     esac
+  done
+  return 1
+}
+runNvmAction() {
+  local nvm_root="$1" answer
+  provider_action_attempted=false
+  printf '%s\\n' "NVM can install Node.js: nvm install 'lts/*' && nvm alias default 'lts/*'" >&2
+  if [ ! -t 0 ]; then
+    printf '%s\\n' 'Run it in a terminal, then retry.' >&2
+    return 1
   fi
+  printf 'Run this NVM command now? [y/N] ' >&2
+  IFS= read -r answer || answer=''
+  case "$answer" in y|Y|yes|YES)
+    provider_action_attempted=true
+    NVM_DIR="$nvm_root"
+    export NVM_DIR
+    . "$NVM_DIR/nvm.sh" --no-use || return $?
+    nvm install 'lts/*' || return $?
+    nvm alias default 'lts/*' || return $?
+    nvm use 'lts/*' || return $?
+    hash -r
+    return 0
+    ;;
+  esac
   return 1
 }
 runHomebrewAction() {
@@ -256,11 +291,15 @@ offerNodeInstall() {
   runHomebrewAction install node
 }
 runInstaller() {
-  local attempted_install=false attempted_repair=false
+  local attempted_install=false attempted_repair=false provider_action_attempted=false action_status nvm_root
   while ! command -v node >/dev/null 2>&1; do
     echo "DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH" >&2
-    if [ -n "\${NVM_DIR:-}" ] && [ -s "$NVM_DIR/nvm.sh" ]; then
-      nvmGuidance "$NVM_DIR/versions/node/unknown/bin/node" || true
+    nvm_root="$(installedNvmRoot)" || nvm_root=''
+    if ! "$attempted_install" && [ -n "$nvm_root" ]; then
+      runNvmAction "$nvm_root"
+      action_status=$?
+      if [ "$action_status" -eq 0 ]; then attempted_install=true; continue; fi
+      if "$provider_action_attempted"; then return "$action_status"; fi
       return 1
     fi
     nodeGuidance
@@ -286,25 +325,48 @@ runInstaller() {
         printf '%s\\n' "DEPENDENCY_LIBRARY_MISSING: Node.js at $node_path cannot start (exit $status)." >&2
         printf '%s\\n' "Missing library: $missing_library" >&2
         printf 'Original Node.js diagnostic:\\n%s\\n' "$diagnostic" >&2
-        formula="$(homebrewNodeFormula "$node_path")" || formula=''
-        if ! "$attempted_repair" && [ -n "$formula" ] && runHomebrewAction reinstall "$formula"; then
-          attempted_repair=true
-          continue
+        nvm_root="$(nvmRootForNode "$node_path")" || nvm_root=''
+        if ! "$attempted_repair" && [ -n "$nvm_root" ]; then
+          runNvmAction "$nvm_root"
+          action_status=$?
+          if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
+          if "$provider_action_attempted"; then return "$action_status"; fi
+        else
+          formula="$(homebrewNodeFormula "$node_path")" || formula=''
+          if ! "$attempted_repair" && [ -n "$formula" ] && runHomebrewAction reinstall "$formula"; then
+            attempted_repair=true
+            continue
+          fi
         fi
         nvmGuidance "$node_path" || nodeGuidance
         ;;
       *INCOMPATIBLE_RUNTIME:*)
         printf '%s\\n' "INCOMPATIBLE_RUNTIME: Node.js ${nodeRange} is required." >&2
-        formula="$(homebrewNodeFormula "$node_path")" || formula=''
-        if ! "$attempted_repair" && [ -n "$formula" ] && runHomebrewAction upgrade "$formula"; then
-          attempted_repair=true
-          continue
+        nvm_root="$(nvmRootForNode "$node_path")" || nvm_root=''
+        if ! "$attempted_repair" && [ -n "$nvm_root" ]; then
+          runNvmAction "$nvm_root"
+          action_status=$?
+          if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
+          if "$provider_action_attempted"; then return "$action_status"; fi
+        else
+          formula="$(homebrewNodeFormula "$node_path")" || formula=''
+          if ! "$attempted_repair" && [ -n "$formula" ] && runHomebrewAction upgrade "$formula"; then
+            attempted_repair=true
+            continue
+          fi
         fi
         nvmGuidance "$node_path" || nodeGuidance
         ;;
       *)
         printf '%s\\n' "DEPENDENCY_UNAVAILABLE: Node.js at $node_path could not start (exit $status)." >&2
         printf 'Original Node.js diagnostic:\\n%s\\n' "$diagnostic" >&2
+        nvm_root="$(nvmRootForNode "$node_path")" || nvm_root=''
+        if ! "$attempted_repair" && [ -n "$nvm_root" ]; then
+          runNvmAction "$nvm_root"
+          action_status=$?
+          if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
+          if "$provider_action_attempted"; then return "$action_status"; fi
+        fi
         nvmGuidance "$node_path" || nodeGuidance
         ;;
     esac

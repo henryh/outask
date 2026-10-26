@@ -466,41 +466,68 @@ test('Finder launcher identifies a missing Node library and preserves its diagno
 test('Finder launcher gives NVM repair instructions without loading shell profiles', (t) => {
   const f = fixture(t, 'macos-arm64');
   const nvmBin = join(f.home, '.nvm/versions/node/v22.23.3/bin');
+  const unexpectedNvm = join(f.home, 'unexpected-nvm');
   mkdirSync(nvmBin, { recursive: true });
+  writeFileSync(join(f.home, '.nvm/nvm.sh'), `: > '${unexpectedNvm}'\n`);
   writeFileSync(join(nvmBin, 'node'), '#!/bin/sh\necho "dyld: Library not loaded: /missing/libnode-test.dylib" >&2\nexit 134\n', { mode: 0o755 });
   const result = run(join(f.source, 'Install.command'), [], {
     env: { ...f.env, PATH: `${nvmBin}:/usr/bin:/bin` },
   });
   assert.equal(result.status, 134);
-  assert.match(result.stderr, /Node\.js is managed by NVM/);
+  assert.match(result.stderr, /NVM: run/);
   assert.match(result.stderr, /nvm install 'lts\/\*'/);
   assert.match(result.stderr, /nvm alias default 'lts\/\*'/);
+  assert.match(result.stderr, /Run it in a terminal/);
   assert.doesNotMatch(result.stderr, /Homebrew can repair/);
+  assert.equal(existsSync(unexpectedNvm), false);
   assert.equal(existsSync(f.installed), false);
 });
 
-test('Finder launcher prefers an existing NVM installation when Node is missing', (t) => {
+test('Finder launcher uses installed NVM after confirmation and rechecks Node', async (t) => {
   const f = fixture(t, 'macos-arm64');
   const nvmDir = join(f.home, '.nvm');
+  const nvmBin = join(nvmDir, 'versions/node/v24.0.0/bin');
+  const installedNode = join(nvmBin, 'node');
   const hook = join(f.home, 'hide-node.bash');
   const unexpectedBrew = join(f.home, 'unexpected-brew');
-  mkdirSync(nvmDir);
-  writeFileSync(join(nvmDir, 'nvm.sh'), '# test fixture\n');
+  const nvmAction = join(f.home, 'nvm-installed');
+  mkdirSync(nvmBin, { recursive: true });
+  writeFileSync(join(nvmDir, 'nvm.sh'), `nvm() {
+  case "$1" in
+    install) /bin/ln -s "$TEST_NODE_SOURCE" "$TEST_NODE_TARGET"; : > "$TEST_NVM_ACTION" ;;
+    alias|use) ;;
+    *) return 64 ;;
+  esac
+}
+`);
   writeFileSync(join(f.tools, 'brew'), `#!/bin/sh\n: > '${unexpectedBrew}'\nexit 99\n`, { mode: 0o755 });
   writeFileSync(hook, `command() {
-  if [ "$1" = -v ] && [ "$2" = node ]; then return 1; fi
+  if [ "$1" = -v ] && [ "$2" = node ] && [ ! -x "$TEST_NODE_TARGET" ]; then return 1; fi
   builtin command "$@"
 }
 `);
-  const result = run(join(f.source, 'Install.command'), [], {
-    env: { ...f.env, BASH_ENV: hook, NVM_DIR: nvmDir },
+  rmSync(join(f.tools, 'node'));
+  const launcher = join(f.source, 'Install.command');
+  const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
+  const result = await terminal(quoted, [
+    { prompt: 'Run this NVM command now?', input: 'y\n' },
+    { prompt: 'Press any key', input: 'x' },
+  ], {
+    ...f.env,
+    BASH_ENV: hook,
+    NVM_DIR: nvmDir,
+    PATH: `${nvmBin}:${f.tools}:/usr/bin:/bin`,
+    TERM_PROGRAM: 'OutaskTest',
+    TEST_NODE_SOURCE: process.execPath,
+    TEST_NODE_TARGET: installedNode,
+    TEST_NVM_ACTION: nvmAction,
   });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /Node\.js is managed by NVM/);
-  assert.match(result.stderr, /nvm install 'lts\/\*'/);
-  assert.doesNotMatch(result.stderr, /Homebrew|nodejs\.org/);
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /NVM can install Node\.js/);
+  assert.doesNotMatch(result.output, /Homebrew|nodejs\.org/);
+  assert.equal(existsSync(nvmAction), true);
   assert.equal(existsSync(unexpectedBrew), false);
-  assert.equal(existsSync(f.installed), false);
+  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
 });
 
 test('Finder launcher preserves an unknown Node startup diagnostic', (t) => {

@@ -13,7 +13,7 @@ Outask AI keeps project tasks in local JSON files, with CLI and local MCP access
 - Identify the installed CLI with `tasks --version` as `Outask AI v<version>`.
 - Preserve running MCP/HTTP sessions during compatible upgrades; fresh launches use the updated installation.
 - Check that macOS Node.js can start and meets the minimum supported version before installation.
-- Identify missing Node.js libraries, retain startup diagnostics, offer confirmed Homebrew repairs after approval and provide NVM guidance.
+- Identify missing Node.js libraries, retain diagnostics and offer confirmed Homebrew or NVM repairs.
 - Discover macOS Node.js through PATH without adding fixed Homebrew locations. Homebrew is optional.
 
 ## Install

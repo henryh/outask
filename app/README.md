@@ -24,9 +24,9 @@ Open a new terminal after installation; restart an editor with an old PATH.
 
 On macOS, put Node.js 22.23.3 or later on PATH using the
 [official installer](https://nodejs.org/en/download) or another provider.
-Homebrew is optional. The installer checks Node startup/version, preserves native
-loader diagnostics, offers confirmed Homebrew repair actions and prints NVM
-commands. Do not link incompatible dylibs. Outask bundles no Node/Homebrew files.
+Homebrew is optional. The installer checks Node startup/version and preserves
+loader diagnostics. With confirmation, it repairs Node through installed
+Homebrew or NVM, then checks again. Outask bundles neither provider.
 
 Double-click `Install.command` or run `./Install.command`. If macOS blocks this
 unsigned launcher, use [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
