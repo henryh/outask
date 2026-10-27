@@ -195,14 +195,186 @@ fi`;
 end run`;
     writeFileSync(join(releaseRoot, 'Install.command'), `#!/bin/bash
 set -u
-PATH="\${PATH:-/usr/bin:/bin}:/opt/homebrew/bin:/usr/local/bin"
-export PATH
+nodeGuidance() {
+  printf '%s\\n' "Install or upgrade Node.js ${nodeRange} using the macOS installer from https://nodejs.org/en/download, then open a new terminal and retry." >&2
+  printf '%s\\n' 'Put the working node executable on PATH. Homebrew is optional; repair a package-manager installation using that manager rather than linking incompatible dylibs.' >&2
+}
+homebrewNodeFormula() {
+  local node_path="$1" formula prefix
+  command -v brew >/dev/null 2>&1 || return 1
+  for formula in $(brew list --formula 2>/dev/null); do
+    case "$formula" in node|node@*) ;; *) continue ;; esac
+    prefix="$(brew --prefix --installed "$formula" 2>/dev/null)" || continue
+    if [ -e "$prefix/bin/node" ] && [ "$node_path" -ef "$prefix/bin/node" ]; then
+      printf '%s' "$formula"
+      return 0
+    fi
+  done
+  return 1
+}
+nvmGuidance() {
+  local node_path="\${1:-}"
+  case "$node_path" in
+    "$HOME"/.nvm/versions/node/*/bin/node) ;;
+    "\${XDG_CONFIG_HOME:-$HOME/.config}"/nvm/versions/node/*/bin/node) ;;
+    *)
+      if [ -z "\${NVM_DIR:-}" ]; then return 1; fi
+      case "$node_path" in "$NVM_DIR"/versions/node/*/bin/node) ;; *) return 1 ;; esac
+      ;;
+  esac
+  printf '%s\\n' "NVM: run nvm install 'lts/*' && nvm alias default 'lts/*', then retry." >&2
+}
+installedNvmRoot() {
+  local candidate
+  for candidate in "\${NVM_DIR:-}" "\${XDG_CONFIG_HOME:-$HOME/.config}/nvm" "$HOME/.nvm"; do
+    [ -n "$candidate" ] && [ -s "$candidate/nvm.sh" ] || continue
+    printf '%s' "$candidate"
+    return 0
+  done
+  return 1
+}
+nvmRootForNode() {
+  local node_path="$1" candidate
+  for candidate in "\${NVM_DIR:-}" "\${XDG_CONFIG_HOME:-$HOME/.config}/nvm" "$HOME/.nvm"; do
+    [ -n "$candidate" ] && [ -s "$candidate/nvm.sh" ] || continue
+    case "$node_path" in "$candidate"/versions/node/*/bin/node)
+      printf '%s' "$candidate"
+      return 0
+      ;;
+    esac
+  done
+  return 1
+}
+runNvmAction() {
+  local nvm_root="$1" answer
+  provider_action_attempted=false
+  printf '%s\\n' "NVM can install Node.js: nvm install 'lts/*' && nvm alias default 'lts/*'" >&2
+  if [ ! -t 0 ]; then
+    printf '%s\\n' 'Run it in a terminal, then retry.' >&2
+    return 1
+  fi
+  printf 'Run this NVM command now? [y/N] ' >&2
+  IFS= read -r answer || answer=''
+  case "$answer" in y|Y|yes|YES)
+    provider_action_attempted=true
+    NVM_DIR="$nvm_root"
+    export NVM_DIR
+    . "$NVM_DIR/nvm.sh" --no-use || return $?
+    nvm install 'lts/*' || return $?
+    nvm alias default 'lts/*' || return $?
+    nvm use 'lts/*' || return $?
+    hash -r
+    return 0
+    ;;
+  esac
+  return 1
+}
+runHomebrewAction() {
+  local action="$1" formula="$2" answer
+  printf '%s\\n' "Homebrew can repair Node.js by running: brew $action --formula $formula" >&2
+  if [ ! -t 0 ]; then
+    printf '%s\\n' "Run this command in a terminal, then retry Install.command." >&2
+    return 1
+  fi
+  printf 'Run this Homebrew command now? [y/N] ' >&2
+  IFS= read -r answer || answer=''
+  case "$answer" in y|Y|yes|YES)
+    brew "$action" --formula "$formula" || return $?
+    hash -r
+    return 0
+    ;;
+  esac
+  return 1
+}
+offerNodeInstall() {
+  command -v brew >/dev/null 2>&1 || return 1
+  runHomebrewAction install node
+}
 runInstaller() {
-  command -v node >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH" >&2; return 1; }
+  local attempted_install=false attempted_repair=false provider_action_attempted=false action_status nvm_root
+  while ! command -v node >/dev/null 2>&1; do
+    echo "DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH" >&2
+    nvm_root="$(installedNvmRoot)" || nvm_root=''
+    if ! "$attempted_install" && [ -n "$nvm_root" ]; then
+      runNvmAction "$nvm_root"
+      action_status=$?
+      if [ "$action_status" -eq 0 ]; then attempted_install=true; continue; fi
+      if "$provider_action_attempted"; then return "$action_status"; fi
+      return 1
+    fi
+    nodeGuidance
+    if ! "$attempted_install" && offerNodeInstall; then
+      attempted_install=true
+      continue
+    fi
+    return 1
+  done
   command -v dirname >/dev/null 2>&1 || { echo "DEPENDENCY_MISSING: dirname is required" >&2; return 1; }
-  local root
+  local root node_path diagnostic status missing_library formula
   root="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)" || return $?
-  node "$root/app/runtime.cjs" || return $?
+  while true; do
+    node_path="$(command -v node)"
+    # Probe before loading the installer; a found executable may have broken dylib dependencies.
+    diagnostic="$( { node "$root/app/runtime.cjs"; } 2>&1)"
+    status=$?
+    [ "$status" -eq 0 ] && break
+    case "$diagnostic" in
+      *'Library not loaded:'*)
+        missing_library="\${diagnostic#*Library not loaded: }"
+        missing_library="\${missing_library%%$'\\n'*}"
+        printf '%s\\n' "DEPENDENCY_LIBRARY_MISSING: Node.js at $node_path cannot start (exit $status)." >&2
+        printf '%s\\n' "Missing library: $missing_library" >&2
+        printf 'Original Node.js diagnostic:\\n%s\\n' "$diagnostic" >&2
+        nvm_root="$(nvmRootForNode "$node_path")" || nvm_root=''
+        if ! "$attempted_repair" && [ -n "$nvm_root" ]; then
+          runNvmAction "$nvm_root"
+          action_status=$?
+          if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
+          if "$provider_action_attempted"; then return "$action_status"; fi
+          return "$status"
+        else
+          formula="$(homebrewNodeFormula "$node_path")" || formula=''
+          if ! "$attempted_repair" && [ -n "$formula" ] && runHomebrewAction reinstall "$formula"; then
+            attempted_repair=true
+            continue
+          fi
+        fi
+        nvmGuidance "$node_path" || nodeGuidance
+        ;;
+      *INCOMPATIBLE_RUNTIME:*)
+        printf '%s\\n' "INCOMPATIBLE_RUNTIME: Node.js ${nodeRange} is required." >&2
+        nvm_root="$(nvmRootForNode "$node_path")" || nvm_root=''
+        if ! "$attempted_repair" && [ -n "$nvm_root" ]; then
+          runNvmAction "$nvm_root"
+          action_status=$?
+          if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
+          if "$provider_action_attempted"; then return "$action_status"; fi
+          return "$status"
+        else
+          formula="$(homebrewNodeFormula "$node_path")" || formula=''
+          if ! "$attempted_repair" && [ -n "$formula" ] && runHomebrewAction upgrade "$formula"; then
+            attempted_repair=true
+            continue
+          fi
+        fi
+        nvmGuidance "$node_path" || nodeGuidance
+        ;;
+      *)
+        printf '%s\\n' "DEPENDENCY_UNAVAILABLE: Node.js at $node_path could not start (exit $status)." >&2
+        printf 'Original Node.js diagnostic:\\n%s\\n' "$diagnostic" >&2
+        nvm_root="$(nvmRootForNode "$node_path")" || nvm_root=''
+        if ! "$attempted_repair" && [ -n "$nvm_root" ]; then
+          runNvmAction "$nvm_root"
+          action_status=$?
+          if [ "$action_status" -eq 0 ]; then attempted_repair=true; continue; fi
+          if "$provider_action_attempted"; then return "$action_status"; fi
+          return "$status"
+        fi
+        nvmGuidance "$node_path" || nodeGuidance
+        ;;
+    esac
+    return "$status"
+  done
   node "$root/app/scripts/install-release.mjs" "$@"
 }
 session_pid=''
@@ -311,7 +483,7 @@ ${target === 'macos-arm64' ? 'Extract the archive, open its OutaskAI directory, 
 \`\`\`
 
 If starting the installer reports Permission denied, run \`${target === 'macos-arm64' ? 'bash' : 'sh'} ./${installer}\`.
-${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
+${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\nInstall Node.js with the [macOS installer](https://nodejs.org/en/download) or another provider. Homebrew is optional. The installer checks Node.js and can repair it through installed Homebrew or NVM after confirmation, then checks again. Other failures retain the original diagnostic.\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
 Open a new terminal, then run from a project directory:
 
 \`\`\`sh

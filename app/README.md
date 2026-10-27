@@ -9,10 +9,8 @@ node app/scripts/install-cli.mjs install
 tasks --help
 ```
 
-Keep the source checkout and dependencies; remove its command with
-`node app/scripts/install-cli.mjs uninstall`. Discover options with
-`tasks --help` and `tasks <command> --help`.
-For agents use [MCP](mcp/README.md); for external read clients use [HTTP](HTTP.md).
+Keep the checkout; remove its command with `node app/scripts/install-cli.mjs uninstall`.
+Use `tasks --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
 
 ## Installation and updates
 
@@ -24,21 +22,22 @@ Open a new terminal after installation; restart an editor with an old PATH.
 | macOS | `~/Library/Application Support/OutaskAI` | `~/.local/bin/tasks` |
 | Windows | `%USERPROFILE%\AppData\Local\Programs\OutaskAI` | `%USERPROFILE%\AppData\Local\OutaskAI\bin\tasks.cmd` |
 
-On macOS, double-click `Install.command` in Finder or run `./Install.command`
-in a terminal. If macOS blocks this unsigned
-launcher, follow [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
-for a release you trust.
-Keep Gatekeeper enabled. Node must be available to the installer.
+On macOS, put Node.js 22.23.3 or later on PATH using the
+[official installer](https://nodejs.org/en/download) or another provider.
+Homebrew is optional. The installer checks Node startup/version and preserves
+loader diagnostics. With confirmation, it repairs Node through installed
+Homebrew or NVM, then checks again. Outask bundles neither provider.
 
-Update by running the new archive's installer. Keep existing MCP/HTTP sessions
-alive and let active writes finish; compatible updates replace installed files
-without terminating processes or forcing clients to reconnect. Existing sessions
-may keep their loaded version until their launching client restarts them normally.
-Fresh CLI/MCP launches use the updated installation; `tasks --version` reports
-`Outask AI v<version>`. Managed files are replaced; unrelated files, project tasks
-and configuration are preserved. Resolve an unrelated `tasks`
-command collision explicitly. Custom installations must reuse the same
-`--bin-dir` and `--release-root` options when updating or removing the command.
+Double-click `Install.command` or run `./Install.command`. If macOS blocks this
+unsigned launcher, use [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
+for a release you trust. Keep Gatekeeper enabled.
+
+Update with the new archive's installer while existing MCP/HTTP sessions and
+active writes finish normally. Existing sessions may retain their loaded version;
+fresh launches use the update and `tasks --version` reports `Outask AI v<version>`.
+Managed files are replaced; user files, tasks and configuration remain. Resolve
+an unrelated `tasks` collision explicitly. Custom installations must reuse the
+same `--bin-dir` and `--release-root` when updating or removing the command.
 
 From the installed application's directory, remove the command with
 `./install.sh uninstall` on Linux, `./Install.command uninstall` on macOS,

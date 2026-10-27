@@ -67,6 +67,7 @@ let evidence;
 let registryBackup;
 let commandEnv = env;
 let shellNode;
+let macosPrerequisites;
 const extraLocks = [];
 const powershell = windows ? join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe') : undefined;
 function documentedInstall(source, shell) {
@@ -113,15 +114,20 @@ try {
   const architecture = windows ? registry('$env:PROCESSOR_ARCHITECTURE').trim() : run('uname', ['-m']).trim();
   assert.equal(architecture, windows ? 'AMD64' : process.platform === 'darwin' ? 'arm64' : 'x86_64', 'OS architecture must match native Node execution');
   const osVersion = process.platform === 'darwin' ? run('sw_vers', ['-productVersion']).trim() : release();
+  if (process.platform === 'darwin') {
+    const reportedDylib = '/opt/homebrew/opt/simdjson/lib/libsimdjson.33.dylib';
+    const nodeLibraries = run('/usr/bin/otool', ['-L', process.execPath]).trim().split(/\r?\n/).slice(1).map((line) => line.trim());
+    assert.ok(nodeLibraries.length, 'otool must report the native Node runtime dependencies');
+    for (const library of nodeLibraries) {
+      assert.doesNotMatch(library, /\/(?:opt\/homebrew|usr\/local\/(?:opt|Cellar))\//, 'Native acceptance must use Node without Homebrew library dependencies');
+    }
+    macosPrerequisites = { reportedDylib: { path: reportedDylib, present: existsSync(reportedDylib) }, nodeLibraries };
+  }
   assert.deepEqual(readdirSync(source).filter((name) => /^install/i.test(name)), [installerName]);
   const installer = join(source, installerName);
-  // The Finder launcher also discovers Node in system Homebrew locations.
-  // Clearing PATH cannot hide those installations on a native Mac.
-  if (process.platform !== 'darwin') {
-    const missingNode = invoke(installer, [], { ...env, PATH: '' });
-    assert.notEqual(missingNode.status, 0);
-    assert.match(missingNode.stderr, /DEPENDENCY_MISSING: install Node.js/);
-  }
+  const missingNode = invoke(installer, [], { ...env, PATH: '' });
+  assert.notEqual(missingNode.status, 0);
+  assert.match(missingNode.stderr, /DEPENDENCY_MISSING: install Node.js/);
   if (process.platform === 'linux') {
     const missingDirname = invoke(installer, [], { ...env, PATH: tools });
     assert.notEqual(missingDirname.status, 0);
@@ -348,6 +354,7 @@ try {
   evidence = {
     result: 'PASS', os: { platform: process.platform, version: osVersion, architecture },
     node: { version: process.version, platform: process.platform, architecture: process.arch },
+    ...(macosPrerequisites ? { macosPrerequisites } : {}),
     artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
     checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],

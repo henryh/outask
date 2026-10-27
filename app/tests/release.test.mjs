@@ -27,20 +27,23 @@ function windowWorker(launcher) {
   return JSON.parse(launcher.match(/^const script = (".+");$/m)[1]);
 }
 
-function terminal(command, key, env) {
+function terminal(command, interaction, env) {
   const args = process.platform === 'darwin'
     ? ['-q', '/dev/null', '/bin/sh', '-c', command]
     : ['-q', '-e', '-c', command, '/dev/null'];
+  const interactions = Array.isArray(interaction)
+    ? interaction
+    : [{ prompt: 'Press any key', input: interaction }];
   return new Promise((resolveTerminal, reject) => {
     const child = spawn('script', args, { env, timeout: 10000 });
     let output = '';
-    let sent = false;
+    let nextInteraction = 0;
     child.on('error', reject);
     child.stdout.on('data', (data) => {
       output += data;
-      if (!sent && output.includes('Press any key')) {
-        sent = true;
-        child.stdin.write(key);
+      while (nextInteraction < interactions.length && output.includes(interactions[nextInteraction].prompt)) {
+        child.stdin.write(interactions[nextInteraction].input);
+        nextInteraction += 1;
       }
     });
     child.stderr.on('data', (data) => { output += data; });
@@ -90,7 +93,7 @@ function fixture(t, target = 'linux-x64') {
   const tools = join(home, 'tools');
   mkdirSync(tools);
   symlinkSync(process.execPath, join(tools, 'node'));
-  const env = { ...process.env, HOME: home, SHELL: '/bin/bash', ZDOTDIR: undefined, PATH: `${bin}:${tools}:/usr/bin:/bin` };
+  const env = { ...process.env, HOME: home, SHELL: '/bin/bash', NVM_DIR: undefined, ZDOTDIR: undefined, PATH: `${bin}:${tools}:/usr/bin:/bin` };
   const install = (...args) => target === 'windows-x64'
     ? run(process.execPath, [internalInstaller(source), ...args], { env })
     : run(join(source, installerEntries[target]), args, { env });
@@ -433,7 +436,7 @@ test('macOS Finder launcher delegates installation from paths containing spaces'
   writeFileSync(join(f.tools, 'node'), '#!/bin/sh\ncase "$1" in */app/runtime.cjs) echo "INCOMPATIBLE_RUNTIME: test old Node" >&2; exit 17 ;; *) echo "INSTALLER_REACHED" >&2; exit 23 ;; esac\n', { mode: 0o755 });
   const incompatible = run(launcher, [], { env: f.env });
   assert.equal(incompatible.status, 17);
-  assert.match(incompatible.stderr, /INCOMPATIBLE_RUNTIME: test old Node/);
+  assert.match(incompatible.stderr, /INCOMPATIBLE_RUNTIME: Node.js/);
   assert.doesNotMatch(incompatible.stderr, /INSTALLER_REACHED/);
   rmSync(join(f.tools, 'node'));
   symlinkSync(process.execPath, join(f.tools, 'node'));
@@ -444,10 +447,239 @@ test('macOS Finder launcher delegates installation from paths containing spaces'
   assert.match(missing.stderr, /DEPENDENCY_MISSING: install Node.js/);
 });
 
+test('Finder launcher identifies a missing Node library and preserves its diagnostic', (t) => {
+  const f = fixture(t, 'macos-arm64');
+  rmSync(join(f.tools, 'node'));
+  writeFileSync(join(f.tools, 'node'), '#!/bin/sh\necho "dyld: Library not loaded: /opt/homebrew/opt/simdjson/lib/libsimdjson.33.dylib" >&2\nexit 134\n', { mode: 0o755 });
+  const result = f.install();
+  assert.equal(result.status, 134);
+  assert.match(result.stderr, /DEPENDENCY_LIBRARY_MISSING/);
+  assert.ok(result.stderr.includes(join(f.tools, 'node')));
+  assert.match(result.stderr, /Missing library: \/opt\/homebrew\/opt\/simdjson\/lib\/libsimdjson\.33\.dylib/);
+  assert.match(result.stderr, /Original Node\.js diagnostic:/);
+  assert.match(result.stderr, /dyld: Library not loaded:/);
+  assert.match(result.stderr, /https:\/\/nodejs.org\/en\/download/);
+  assert.match(result.stderr, /Homebrew is optional/);
+  assert.equal(existsSync(f.installed), false);
+});
+
+test('Finder launcher gives NVM repair instructions without loading shell profiles', (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const nvmBin = join(f.home, '.nvm/versions/node/v22.23.3/bin');
+  const unexpectedNvm = join(f.home, 'unexpected-nvm');
+  mkdirSync(nvmBin, { recursive: true });
+  writeFileSync(join(f.home, '.nvm/nvm.sh'), `: > '${unexpectedNvm}'\n`);
+  writeFileSync(join(nvmBin, 'node'), '#!/bin/sh\necho "dyld: Library not loaded: /missing/libnode-test.dylib" >&2\nexit 134\n', { mode: 0o755 });
+  const result = run(join(f.source, 'Install.command'), [], {
+    env: { ...f.env, PATH: `${nvmBin}:/usr/bin:/bin` },
+  });
+  assert.equal(result.status, 134);
+  assert.match(result.stderr, /nvm install 'lts\/\*'/);
+  assert.match(result.stderr, /nvm alias default 'lts\/\*'/);
+  assert.equal(result.stderr.match(/nvm install/g)?.length, 1);
+  assert.match(result.stderr, /Run it in a terminal/);
+  assert.doesNotMatch(result.stderr, /Homebrew can repair/);
+  assert.equal(existsSync(unexpectedNvm), false);
+  assert.equal(existsSync(f.installed), false);
+});
+
+test('Finder launcher uses installed NVM after confirmation and rechecks Node', async (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const nvmDir = join(f.home, '.nvm');
+  const nvmBin = join(nvmDir, 'versions/node/v24.0.0/bin');
+  const installedNode = join(nvmBin, 'node');
+  const hook = join(f.home, 'hide-node.bash');
+  const unexpectedBrew = join(f.home, 'unexpected-brew');
+  const nvmAction = join(f.home, 'nvm-installed');
+  const nvmUse = join(f.home, 'nvm-used');
+  mkdirSync(nvmBin, { recursive: true });
+  writeFileSync(join(nvmDir, 'nvm.sh'), `nvm() {
+  case "$1" in
+    install) /bin/ln -s "$TEST_NODE_SOURCE" "$TEST_NODE_TARGET"; : > "$TEST_NVM_ACTION" ;;
+    alias) ;;
+    use) export PATH="$TEST_NODE_BIN:$PATH"; : > "$TEST_NVM_USE" ;;
+    *) return 64 ;;
+  esac
+}
+`);
+  writeFileSync(join(f.tools, 'brew'), `#!/bin/sh\n: > '${unexpectedBrew}'\nexit 99\n`, { mode: 0o755 });
+  writeFileSync(hook, `command() {
+  if [ "$1" = -v ] && [ "$2" = node ]; then
+    case ":$PATH:" in *":$TEST_NODE_BIN:"*) ;; *) return 1 ;; esac
+  fi
+  builtin command "$@"
+}
+`);
+  rmSync(join(f.tools, 'node'));
+  const launcher = join(f.source, 'Install.command');
+  const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
+  const result = await terminal(quoted, [
+    { prompt: 'Run this NVM command now?', input: 'y\n' },
+    { prompt: 'Press any key', input: 'x' },
+  ], {
+    ...f.env,
+    BASH_ENV: hook,
+    NVM_DIR: nvmDir,
+    PATH: `${f.tools}:/usr/bin:/bin`,
+    TERM_PROGRAM: 'OutaskTest',
+    TEST_NODE_SOURCE: process.execPath,
+    TEST_NODE_BIN: nvmBin,
+    TEST_NODE_TARGET: installedNode,
+    TEST_NVM_ACTION: nvmAction,
+    TEST_NVM_USE: nvmUse,
+  });
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /NVM can install Node\.js/);
+  assert.doesNotMatch(result.output, /Homebrew|nodejs\.org/);
+  assert.equal(existsSync(nvmAction), true);
+  assert.equal(existsSync(nvmUse), true);
+  assert.equal(existsSync(unexpectedBrew), false);
+  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
+});
+
+test('Finder launcher preserves an unknown Node startup diagnostic', (t) => {
+  const f = fixture(t, 'macos-arm64');
+  rmSync(join(f.tools, 'node'));
+  writeFileSync(join(f.tools, 'node'), '#!/bin/sh\necho "codesign validation failed for test runtime" >&2\necho "diagnostic detail line two" >&2\nexit 73\n', { mode: 0o755 });
+  const result = f.install();
+  assert.equal(result.status, 73);
+  assert.match(result.stderr, /DEPENDENCY_UNAVAILABLE/);
+  assert.match(result.stderr, /Original Node\.js diagnostic:\ncodesign validation failed for test runtime\ndiagnostic detail line two/);
+  assert.equal(existsSync(f.installed), false);
+});
+
+test('Finder launcher installs Homebrew Node only after confirmation and rechecks it', async (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const providerBin = join(f.home, 'homebrew-bin');
+  const installedNode = join(providerBin, 'node');
+  const action = join(f.home, 'homebrew-installed');
+  const hook = join(f.home, 'hide-node-until-installed.bash');
+  mkdirSync(providerBin);
+  rmSync(join(f.tools, 'node'));
+  writeFileSync(hook, `command() {
+  if [ "$1" = -v ] && [ "$2" = node ] && [ ! -x '${installedNode}' ]; then return 1; fi
+  builtin command "$@"
+}
+`);
+  writeFileSync(join(f.tools, 'brew'), `#!/bin/sh
+if [ "$1" = install ] && [ "$2" = --formula ] && [ "$3" = node ]; then
+  /bin/ln -s '${process.execPath}' '${installedNode}'
+  : > '${action}'
+else
+  exit 64
+fi
+`, { mode: 0o755 });
+  const launcher = join(f.source, 'Install.command');
+  const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
+  const result = await terminal(quoted, [
+    { prompt: 'Run this Homebrew command now?', input: 'y\n' },
+    { prompt: 'Press any key', input: 'x' },
+  ], {
+    ...f.env,
+    BASH_ENV: hook,
+    PATH: `${providerBin}:${f.tools}:/usr/bin:/bin`,
+    TERM_PROGRAM: 'OutaskTest',
+  });
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /brew install --formula node/);
+  assert.equal(existsSync(action), true);
+  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
+});
+
+test('Finder launcher repairs a broken Homebrew Node only after confirmation', async (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const prefix = join(f.home, 'homebrew-node@22');
+  const node = join(prefix, 'bin/node');
+  const repaired = join(f.home, 'homebrew-repaired');
+  mkdirSync(dirname(node), { recursive: true });
+  writeFileSync(node, '#!/bin/sh\necho "dyld: Library not loaded: /opt/homebrew/opt/simdjson/lib/libsimdjson.34.dylib" >&2\nexit 134\n', { mode: 0o755 });
+  writeFileSync(join(f.tools, 'brew'), `#!/bin/sh
+if [ "$1" = list ] && [ "$2" = --formula ]; then
+  echo node@22
+elif [ "$1" = --prefix ] && [ "$2" = --installed ] && [ "$3" = node@22 ]; then
+  echo '${prefix}'
+elif [ "$1" = reinstall ] && [ "$2" = --formula ] && [ "$3" = node@22 ]; then
+  /bin/rm -f '${node}'
+  /bin/ln -s '${process.execPath}' '${node}'
+  : > '${repaired}'
+else
+  exit 64
+fi
+`, { mode: 0o755 });
+  const launcher = join(f.source, 'Install.command');
+  const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
+  const result = await terminal(quoted, [
+    { prompt: 'Run this Homebrew command now?', input: 'y\n' },
+    { prompt: 'Press any key', input: 'x' },
+  ], { ...f.env, PATH: `${dirname(node)}:${f.tools}:/usr/bin:/bin`, TERM_PROGRAM: 'OutaskTest' });
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /DEPENDENCY_LIBRARY_MISSING/);
+  assert.match(result.output, /brew reinstall --formula node@22/);
+  assert.equal(existsSync(repaired), true);
+  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
+});
+
+test('Finder launcher upgrades an old Homebrew Node only after confirmation and rechecks it', async (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const prefix = join(f.home, 'homebrew-node@22');
+  const node = join(prefix, 'bin/node');
+  const upgraded = join(f.home, 'homebrew-upgraded');
+  mkdirSync(dirname(node), { recursive: true });
+  writeFileSync(node, '#!/bin/sh\necho "INCOMPATIBLE_RUNTIME: test old Node" >&2\nexit 17\n', { mode: 0o755 });
+  writeFileSync(join(f.tools, 'brew'), `#!/bin/sh
+if [ "$1" = list ] && [ "$2" = --formula ]; then
+  echo node@22
+elif [ "$1" = --prefix ] && [ "$2" = --installed ] && [ "$3" = node@22 ]; then
+  echo '${prefix}'
+elif [ "$1" = upgrade ] && [ "$2" = --formula ] && [ "$3" = node@22 ]; then
+  /bin/rm -f '${node}'
+  /bin/ln -s '${process.execPath}' '${node}'
+  : > '${upgraded}'
+else
+  exit 64
+fi
+`, { mode: 0o755 });
+  const launcher = join(f.source, 'Install.command');
+  const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
+  const result = await terminal(quoted, [
+    { prompt: 'Run this Homebrew command now?', input: 'y\n' },
+    { prompt: 'Press any key', input: 'x' },
+  ], { ...f.env, PATH: `${dirname(node)}:${f.tools}:/usr/bin:/bin`, TERM_PROGRAM: 'OutaskTest' });
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /INCOMPATIBLE_RUNTIME/);
+  assert.match(result.output, /brew upgrade --formula node@22/);
+  assert.equal(existsSync(upgraded), true);
+  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
+});
+
+test('Finder launcher checks minimum Node and accepts newer versions outside Homebrew', (t) => {
+  for (const [version, accepted] of [['22.23.2', false], ['22.23.3', true], ['24.0.0', true]]) {
+    const f = fixture(t, 'macos-arm64');
+    rmSync(join(f.tools, 'node'));
+    // Run the shipped version check with a controlled runtime version, then use real Node.
+    const node = "'" + process.execPath.replaceAll("'", "'\\''") + "'";
+    writeFileSync(join(f.tools, 'node'), `#!/bin/sh
+case "$1" in
+  */app/runtime.cjs) exec ${node} -e 'Object.defineProperty(process.versions, "node", {value: "${version}"}); require(process.argv[1])' "$1" ;;
+  *) exec ${node} "$@" ;;
+esac
+`, { mode: 0o755 });
+    const result = f.install();
+    assert.equal(result.status === 0, accepted, result.stderr);
+    assert.equal(existsSync(f.installed), accepted);
+    if (!accepted) {
+      assert.match(result.stderr, /INCOMPATIBLE_RUNTIME/);
+      assert.match(result.stderr, /Install or upgrade Node.js/);
+    }
+  }
+});
+
 test('Finder launcher rejects missing Node and dirname before writing installation', (t) => {
   const f = fixture(t, 'macos-arm64');
   const hook = join(f.home, 'dependency-lookup.bash');
-  // Override only lookup, so fixed Homebrew PATH additions cannot satisfy the dependency.
+  const unexpectedBrew = join(f.home, 'unexpected-brew');
+  writeFileSync(join(f.tools, 'brew'), `#!/bin/sh\n: > '${unexpectedBrew}'\nexit 99\n`, { mode: 0o755 });
+  // Override only lookup to isolate each missing dependency from host programs.
   writeFileSync(hook, `command() {
   if [ "$1" = -v ] && [ "$2" = "$TEST_MISSING_DEPENDENCY" ]; then return 1; fi
   builtin command "$@"
@@ -460,6 +692,10 @@ test('Finder launcher rejects missing Node and dirname before writing installati
     assert.equal(result.status, 1, dependency);
     assert.match(result.stderr, /DEPENDENCY_MISSING/);
     assert.match(result.stderr, dependency === 'node' ? /install Node\.js/ : /dirname is required/);
+    if (dependency === 'node') {
+      assert.match(result.stderr, /brew install --formula node/);
+      assert.equal(existsSync(unexpectedBrew), false);
+    }
     assert.equal(existsSync(f.releases), false, dependency);
     assert.equal(existsSync(f.bin), false, dependency);
   }
