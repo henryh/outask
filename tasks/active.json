@@ -119,5 +119,29 @@
     ],
     "values": "Goal: provide usable packaged CLI/MCP installation on supported Linux, macOS and Windows platforms (docs/product.md). Value: users immediately see the short CLI command and a usable immediate-run command, without unnecessary window-closing instructions or key waits. Observable result: the completed installer presents the agreed concise message and pauses only when needed to keep an automatically closing window readable. Verification: inspect successful installer output and exit/pause behavior for automatically closing launches and persistent terminal sessions on the supported platform routes.",
     "updated_at": "2026-10-27T08:15:03.280Z"
+  },
+  {
+    "id": 11,
+    "title": "Make outask the canonical product command with permanent tasks and outaskai aliases",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Make outask the canonical command and user-facing product identity across CLI, MCP, read-only HTTP/API, installation and distribution entry points, help, documentation and agent instructions. Ship tasks and outaskai as permanent supported aliases using the same implementation and behavior. Preserve existing public entry points and integration/configuration compatibility without mandatory data migration. Where technically supported, running services launched through any alias identify and display themselves as outask; investigate and document concrete platform or client limitations. This is product naming, not a mechanical rename of the task domain: preserve task JSON fields, the tasks/ directory, domain operation names such as list_tasks and task resource routes unless an actual product-identity boundary requires a compatible alias.",
+    "acceptance": [
+      "Installed CLI exposes outask, tasks and outaskai without user-defined shell aliases. Equivalent invocations, including MCP startup, have matching arguments, operations, outputs, errors and exit codes. Both aliases are permanent, with no removal schedule or deprecation warnings.",
+      "CLI help, canonical command examples and generated continuation guidance use outask. MCP server identity and HTTP/API product identification, along with applicable product-facing package/service names, use outask. Existing public names, connections and configurations remain functional through compatibility aliases where needed.",
+      "Services started using outask, tasks or outaskai report the canonical identity outask in protocol metadata and service/process names controlled by the application where technically supported. Check actual running services; document any platform/client-controlled display limitation and its concrete reason without claiming universal OS process-name control.",
+      "Install, update, reinstall and uninstall support all three commands on the supported Linux x64, macOS arm64 and Windows x64 distributions. Existing tasks-based installations upgrade successfully; aliases use the same installation and version and introduce no conflicting copies or leftover managed launchers.",
+      "Existing records, IDs, unknown JSON fields, task stores, schemas and supported configuration remain usable without mandatory migration. Task-domain names such as tasks JSON fields, tasks/ storage, list_tasks and task resource routes are not mechanically renamed.",
+      "Update owning documentation, setup examples and repository/agent instructions to use outask as canonical and explain permanent tasks/outaskai compatibility. Review branding references across CLI, MCP, API and release/installation surfaces while preserving historical facts.",
+      "Verify from the installed-product boundary: run representative CLI reads and help with all three names, connect an MCP client through each command and inspect server identity, and inspect the HTTP/API identity. Check alias parity and existing connection/configuration compatibility, plus affected native distribution install/update/uninstall acceptance and focused regression checks. Record actual evidence and any supported-platform limitations."
+    ],
+    "values": {
+      "goal": "Outask AI: developers and local AI agents use the same repository-local task operations.",
+      "value": "Give users and integrations one recognizable outask identity while preserving existing tasks invocations indefinitely and supporting the outaskai spelling.",
+      "observable_result": "Users install and run outask immediately; tasks and outaskai invoke the same product, and running services expose the outask identity wherever controlled by the application.",
+      "verification": "Use all three installed commands for the same CLI operations and MCP startup, inspect CLI help and MCP/HTTP service identity, and verify upgrade compatibility and managed launcher lifecycle in supported distribution acceptance."
+    },
+    "updated_at": "2026-10-27T08:16:52.988Z"
   }
 ]
