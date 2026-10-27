@@ -246,4 +246,15 @@ test('publication fails verification when GitHub Latest does not resolve the pub
   const result = f.invoke({ WRONG_LATEST: 'v0.15' });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /GitHub Latest resolves v0.15/);
+  assert.equal(result.release.draft, false);
+  const retry = f.invoke({ existing: result.release, WRONG_LATEST: 'v0.15' });
+  assert.notEqual(retry.status, 0);
+  assert.match(retry.stderr, /GitHub Latest resolves v0.15/);
+  assert.equal(mutations(retry).length, 0);
+  assert.deepEqual(retry.release, result.release);
+  const verified = f.invoke({ existing: result.release });
+  assert.equal(verified.status, 0, verified.stderr);
+  assert.ok(verified.calls.some(args => args[0] === 'api' && args[1] === 'repos/owner/project/releases/latest'));
+  assert.equal(mutations(verified).length, 0);
+  assert.deepEqual(verified.release, result.release);
 });
