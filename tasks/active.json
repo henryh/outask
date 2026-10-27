@@ -26,7 +26,7 @@
   {
     "id": 7,
     "title": "Add latest-release updates to platform installers",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "medium",
     "blockers": [],
     "scope": "Make every published stable release explicitly become GitHub's Latest release, while prereleases do not replace it. Add an update action alongside install and uninstall to the packaged Linux, macOS and Windows installers. The action must resolve the latest stable GitHub release, download the matching supported-platform archive and reuse the existing installation path so user task data and configuration are preserved. Keep prompts, output, documentation and failure handling concise; do not add a separate updater service or background update mechanism.",
@@ -46,7 +46,7 @@
     "notes": [
       "Requested after installing v1.3 manually. GitHub currently resolves v1.3 through releases/latest, but the publication script only clears the draft flag and does not explicitly pass --latest. Task creation does not authorise implementation or a remote release edit."
     ],
-    "updated_at": "2026-10-27T07:59:41.719Z"
+    "updated_at": "2026-10-27T09:35:33.398Z"
   },
   {
     "id": 8,
