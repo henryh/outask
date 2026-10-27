@@ -19,11 +19,11 @@ Commit these together:
 - `app/package-lock.json`: matching top-level/root-package versions.
 - `docs/release-notes.md`: exact final UTF-8 notes with a final newline.
 
-Use title `Outask AI v<distribution-version>` to opt into release. A separately
+Use title `Outask v<distribution-version>` to opt into release. A separately
 requested standalone release uses `release-<distribution-version>`; `release-*`
 branches are always checked as release candidates. Other task titles do not publish.
-Package `1.1.0` maps to tag `v1.1`, title `Outask AI v1.1` and
-`OutaskAI-1.1-<target>.tar.gz`; nonzero patches stay complete. Prerelease suffixes
+Package `1.1.0` maps to tag `v1.1`, title `Outask v1.1` and
+`Outask-1.1-<target>.tar.gz`; nonzero patches stay complete. Prerelease suffixes
 remain and produce GitHub prereleases. Existing releases stay unchanged.
 
 Before final publication, complete all planned work, review/QA/documentation and
@@ -47,7 +47,7 @@ Use these six `##` headings once each in order, without a repeated release title
 1. `Downloads`: direct links for Linux x64, macOS Apple silicon and Windows x64.
 2. `Current version`: short product overview.
 3. `What's new`: user-visible release changes, including new commands/options.
-4. `Install`: Node.js 22.23.3 or later on PATH; extract and open the OutaskAI
+4. `Install`: Node.js 22.23.3 or later on PATH; extract and open the Outask
    directory in a terminal. Show `./install.sh` for Linux, `./Install.command`
    for macOS and one Windows block with `./Install.cmd  # PowerShell` and
    `Install.cmd   & rem cmd.exe`.
@@ -91,8 +91,8 @@ offer. After the owner agrees, use the published archive for the PC's platform
 and its installer. Preserve existing MCP/HTTP sessions and let active writes
 finish during compatible updates; do not kill processes or force an immediate
 reconnect. Those sessions may keep their old loaded version until the launching
-client restarts them normally. Verify `tasks --version` reports
-`Outask AI v<released-version>` and a fresh MCP connection uses the released
+client restarts them normally. Verify `outask --version` reports
+`Outask v<released-version>` and a fresh MCP connection uses the released
 installation with a successful task read. Follow the
 [project lock rules](../app/README.md#project-locks-and-upgrades) separately for
 coordination-file cleanup or an incompatible coordination-protocol migration.

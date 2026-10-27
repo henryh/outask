@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fail } from '../app/src/errors.mjs';
-import { targets } from './release-config.mjs';
+import { archiveBrand, targets } from './release-config.mjs';
 
 const headings = ['Downloads', 'Current version', "What's new", 'Install', 'Run', 'Documentation'];
 const downloadLabels = { 'linux-x64': 'Linux x64', 'macos-arm64': 'macOS Apple silicon', 'windows-x64': 'Windows x64' };
@@ -15,13 +15,13 @@ function section(notes, heading, next) {
 
 function requireDownloadLinks(notes, releaseVersion, repo, selected) {
   const downloads = section(notes, 'Downloads', 'Current version');
-  for (const [url] of downloads.matchAll(/https:\/\/[^\s)]+\/OutaskAI-[^\s/)]+\.tar\.gz\b/g)) {
+  for (const [url] of downloads.matchAll(/https:\/\/[^\s)]+\/Outask(?:AI)?-[^\s/)]+\.tar\.gz\b/g)) {
     if (!targets.some((target) => url.endsWith(`-${target}.tar.gz`))) {
       fail('INVALID_INPUT', 'release notes Downloads must not include unsupported archive targets');
     }
   }
   for (const target of selected) {
-    const link = `- [${downloadLabels[target]}](https://github.com/${repo}/releases/download/v${releaseVersion}/OutaskAI-${releaseVersion}-${target}.tar.gz)`;
+    const link = `- [${downloadLabels[target]}](https://github.com/${repo}/releases/download/v${releaseVersion}/${archiveBrand()}-${releaseVersion}-${target}.tar.gz)`;
     if (!downloads.includes(link)) fail('INVALID_INPUT', `release notes Downloads must include ${link}`);
   }
 }
@@ -74,7 +74,7 @@ export function releaseNotes(releaseVersion, packageVersion, repo, selected, val
   }
   const runSection = section(notes, 'Run', 'Documentation');
   if (!/From a project directory/.test(runSection)
-    || !/tasks create\b/.test(runSection) || !/tasks list\b/.test(runSection)) {
+    || !/(?:outask|tasks) create\b/.test(runSection) || !/(?:outask|tasks) list\b/.test(runSection)) {
     fail('INVALID_INPUT', 'Run must demonstrate general create and list use from a project directory');
   }
   const documentation = section(notes, 'Documentation');

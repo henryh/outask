@@ -133,6 +133,7 @@ export function createHttpServer(projectPath, { token = process.env.TASKS_HTTP_T
   checkBoundary(root, schema.path);
   return createServer({ maxHeaderSize: 16 * 1024, requestTimeout: 30000, headersTimeout: 10000 }, function handleRequest(request, response) {
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
+    response.setHeader('Server', 'outask');
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     try {
@@ -180,7 +181,7 @@ export function createHttpServer(projectPath, { token = process.env.TASKS_HTTP_T
         ...(route.cacheRead ? { onAdvisory: (advisory) => advisories.push(advisory) } : {}),
       }, config);
       if (advisories.length) {
-        response.setHeader('Warning', advisories.map((advisory) => `199 task-tracker "${advisory.code}: ${advisory.message}"`));
+        response.setHeader('Warning', advisories.map((advisory) => `199 outask "${advisory.code}: ${advisory.message}"`));
       }
       response.writeHead(200);
       response.end(JSON.stringify(result));
@@ -193,6 +194,7 @@ export function createHttpServer(projectPath, { token = process.env.TASKS_HTTP_T
 }
 
 export async function main(args, guidance) {
+  process.title = 'outask';
   const { values, positionals, tokens } = parseArgs({ args, options, allowPositionals: true, tokens: true });
   if (values.help) { process.stdout.write(help); return; }
   const { project } = parseProject(positionals, usage);

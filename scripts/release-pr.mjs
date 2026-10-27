@@ -55,7 +55,7 @@ export function gate(event, merged = true) {
   const pr = event.pull_request;
   if (!pr || pr.base.ref !== 'main') return null;
   // A version in the exact release title explicitly opts a task PR into release.
-  if (!pr.head.ref.startsWith('release-') && !pr.title.startsWith('Outask AI v')) return null;
+  if (!pr.head.ref.startsWith('release-') && !/^Outask(?: AI)? v/.test(pr.title)) return null;
   const repo = event.repository;
   if (pr.head.repo?.full_name !== repo.full_name) throw new Error('Release PR must come from this repository');
   if (merged) {

@@ -8,6 +8,52 @@ contain CLI/MCP; HTTP is available from a source checkout. See the
 [operator commands](../app/README.md), [MCP guide](../app/mcp/README.md) and
 [HTTP guide](../app/HTTP.md) for transport-specific usage.
 
+## Product identity and installation footprint
+
+Outask is the displayed product name; `outask` is the command and service
+identifier. `tasks` and `outaskai` are permanent equivalent commands without
+deprecation warnings. Task fields, operation names, routes, `tasks/` and the
+project metadata/recovery filenames retain their existing contracts.
+
+The permanent default roots are `~/.local/share/outask` on Linux,
+`~/Library/Application Support/Outask` on macOS, and
+`%LOCALAPPDATA%\Programs\Outask` on Windows. Application files, default
+`config.json` and disposable `cache/` live there without version directories.
+Updates stage and roll back beside that root, then remove successful staging
+and backups. Confirmed old managed payloads are retired after success;
+unrecognised sibling files are preserved. Conflicting registries stop migration.
+
+Necessary external integrations are POSIX links for all three commands in
+`~/.local/bin`, existing managed shell PATH blocks (including `ZDOTDIR`), and
+Windows user PATH pointing to the root's `commands/` directory. Installation
+consolidates complete generated PATH blocks without changing other shell code.
+Confirmed obsolete Windows launchers and their empty launcher directory's PATH
+entry are retired. Explicit `--bin-dir`, `--release-root`, `--config`,
+`TASK_TRACKER_CONFIG` and XDG paths remain supported external choices. Installed
+project Git hooks and client registrations are explicit integrations; installers
+do not scan projects or rewrite client configuration. Reinstall a managed hook
+to refresh its branding; modified hooks require manual integration.
+
+Writer coordination is the deliberate exception: retain the fixed POSIX
+`/var/tmp/task-tracker-locks-<uid>` and Windows
+`<OS-user-home>/AppData/Local/OutaskAI/locks` namespaces so loaded old clients
+and every alias still share the same SQLite locks, independently of environment
+overrides. This release does not create a second `locks/` namespace or unlink
+live coordination files. Retirement requires all affected old and new sessions
+to finish writes and close, followed by one coordinated protocol migration of
+every writer before any writer restarts; merely moving the files is unsafe.
+Old disposable cache generations may remain dormant for loaded old readers;
+new processes rebuild under the Outask root or explicit XDG cache location.
+Remove dormant caches only after those readers/refresh workers close.
+
+CLI/MCP/HTTP launchers set the Node process title to `outask`; MCP metadata and
+the HTTP `Server` header report `outask`. Linux native acceptance checks the
+running process title through `ps`. OS executable-image names (for example
+`node.exe` on Windows), client-chosen connection labels and wrapper processes
+remain controlled by the OS/client; metadata does not rename those labels.
+Lifecycle acceptance uses isolated user/config/cache/temp paths, and Windows
+registry operations use a test-owned key through a test-only Node preload.
+
 Core entry points take a project path and return values without printing or
 exiting. Their options follow the shared rules below:
 
@@ -36,8 +82,12 @@ form. Missing IDs, extra positionals and combined/repeated selectors fail with
 same working directory and environment.
 
 Global configuration precedence is explicit `--config`, `TASK_TRACKER_CONFIG`,
-then `$XDG_CONFIG_HOME/task-tracker/config.json` (defaulting to
-`~/.config/task-tracker/config.json`). Explicit config replaces the default;
+then the platform Outask application root's `config.json`. An explicit
+`XDG_CONFIG_HOME` selects `$XDG_CONFIG_HOME/outask/config.json` instead.
+An existing legacy `task-tracker/config.json` remains readable when the new
+registry is absent; installation copies it byte-for-byte and retires it only
+after success. Conflicting old/new registries require reconciliation before
+installation. Explicit config replaces the default;
 no registry is created automatically. `projects_root` and `projects` mappings
 use absolute paths. Names select immediate children or explicit mappings,
 allow hyphens and reject traversal. Different real directories for one name
@@ -199,7 +249,7 @@ has `hasMore: false`, `nextOffset: null`; offsets beyond the end return an empty
 page. Get returns the projected object or `TASK_NOT_FOUND`; count returns a
 number without projecting task contents. Human list continuations retain all
 selectors, filters, fields, sorting and formats with safe quoting. CLI uses
-`tasks list`; standalone uses Node from PATH and a script path relative to cwd.
+`outask list`; standalone uses Node from PATH and a script path relative to cwd.
 
 CLI list defaults to a compact table; `--full` selects all fields and defaults
 to text without cell truncation. Explicit `--format text|table|json` overrides
@@ -449,7 +499,7 @@ Expansion adds defaults only when they preserve existing semantics: undeclared
 pending or defaults outside Active stay implicit; undeclared working statuses
 are omitted. Custom unmapped statuses still require explicit groups.
 
-`tasks hook --install|--remove` explicitly manages an optional POSIX pre-commit
+`outask hook --install|--remove` explicitly manages an optional POSIX pre-commit
 hook using the shared validator. It validates working-tree bytes, not the Git
 index, and can refresh working-tree metadata without staging it. Thus valid
 working data may hide invalid staged data, and invalid unstaged data can block

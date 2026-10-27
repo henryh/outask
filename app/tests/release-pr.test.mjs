@@ -48,7 +48,7 @@ function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = fal
   } else git('merge', '--no-ff', 'release-0.16', '-m', 'Merge');
   const sha = git('rev-parse', 'HEAD');
   const event = {repository: {full_name: 'owner/project', owner: {login: 'owner', type: 'User'}}, pull_request: {
-    merged: true, merged_by: {login: 'owner'}, merge_commit_sha: sha, title: `Outask AI v${id}`,
+    merged: true, merged_by: {login: 'owner'}, merge_commit_sha: sha, title: `Outask v${id}`,
     head: {ref: 'release-0.16', sha: head, repo: {full_name: 'owner/project'}}, base: {ref: 'main', sha: base},
   }};
   return {event, root, git, invoke(patch = {}, mode = 'gate', script = 'scripts/release-pr.mjs') {
@@ -164,5 +164,5 @@ test('the final task PR promotes an RC to a new stable release after the owner m
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.output, 'release=true\nversion=0.15\nprerelease=false\n');
   }
-  assert.notEqual(f.invoke({...patch, title: 'Outask AI v0.15-rc.2'}).status, 0);
+  assert.notEqual(f.invoke({...patch, title: 'Outask v0.15-rc.2'}).status, 0);
 });

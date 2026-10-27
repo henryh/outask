@@ -37,7 +37,7 @@ test('top-level version options report the program name and distribution version
   mkdirSync(empty);
   for (const option of ['--version', '-v']) {
     const result = success(cli([option], { cwd: empty }));
-    assert.equal(result.stdout, `Outask AI v${cliVersion}\n`);
+    assert.equal(result.stdout, `Outask v${cliVersion}\n`);
     assert.equal(result.stderr, '');
     assert.deepEqual(readdirSync(empty), []);
   }
@@ -55,19 +55,19 @@ test('bare invocation gives a brief command guide without preparing a project an
   const names = [...result.stdout.matchAll(/^  ([\w-]+)\s+\S.+$/gm)].map((match) => match[1]);
   assert.deepEqual(names.sort(), ['list', 'search', 'get', 'get-many', 'deps', 'validate', 'schema', 'create', 'update', 'transition', 'hook', 'mcp'].sort());
   assert.match(result.stdout, /project directory/);
-  assert.match(result.stdout, /tasks <command> --help/);
-  assert.match(result.stdout, /tasks --help/);
-  assert.match(result.stdout, /tasks --version/);
+  assert.match(result.stdout, /outask <command> --help/);
+  assert.match(result.stdout, /outask --help/);
+  assert.match(result.stdout, /outask --version/);
   assert.doesNotMatch(result.stdout, /Exit [01]|TASK_TRACKER_CONFIG|task-schema\.json|project instructions/);
   const full = success(cli(['--help'], options));
   assert.equal(full.stderr, '');
-  assert.match(full.stdout, /Outask AI manages project tasks stored as JSON/);
+  assert.match(full.stdout, /Outask manages project tasks stored as JSON/);
   assert.match(full.stdout, /https:\/\/github\.com\/henryh\/outask/);
-  assert.match(full.stdout, /tasks create --title/);
+  assert.match(full.stdout, /outask create --title/);
   assert.match(full.stdout, /--project-path <directory>/);
   assert.doesNotMatch(full.stdout, /Exit [01]|TASK_TRACKER_CONFIG|task-schema\.json|project instructions/);
   for (const alias of ['-h', 'help']) assert.equal(success(cli([alias], options)).stdout, full.stdout);
-  assert.match(success(cli(['list', '--help'], options)).stdout, /Usage: tasks list/);
+  assert.match(success(cli(['list', '--help'], options)).stdout, /Usage: outask list/);
   assert.deepEqual(readdirSync(empty), []);
 });
 
@@ -105,7 +105,7 @@ test('installed symlink works outside checkout, matches scripts, updates and uni
   const originalProfile = readFileSync(profile, 'utf8');
   success(install('install'));
   assert.equal(readFileSync(profile, 'utf8'), originalProfile);
-  success(execute('/bin/bash', ['-c', '. "$1"; tasks --version', 'bash', profile], {
+  success(execute('/bin/bash', ['-c', '. "$1"; outask --version', 'bash', profile], {
     env: { ...env, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` },
   }));
   // A second symlink verifies resolution through more than one link.
@@ -125,7 +125,7 @@ test('installed symlink works outside checkout, matches scripts, updates and uni
   assert.deepEqual(snapshot(project), before);
   const first = success(execute(link, ['list', project, '--limit', '2', '--format', 'ids'], { cwd: elsewhere, env }));
   const continuation = first.stderr.match(/Next page: (.+)/)[1];
-  assert.match(continuation, /^tasks list /);
+  assert.match(continuation, /^outask list /);
   const next = success(execute('/bin/sh', ['-c', continuation], { cwd: elsewhere, env }));
   assert.equal(next.stdout, '3 4\n');
   const validated = JSON.parse(success(execute(link, ['validate', project, '--format', 'json'], { cwd: elsewhere, env })).stdout);
@@ -149,7 +149,7 @@ test('installed list guidance preserves original selectors, query arguments and 
   const env = { ...process.env, HOME: project, SHELL: '/bin/bash', PATH: `${bin}:${dirname(process.execPath)}` };
   success(execute(process.execPath, [installer, 'install', '--bin-dir', bin], { cwd: project, env }));
   const first = success(execute('tasks', ['list'], { cwd: project, env }));
-  assert.equal(first.stderr, 'Showing records 1-10 of 12 matches.\nNext page: tasks list --offset 10\n');
+  assert.equal(first.stderr, 'Showing records 1-10 of 12 matches.\nNext page: outask list --offset 10\n');
   const follow = (result) => success(execute('/bin/sh', ['-c', result.stderr.match(/Next page: (.+)/)[1]], { cwd: project, env }));
   assert.match(follow(first).stderr, /^Showing records 11-12 of 12 matches/);
   const path = "selected ' $(touch path-injected)";
@@ -163,7 +163,7 @@ test('installed list guidance preserves original selectors, query arguments and 
     const result = success(execute('tasks', ['list', ...flags, ...selector], { cwd: project, env }));
     assert.equal(result.stdout, '3\n');
     const command = result.stderr.match(/Next page: (.+)/)[1];
-    assert.match(command, /^tasks list --offset 1 /);
+    assert.match(command, /^outask list --offset 1 /);
     assert.equal((command.match(/--offset/g) ?? []).length, 1);
     assert.ok(!command.includes(project));
     for (const argument of ['--store=done', '--where=status=pending', '--id=1', '--id 2', '--id=3', '--fields id,title,note', '--sort id --desc']) {
@@ -182,13 +182,13 @@ test('public usage diagnostics name each CLI command while standalone scripts re
   for (const command of ['list', 'search', 'get', 'get-many', 'deps', 'validate', 'create', 'update', 'transition', 'hook', 'http']) {
     const result = cli([command, 'extra', 'extra', 'extra'], { cwd: project });
     error(result, 'INVALID_INPUT');
-    assert.match(result.stderr, new RegExp(`tasks ${command} `));
+    assert.match(result.stderr, new RegExp(`outask ${command} `));
     assert.doesNotMatch(result.stderr, /node app\//);
   }
   for (const [command, script, args] of [['hook', 'hook', []], ['validate', 'validate-task-stores', ['--format', 'invalid']]]) {
     const result = cli([command, ...args], { cwd: project });
     error(result, 'INVALID_INPUT');
-    assert.match(result.stderr, new RegExp(`Usage: tasks ${command} `));
+    assert.match(result.stderr, new RegExp(`Usage: outask ${command} `));
     assert.doesNotMatch(result.stderr, /node app\//);
     assert.match(run(script, args, { cwd: project }).stderr, new RegExp(`Usage: node app/scripts/${script}.mjs`));
   }
@@ -333,7 +333,7 @@ test('CLI preserves compact defaults, exact filters, human help and error stream
   const project = fixture(t, [task(1, { status: 'in_progress', priority: 'low' }), task(2, { priority: 'high' }), task(3)]);
   const mcpHelp = success(cli(['mcp', '--help'])).stdout;
   assert.match(mcpHelp, /Published releases include the adapter and its dependencies/);
-  assert.match(mcpHelp, /command node and arguments <absolute app\/bin\/tasks path>, mcp/);
+  assert.match(mcpHelp, /command outask and argument mcp/);
   assert.doesNotMatch(mcpHelp, /npm ci|checkout|\/home\/you/);
   const defaults = JSON.parse(success(cli(['list', project, '--format=json'])).stdout);
   assert.deepEqual(defaults.fields, ['id', 'title', 'status']);
@@ -343,7 +343,7 @@ test('CLI preserves compact defaults, exact filters, human help and error stream
   assert.equal(success(cli(['list', project, '--where=title=-leading', '--count'])).stdout, '0\n');
   for (const command of ['list', 'get', 'get-many', 'deps', 'validate']) {
     const help = success(cli([command, '--help'])).stdout;
-    assert.match(help, new RegExp(`Usage: tasks ${command}`));
+    assert.match(help, new RegExp(`Usage: outask ${command}`));
     assert.match(help, /--project-path/);
   }
   error(cli(['get', project, '123', '--format', 'json']), 'TASK_NOT_FOUND');

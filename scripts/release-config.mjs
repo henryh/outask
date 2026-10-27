@@ -23,7 +23,13 @@ export function tagName() {
 }
 
 export function releaseTitle(value = releaseVersion()) {
-  return `Outask AI v${distributionVersion(value)}`;
+  return `${archiveBrand() === 'OutaskAI' ? 'Outask AI' : 'Outask'} v${distributionVersion(value)}`;
+}
+
+// Recovery runs against the original approved manifest. Published asset names
+// and titles must retain the spelling that was approved for that version.
+export function archiveBrand() {
+  return JSON.parse(readFileSync(join(appRoot, 'package.json'), 'utf8')).name === 'task-tracker-local' ? 'OutaskAI' : 'Outask';
 }
 
 export function targetList(value = process.env.TARGETS) {
@@ -43,7 +49,7 @@ export function hostTarget() {
 }
 
 export function archiveName(target, value = releaseVersion()) {
-  return `OutaskAI-${distributionVersion(value)}-${target}.tar.gz`;
+  return `${archiveBrand()}-${distributionVersion(value)}-${target}.tar.gz`;
 }
 
 export function archivePath(target, value = releaseVersion()) {
@@ -61,7 +67,7 @@ export function requireArchives(selected = targetList(), value = releaseVersion(
 export function rejectMixedArchives(packageVersion = version()) {
   const releaseId = distributionVersion(packageVersion);
   if (releaseId === packageVersion) return;
-  const mixed = targets.map((target) => join(distRoot, `OutaskAI-${packageVersion}-${target}.tar.gz`)).filter(existsSync);
+  const mixed = targets.map((target) => join(distRoot, `${archiveBrand()}-${packageVersion}-${target}.tar.gz`)).filter(existsSync);
   if (mixed.length) fail('INVALID_INPUT', `Full-SemVer zero-patch archives must not coexist with ${releaseId} archives: ${mixed.join(', ')}`);
 }
 

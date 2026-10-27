@@ -1,16 +1,15 @@
-# Outask AI operator cookbook
+# Outask operator cookbook
 
-Install a release with the [quick start](../README.md#install-the-cli).
-For a source checkout, run from the repository root (Node.js 22.23.3 or later):
+Install a release with the [quick start](../README.md#install-the-cli). For a source checkout, run from the repository root (Node.js 22.23.3 or later):
 
 ```bash
 npm ci --prefix app --omit=dev
 node app/scripts/install-cli.mjs install
-tasks --help
+outask --help
 ```
 
 Keep the checkout; remove its command with `node app/scripts/install-cli.mjs uninstall`.
-Use `tasks --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
+Use `outask --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
 
 ## Installation and updates
 
@@ -18,9 +17,11 @@ Open a new terminal after installation; restart an editor with an old PATH.
 
 | Platform | Installed application | Command |
 | --- | --- | --- |
-| Linux | `~/.local/share/task-tracker/releases/OutaskAI` | `~/.local/bin/tasks` |
-| macOS | `~/Library/Application Support/OutaskAI` | `~/.local/bin/tasks` |
-| Windows | `%USERPROFILE%\AppData\Local\Programs\OutaskAI` | `%USERPROFILE%\AppData\Local\OutaskAI\bin\tasks.cmd` |
+| Linux | `~/.local/share/outask` | `~/.local/bin/outask` |
+| macOS | `~/Library/Application Support/Outask` | `~/.local/bin/outask` |
+| Windows | `%LOCALAPPDATA%\Programs\Outask` | `%LOCALAPPDATA%\Programs\Outask\commands\outask.cmd` |
+
+`tasks` and `outaskai` are permanent aliases. See the [footprint and migration rules](../docs/contract.md#product-identity-and-installation-footprint).
 
 On macOS, put Node.js 22.23.3 or later on PATH using the
 [official installer](https://nodejs.org/en/download) or another provider.
@@ -32,9 +33,9 @@ Double-click `Install.command` or run `./Install.command`. If macOS blocks this
 unsigned launcher, use [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
 for a release you trust. Keep Gatekeeper enabled.
 
-From the installed OutaskAI directory, update to GitHub Latest stable with `./install.sh update` on Linux, `./Install.command update` on macOS, `./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe. Requires network access and tar on PATH. An already-current installation reports no change; a failed update preserves the working installation.
+From the installed Outask directory, update to GitHub Latest stable with `./install.sh update` on Linux, `./Install.command update` on macOS, `./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe. Requires network access and tar on PATH. An already-current installation reports no change; a failed update preserves the working installation.
 
-Let existing MCP/HTTP sessions and active writes finish normally. Existing sessions may retain their loaded version; fresh launches use the update and `tasks --version` reports `Outask AI v<version>`.
+Let existing MCP/HTTP sessions and active writes finish normally. Existing sessions may retain their loaded version; fresh launches use the update and `outask --version` reports `Outask v<version>`.
 Managed files are replaced; user files, tasks and configuration remain. Resolve
 an unrelated `tasks` collision explicitly. Custom installations must reuse the
 same `--bin-dir` and `--release-root` when updating or removing the command.
@@ -48,9 +49,9 @@ PATH/profile settings remain. Move any user files before removing the applicatio
 ## Selecting a project
 
 ```bash
-tasks list --limit 10
-tasks list --project-path /work/my-project --limit 10
-tasks get --project my-project 42 --fields id,title,status
+outask list --limit 10
+outask list --project-path /work/my-project --limit 10
+outask get --project my-project 42 --fields id,title,status
 ```
 
 No selector means the current directory, without ancestor search. A positional
@@ -61,12 +62,12 @@ See [configuration](#configuration) for names and schema selection.
 ## Task commands
 
 ```bash
-tasks list --fields id,title,status --limit 10
-tasks get 42 --fields id,title,status,updated_at
-tasks get-many --id 42 --id 7 --fields id,title,status
-tasks search "release notes"
-tasks deps 42 --depth 3
-tasks get 42 --store all
+outask list --fields id,title,status --limit 10
+outask get 42 --fields id,title,status,updated_at
+outask get-many --id 42 --id 7 --fields id,title,status
+outask search "release notes"
+outask deps 42 --depth 3
+outask get 42 --store all
 ```
 
 Replace example IDs with existing IDs. Reads default to Active; request history
@@ -78,8 +79,8 @@ cannot prove that no cycle exists.
 ## Creating tasks
 
 ```bash
-tasks create --title "Implement export" --priority high
-tasks create --input new-task.json
+outask create --title "Implement export" --priority high
+outask create --input new-task.json
 ```
 
 `--input` reads a UTF-8 JSON object; `-` reads stdin. Creation input is the task
@@ -91,8 +92,8 @@ fields or custom statuses. Unknown fields are preserved.
 ## Partial updates
 
 ```bash
-tasks update 42 --title "Implement CSV export"
-tasks update 42 --input patch.json --if-updated-at 2026-09-19T12:00:00.000Z
+outask update 42 --title "Implement CSV export"
+outask update 42 --input patch.json --if-updated-at 2026-09-19T12:00:00.000Z
 ```
 
 Replace the timestamp with the task's last-read `updated_at`. A patch file is an
@@ -106,11 +107,11 @@ Use `--if-updated-at` when replacing content from an earlier read; on
 ## Statuses and recovery
 
 ```bash
-tasks transition 42 --status in_progress
-tasks transition 42 --status done
-tasks transition 42 --status cancelled
-tasks transition 42 --status pending
-tasks get 42 --store all
+outask transition 42 --status in_progress
+outask transition 42 --status done
+outask transition 42 --status cancelled
+outask transition 42 --status pending
+outask get 42 --store all
 ```
 
 Use configured statuses; working statuses reject Active blockers. Archive
@@ -120,7 +121,7 @@ completion fields through `update`; no completion date is invented. Use
 
 If a write is interrupted or reports `WRITE_INCOMPLETE`, inspect the saved ID
 before retrying; creation may already have succeeded. A pending move journal
-causes reads to report `RECOVERY_REQUIRED`. Run `tasks validate` to finish it.
+causes reads to report `RECOVERY_REQUIRED`. Run `outask validate` to finish it.
 Never delete `tasks/.task-tracker.pending` to bypass recovery. For
 `RECOVERY_CONFLICT`, preserve the journal and current files and reconcile external
 edits with its saved before/after state. After recovery, reread before retrying.
@@ -130,7 +131,7 @@ may then be removed. See the [shared contract](../docs/contract.md) for guarante
 ## Validation and manual edits
 
 ```bash
-tasks validate
+outask validate
 git diff -- tasks
 ```
 
@@ -143,7 +144,6 @@ task records unchanged. Validation can complete a pending coordinated move.
 The tracker never stages or commits files. Correct invalid metadata and retry.
 
 ## Project locks and upgrades
-
 All cooperating writers must run as the same OS user on one host with local
 filesystems. Ordinary compatible upgrades preserve running sessions and writes.
 For a release requiring an incompatible coordination-protocol migration, let
@@ -160,10 +160,9 @@ filesystem and exclude it from cleanup while writers run. Manual editors do not
 participate in the lock protocol.
 
 ## Git hooks
-
 ```bash
-tasks hook --install
-tasks hook --remove
+outask hook --install
+outask hook --remove
 ```
 
 The optional hook validates working-tree files, including unstaged edits; it
@@ -176,17 +175,19 @@ its failure handling to the existing hook, preserving its checks. Remove only
 that line to undo manual integration. A hook never stages refreshed metadata.
 
 ## Configuration
-
 `--config` selects the global registry; then `TASK_TRACKER_CONFIG`, then
-`$XDG_CONFIG_HOME/task-tracker/config.json` or `~/.config/task-tracker/config.json`.
+the platform Outask root's `config.json`. Explicit `XDG_CONFIG_HOME` selects
+`$XDG_CONFIG_HOME/outask/config.json`; explicit `XDG_CACHE_HOME` selects
+`$XDG_CACHE_HOME/outask/cache`. Otherwise disposable indexes live in `cache/`
+inside the Outask root. Existing legacy registries remain readable until the
+installer migrates them. Conflicting registries require reconciliation.
 It can map `projects` names to absolute paths, define an absolute `projects_root`
 and set `slow_query_ms`. Conflicting name locations require an explicit path.
 
 ## Schema
-
 ```bash
-tasks schema
-tasks schema --write
+outask schema
+outask schema --write
 ```
 
 Schema selection uses `tasks/task-schema.json`, then existing

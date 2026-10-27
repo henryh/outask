@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -18,7 +18,7 @@ function fixture(t, packageVersion = '0.16.0') {
   writeFileSync(join(root, 'app/package.json'), JSON.stringify({version: packageVersion}));
   const version = distributionVersion(packageVersion);
   const assets = ['linux-x64', 'macos-arm64', 'windows-x64'].map((target) => {
-    const name = `OutaskAI-${version}-${target}.tar.gz`;
+    const name = `Outask-${version}-${target}.tar.gz`;
     writeFileSync(join(root, 'dist', name), 'verified archive');
     return { name, size: 16, state: 'uploaded', digest: `sha256:${createHash('sha256').update('verified archive').digest('hex')}` };
   });
@@ -68,10 +68,26 @@ fs.writeFileSync(process.env.RELEASE_STATE, JSON.stringify(state));
       assert.ifError(result.error);
       return { ...result, calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse) : [], release: JSON.parse(readFileSync(state, 'utf8')) };
     },
-    existing(assets = [], draft = true) { return { id: 42, draft, assets, name: `Outask AI v${version}`, body: approvedNotes(version) }; },
+    existing(assets = [], draft = true) { return { id: 42, draft, assets, name: `Outask v${version}`, body: approvedNotes(version) }; },
   };
 }
 const mutations = (result) => result.calls.filter(args => ['create', 'upload', 'edit', 'delete-asset'].includes(args[1]));
+
+test('recovery preserves the title, assets and exact notes of an already-published legacy release', t => {
+  const f = fixture(t, '1.4.0');
+  writeFileSync(join(f.root, 'app/package.json'), JSON.stringify({ name: 'task-tracker-local', version: '1.4.0' }));
+  const assets = f.assets.map(asset => {
+    const name = asset.name.replace('Outask-', 'OutaskAI-');
+    renameSync(join(f.root, 'dist', asset.name), join(f.root, 'dist', name));
+    return { ...asset, name };
+  });
+  const notes = approvedNotes(f.version).replaceAll('Outask-', 'OutaskAI-').replace('Outask ', 'Outask AI ').replaceAll('outask ', 'tasks ');
+  const existing = { id: 42, draft: false, assets, name: 'Outask AI v1.4', body: notes };
+  const result = f.invoke({ existing, notesText: notes });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.release, existing);
+  assert.deepEqual(mutations(result), []);
+});
 
 test('publication stages all verified archives in a draft with the exact approved notes before publishing', t => {
   const f = fixture(t);
@@ -83,7 +99,7 @@ test('publication stages all verified archives in a draft with the exact approve
   assert.ok(result.calls.find(args => args[1] === 'edit').includes('--latest'));
   assert.ok(result.calls.some(args => args[0] === 'api' && args[1] === 'repos/owner/project/releases/latest'));
   assert.equal(result.release.body, approvedNotes(f.version));
-  assert.equal(result.release.name, 'Outask AI v0.16');
+  assert.equal(result.release.name, 'Outask v0.16');
   assert.equal(result.release.draft, false);
   assert.equal(result.release.assets.length, 3);
   assert.equal(readFileSync(f.notes, 'utf8'), 'changed after validation\n');
@@ -134,7 +150,7 @@ test('patch and prerelease identifiers remain complete', t => {
   for (const version of ['0.16.2', '0.16.0-rc.1']) {
     const f = fixture(t, version), result = f.invoke();
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.release.name, `Outask AI v${f.version}`);
+    assert.equal(result.release.name, `Outask v${f.version}`);
     const edit = result.calls.find(args => args[1] === 'edit');
     assert.ok(edit.includes(version.includes('-') ? '--latest=false' : '--latest'));
     if (version.includes('-')) assert.ok(!result.calls.some(args => args[1]?.endsWith('/releases/latest')));
@@ -170,7 +186,7 @@ test('invalid notes and publication prerequisites fail before remote mutations',
 test('release notes need not retain the extracted download directory', t => {
   const f = fixture(t);
   for (const install of [
-    'Extract the archive. Open the directory OutaskAI in a terminal and run:',
+    'Extract the archive. Open the directory Outask in a terminal and run:',
     'Download the archive, extract it in a directory you will keep, open that directory in a terminal and run:',
   ]) {
     const notes = approvedNotes(f.version).replace('Download and extract the archive, open that directory in a terminal and run:', install);
@@ -183,7 +199,7 @@ test('release notes need not retain the extracted download directory', t => {
 
 test('mixed full-SemVer zero-patch archives fail before remote mutations', t => {
   const f = fixture(t);
-  writeFileSync(join(f.root, 'dist/OutaskAI-0.16.0-linux-x64.tar.gz'), 'stale');
+  writeFileSync(join(f.root, 'dist/Outask-0.16.0-linux-x64.tar.gz'), 'stale');
   const result = f.invoke();
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Full-SemVer/);

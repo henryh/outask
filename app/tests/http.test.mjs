@@ -56,6 +56,7 @@ test('HTTP reads an uninitialised project as empty without writing task records'
     for (let repeat = 0; repeat < 2; repeat++) {
       const page = await api(`/tasks?group=Active&fields=id,title,status&limit=50${suffix}`);
       assert.equal(page.status, 200);
+      assert.equal(page.headers.server, 'outask');
       assert.deepEqual(page.data.tasks, []);
       assert.equal(page.data.hasMore, false);
       assert.equal(page.data.nextOffset, null);
@@ -140,7 +141,7 @@ test('HTTP reports unavailable cache acceleration without failing task data', (t
   const observed = JSON.parse(result.stdout);
   assert.equal(observed.status, 200);
   assert.equal(observed.body.id, 1);
-  assert.match(observed.warning, /199 task-tracker "CACHE_UNAVAILABLE: SQLite cache acceleration is unavailable/);
+  assert.match(observed.warning, /199 outask "CACHE_UNAVAILABLE: SQLite cache acceleration is unavailable/);
 });
 
 test('HTTP indexed search and batch report an unusable cache root exactly once', (t) => {
@@ -163,7 +164,7 @@ test('HTTP indexed search and batch report an unusable cache root exactly once',
   });
   assert.equal(result.status, 0, result.stderr);
   const observed = JSON.parse(result.stdout);
-  const warning = '199 task-tracker "CACHE_UNAVAILABLE: SQLite cache acceleration is unavailable; authoritative JSON was used."';
+  const warning = '199 outask "CACHE_UNAVAILABLE: SQLite cache acceleration is unavailable; authoritative JSON was used."';
   assert.equal(observed.search.status, 200);
   assert.deepEqual(observed.search.body.tasks.map(({ id }) => id), [1]);
   assert.equal(observed.search.warning, warning);

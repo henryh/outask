@@ -520,7 +520,7 @@ test('standalone and installed search support project selection, metadata and co
   assert.ok(first.next_cursor);
   const current = success(cli(['search', 'remembered', '--limit', '1', '--format', 'ids'], { cwd: root }));
   assert.equal(current.stdout, '1\n');
-  assert.match(current.stderr, /Next page: tasks search --cursor/);
+  assert.match(current.stderr, /Next page: outask search --cursor/);
   const explicit = success(cli(['search', 'remembered', '--project-path', root, '--format', 'ids']));
   assert.equal(explicit.stdout, '1 2 3\n');
   const registry = join(root, 'registry', 'config.json');

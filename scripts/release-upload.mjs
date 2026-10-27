@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fail } from '../app/src/errors.mjs';
 import { reportError } from '../app/scripts/output.mjs';
-import { archivePath, output, rejectMixedArchives, releaseTitle, releaseVersion, requireArchives, run, succeeds, tagName, targetList, targets, version } from './release-config.mjs';
+import { archiveName, archivePath, output, rejectMixedArchives, releaseTitle, releaseVersion, requireArchives, run, succeeds, tagName, targetList, targets, version } from './release-config.mjs';
 
 function originRepo() {
   const remote = output('git', ['remote', 'get-url', 'origin']);
@@ -31,7 +31,7 @@ function readRelease(repo, tag) {
 
 function verifyAssets(release, required, releaseId) {
   for (const target of required) {
-    const name = `OutaskAI-${releaseId}-${target}.tar.gz`;
+    const name = archiveName(target, releaseId);
     const asset = release.assets.find((asset) => asset.name === name);
     const local = readFileSync(archivePath(target, releaseId));
     const digest = `sha256:${createHash('sha256').update(local).digest('hex')}`;
@@ -76,29 +76,29 @@ try {
     if (release.body !== approved.notes || release.name !== releaseTitle(releaseId)) {
       fail('INVALID_INPUT', 'Existing release title/description differs from the approved release; refusing to rewrite it');
     }
-    const expectedNames = targets.map((target) => `OutaskAI-${releaseId}-${target}.tar.gz`);
+    const expectedNames = targets.map((target) => archiveName(target, releaseId));
     if (release.assets.some((asset) => !expectedNames.includes(asset.name))) {
       fail('INVALID_INPUT', 'Existing release contains unexpected assets; refusing to change it');
     }
-    verifyAssets(release, selected.filter((target) => release.assets.some((asset) => asset.name === `OutaskAI-${releaseId}-${target}.tar.gz`)), releaseId);
+    verifyAssets(release, selected.filter((target) => release.assets.some((asset) => asset.name === archiveName(target, releaseId))), releaseId);
   } else {
     run('gh', ['release', 'create', tag, '--repo', repo, '--verify-tag', '--draft', ...(packageId.includes('-') ? ['--prerelease'] : []), '--title', releaseTitle(releaseId), '--notes-file', approvedNotesPath]);
     release = { draft: true, assets: [] };
   }
-  const missing = selected.filter((target) => !release.assets.some((asset) => asset.name === `OutaskAI-${releaseId}-${target}.tar.gz`));
+  const missing = selected.filter((target) => !release.assets.some((asset) => asset.name === archiveName(target, releaseId)));
   if (!release.draft) {
     requireArchives(targets, releaseId);
     verifyAssets(release, targets, releaseId);
   } else {
     if (missing.length) run('gh', ['release', 'upload', tag, '--repo', repo, ...missing.map((target) => archivePath(target, releaseId))]);
     const final = readRelease(repo, tag);
-    if (!targets.every((target) => final.assets.some((asset) => asset.name === `OutaskAI-${releaseId}-${target}.tar.gz` && asset.state === 'uploaded'))) {
+    if (!targets.every((target) => final.assets.some((asset) => asset.name === archiveName(target, releaseId) && asset.state === 'uploaded'))) {
       fail('INVALID_INPUT', 'Draft retained: all three uploaded platform archives are required before publication');
     }
     if (final.body !== approved.notes || final.name !== releaseTitle(releaseId)) {
       fail('INVALID_INPUT', 'Draft description changed during upload; refusing publication');
     }
-    if (final.assets.some((asset) => !targets.some((target) => asset.name === `OutaskAI-${releaseId}-${target}.tar.gz`))) {
+    if (final.assets.some((asset) => !targets.some((target) => asset.name === archiveName(target, releaseId)))) {
       fail('INVALID_INPUT', 'Draft contains unexpected assets; refusing publication');
     }
     requireArchives(targets, releaseId);

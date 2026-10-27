@@ -9,23 +9,23 @@ archives include the adapter and its dependencies.
 After installation, open a new terminal and register the server:
 
 ```bash
-codex mcp add tasks -- tasks mcp
+codex mcp add outask -- outask mcp
 codex mcp list
 ```
 
-Start a new Codex session; `/mcp` shows active servers. The first `tasks` is the
-server name; `tasks mcp` is the process it launches. See
+Start a new Codex session; `/mcp` shows active servers. The first `outask` is the
+server name; `outask mcp` is the process it launches. See
 [Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
-Use `tasks` from PATH for the installed adapter. If startup fails, check that
-both `tasks` and `node` are available in the client's environment, then restart
+Use `outask` from PATH for the installed adapter. If startup fails, check that
+both `outask` and `node` are available in the client's environment, then restart
 the client after correcting PATH. Verify the connection in a new session.
 
 Only when a confirmed client limitation prevents PATH-based startup, register
 absolute paths from a working terminal and record the concrete reason:
 
 ```bash
-codex mcp add tasks -- "$(command -v node)" "$(command -v tasks)" mcp
+codex mcp add outask -- "$(command -v node)" "$(command -v outask)" mcp
 ```
 
 Register again if the selected Node path changes. The installed launcher
@@ -39,10 +39,10 @@ Configure the Node entry directly, since clients differ in `.cmd` support:
 ```json
 {
   "mcpServers": {
-    "tasks": {
+    "outask": {
       "command": "node",
       "args": [
-        "C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\OutaskAI\\app\\bin\\tasks",
+        "C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\Outask\\app\\bin\\outask",
         "mcp"
       ]
     }
@@ -61,8 +61,8 @@ Adapt the outer settings container to your client:
 ```json
 {
   "mcpServers": {
-    "tasks": {
-      "command": "tasks",
+    "outask": {
+      "command": "outask",
       "args": ["mcp"]
     }
   }
@@ -78,14 +78,14 @@ Remove the entry and stop its process to disconnect the adapter.
 Run the new archive's installer while existing sessions remain connected. Let
 active writes finish; do not kill MCP processes or force an immediate reconnect.
 Existing sessions may use their old loaded version until the launching client
-restarts them in its normal lifecycle. Verify `tasks --version` and a fresh MCP
+restarts them in its normal lifecycle. Verify `outask --version` and a fresh MCP
 connection with a task read to check the updated installation independently.
 See [project locks and upgrades](../README.md#project-locks-and-upgrades)
 for coordination-file cleanup and incompatible protocol migrations.
 
 ## Tools and selection
 
-Select a project in each tool call. `tasks mcp` takes no project flags. Supply
+Select a project in each tool call. `outask mcp` takes no project flags. Supply
 an absolute `project_path` when the client's working directory is unknown, or
 use `project` for a configured name. They are mutually exclusive; neither means
 the server's current directory. `config` selects the global registry and
@@ -115,7 +115,7 @@ for data semantics and bounds.
 The process runs with your filesystem permissions. Project selection routes
 operations; it does not restrict access. Configure only trusted clients.
 Stdout carries MCP messages; launch diagnostics go to stderr. There is no HTTP
-listener or client configuration written by Outask AI.
+listener or client configuration written by Outask.
 
 ## Source checkout
 
@@ -124,7 +124,7 @@ From the repository root:
 ```bash
 npm ci --prefix app --omit=dev
 npm ci --prefix app/mcp --omit=dev
-node app/bin/tasks mcp
+node app/bin/outask mcp
 ```
 
 Point the client at the absolute Node executable, with this checkout's

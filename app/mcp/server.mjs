@@ -22,7 +22,7 @@ const limit = z.number().int().min(1).max(maxLimit).optional()
 const selection = {
   project: text.optional().describe('Configured project name; exclusive with project_path.'),
   project_path: text.optional().describe('Project directory; defaults to server working directory.'),
-  config: text.optional().describe('Name registry path; otherwise TASK_TRACKER_CONFIG or XDG default.'),
+  config: text.optional().describe('Name registry path; otherwise TASK_TRACKER_CONFIG or the Outask default registry.'),
   schema_path: text.optional().describe('Project-relative task schema; overrides automatic default/legacy selection.'),
 };
 const reading = {
@@ -40,7 +40,7 @@ const writes = ({ store, if_updated_at }) => ({ store, ifUpdatedAt: if_updated_a
 const reads = ({ no_cache, ...args }) => ({ ...args, noCache: no_cache ?? false });
 
 export function createServer() {
-  const server = new McpServer({ name: 'task-tracker', version: '0.1.0' });
+  const server = new McpServer({ name: 'outask', version: '0.1.0' });
   function register(name, description, shape, operation, cacheRead = false) {
     server.registerTool(name, {
       description,
@@ -123,6 +123,7 @@ export function createServer() {
 }
 
 export async function main() {
+  process.title = 'outask';
   const server = createServer();
   const transport = new StdioServerTransport(process.stdin, process.stdout, { maxBufferSize: inputBytes });
   server.server.onerror = (error) => process.stderr.write(`${errorText(error.message)}\n`);

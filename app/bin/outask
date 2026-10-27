@@ -1,0 +1,7 @@
+#!/usr/bin/env node
+process.title = 'outask';
+// Node resolves this entry's real path before loading its relative modules.
+import('../runtime.cjs').then(() => import('../cli.mjs')).then(({ main }) => main(process.argv.slice(2))).catch((error) => {
+  process.stderr.write(`STARTUP_ERROR: ${error.message}\n`);
+  process.exitCode = 1;
+});

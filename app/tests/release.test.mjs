@@ -85,11 +85,11 @@ function fixture(t, target = 'linux-x64') {
   const home = realpathSync(mkdtempSync(join(root, 'home ')));
   const downloads = join(home, 'Downloads');
   mkdirSync(downloads);
-  ok(run('tar', ['-xzf', join(archives, `OutaskAI-${releaseVersion}-${target}.tar.gz`), '-C', downloads]));
-  const source = join(downloads, 'OutaskAI');
+  ok(run('tar', ['-xzf', join(archives, `Outask-${releaseVersion}-${target}.tar.gz`), '-C', downloads]));
+  const source = join(downloads, 'Outask');
   const bin = join(home, '.local/bin');
-  const releases = process.platform === 'darwin' ? join(home, 'Library/Application Support') : join(home, '.local/share/task-tracker/releases');
-  const installed = join(releases, 'OutaskAI');
+  const releases = process.platform === 'darwin' ? join(home, 'Library/Application Support') : join(home, '.local/share');
+  const installed = join(releases, process.platform === 'linux' ? 'outask' : 'Outask');
   const tools = join(home, 'tools');
   mkdirSync(tools);
   symlinkSync(process.execPath, join(tools, 'node'));
@@ -115,17 +115,17 @@ test('builders reject unsupported targets before creating artifacts', () => {
 
 test('archives contain app resources without runtimes, HTTP, plugins, development stores or checksums', () => {
   for (const target of ['linux-x64', 'macos-arm64', 'windows-x64']) {
-    const archive = join(archives, `OutaskAI-${releaseVersion}-${target}.tar.gz`);
+    const archive = join(archives, `Outask-${releaseVersion}-${target}.tar.gz`);
     const entries = ok(run('tar', ['-tzf', archive])).split('\n').filter(Boolean);
-    assert.deepEqual([...new Set(entries.map((path) => path.split('/')[0]))], ['OutaskAI']);
-    assert.deepEqual(JSON.parse(ok(run('tar', ['-xOf', archive, 'OutaskAI/release.json']))), { version: releaseVersion, target });
-    const publicInstallers = entries.filter((path) => /^OutaskAI\/install[^/]*$/i.test(path));
-    assert.deepEqual(publicInstallers, [`OutaskAI/${installerEntries[target]}`], target);
+    assert.deepEqual([...new Set(entries.map((path) => path.split('/')[0]))], ['Outask']);
+    assert.deepEqual(JSON.parse(ok(run('tar', ['-xOf', archive, 'Outask/release.json']))), { version: releaseVersion, target });
+    const publicInstallers = entries.filter((path) => /^Outask\/install[^/]*$/i.test(path));
+    assert.deepEqual(publicInstallers, [`Outask/${installerEntries[target]}`], target);
     for (const helper of ['install-release.mjs', 'install-path.mjs', 'install-launcher.mjs']) {
-      assert.ok(entries.includes(`OutaskAI/app/scripts/${helper}`), `${target}: ${helper}`);
+      assert.ok(entries.includes(`Outask/app/scripts/${helper}`), `${target}: ${helper}`);
     }
     assert.ok(entries.some((path) => /\/node_modules\/.+\/(?:LICENSE|License|license)(?:\.[^/]*)?$/.test(path)));
-    assert.equal(entries.includes('OutaskAI/Install.command'), target === 'macos-arm64');
+    assert.equal(entries.includes('Outask/Install.command'), target === 'macos-arm64');
     assert.ok(entries.some((path) => path.endsWith('/app/cli.mjs')));
     assert.ok(entries.some((path) => path.endsWith('/app/scripts/schema.mjs')));
     assert.ok(entries.some((path) => path.endsWith('/app/scripts/search-tasks.mjs')));
@@ -141,15 +141,15 @@ test('each archive README and installer help describe only their destination pla
   const nodeRange = JSON.parse(readFileSync(join(repo, 'app/package.json'), 'utf8')).engines.node;
   const platforms = {
     'linux-x64': {
-      name: 'Linux x64', application: '~/.local/share/task-tracker/releases/OutaskAI',
+      name: 'Linux x64', application: '~/.local/share/outask',
       foreign: /macOS|Apple|Windows|PowerShell|cmd\.exe|Install\.cmd|Install\.command|Library\/Application Support|AppData/,
     },
     'macos-arm64': {
-      name: 'macOS Apple silicon', application: '~/Library/Application Support/OutaskAI',
+      name: 'macOS Apple silicon', application: '~/Library/Application Support/Outask',
       foreign: /Linux|Windows|PowerShell|cmd\.exe|Install\.cmd|install\.sh|\.local\/share\/task-tracker\/releases|AppData/,
     },
     'windows-x64': {
-      name: 'Windows x64', application: '%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI',
+      name: 'Windows x64', application: '%LOCALAPPDATA%\\Programs\\Outask',
       foreign: /Linux|macOS|Apple|install\.sh|Install\.command|~\/|\.local\/|Library\/Application Support/,
     },
   };
@@ -158,7 +158,7 @@ test('each archive README and installer help describe only their destination pla
     const readme = readFileSync(join(f.source, 'README.md'), 'utf8');
     // Metadata, rather than the host OS, must determine cross-built archive help.
     const help = ok(f.install('--help'));
-    assert.ok(readme.startsWith(`# Outask AI v${releaseVersion} (${platform.name})\n`));
+    assert.ok(readme.startsWith(`# Outask v${releaseVersion} (${platform.name})\n`));
     assert.ok(readme.trimEnd().split('\n').length < 200, target);
     assert.ok(readme.includes(`Node.js ${nodeRange}`));
     assert.match(help, /Node\.js\s+(?:>=)?22\.23\.3\b/);
@@ -168,8 +168,8 @@ test('each archive README and installer help describe only their destination pla
       assert.doesNotMatch(instructions, platform.foreign);
     }
     assert.ok(readme.indexOf(nodeRange) < readme.indexOf(installerEntries[target]), target);
-    assert.match(readme, /^tasks create --title (?:"[^"\n]+"|'[^'\n]+'|\S+)$/m);
-    assert.match(readme, /^tasks list(?: --format table)?$/m);
+    assert.match(readme, /^outask create --title (?:"[^"\n]+"|'[^'\n]+'|\S+)$/m);
+    assert.match(readme, /^outask list(?: --format table)?$/m);
     assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/mcp/README.md`));
     assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/README.md`));
     assert.ok(readme.includes(`./${installerEntries[target]} update`));
@@ -178,13 +178,13 @@ test('each archive README and installer help describe only their destination pla
       assert.match(readme, /PowerShell: `\.\/Install\.cmd`/);
       assert.match(readme, /cmd.exe: `Install\.cmd`/);
       const config = JSON.parse(readme.match(/```json\n([\s\S]*?)\n```/)[1]);
-      assert.deepEqual(config, { command: 'node', args: ['C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\OutaskAI\\app\\bin\\tasks', 'mcp'] });
-      assert.ok(readme.includes('& "$env:USERPROFILE\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall'));
-      assert.ok(readme.includes('"%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall'));
+      assert.deepEqual(config, { command: 'node', args: ['C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\Outask\\app\\bin\\outask', 'mcp'] });
+      assert.ok(readme.includes('& "$env:LOCALAPPDATA\\Programs\\Outask\\Install.cmd" uninstall'));
+      assert.ok(readme.includes('"%LOCALAPPDATA%\\Programs\\Outask\\Install.cmd" uninstall'));
       assert.match(help, /\.\/Install\.cmd \(PowerShell\), Install\.cmd \(cmd\.exe\)/);
     } else {
       assert.ok(readme.includes(`\`\`\`sh\n./${installerEntries[target]}\n\`\`\``), target);
-      assert.match(readme, /codex mcp add tasks -- tasks mcp\ncodex mcp list/);
+      assert.match(readme, /codex mcp add outask -- outask mcp\ncodex mcp list/);
       assert.equal((readme.match(/codex mcp add/g) || []).length, 1);
       const installed = platform.application.replace('~', '$HOME');
       assert.ok(readme.includes(`"${installed}/${installerEntries[target]}" uninstall`));
@@ -200,11 +200,11 @@ test('build output and archive boundary use derived zero and non-zero patch iden
     assert.equal(result.version, expected);
     assert.equal(result.artifacts.length, 1);
     const archive = result.artifacts[0].archive;
-    assert.equal(archive.endsWith(`/OutaskAI-${expected}-linux-x64.tar.gz`), true);
-    const rootName = 'OutaskAI';
+    assert.equal(archive.endsWith(`/Outask-${expected}-linux-x64.tar.gz`), true);
+    const rootName = 'Outask';
     assert.equal(JSON.parse(ok(run('tar', ['-xOf', archive, `${rootName}/release.json`]))).version, expected);
     assert.equal(JSON.parse(ok(run('tar', ['-xOf', archive, `${rootName}/app/package.json`]))).version, packageVersion);
-    assert.match(ok(run('tar', ['-xOf', archive, `${rootName}/README.md`])), new RegExp(`^# Outask AI v${expected.replaceAll('.', '\\.')}`));
+    assert.match(ok(run('tar', ['-xOf', archive, `${rootName}/README.md`])), new RegExp(`^# Outask v${expected.replaceAll('.', '\\.')}`));
   }
 });
 
@@ -216,7 +216,7 @@ test('release builds install both dependency trees through a symlinked output di
   const result = JSON.parse(ok(run(process.execPath, [join(repo, 'app/scripts/release.mjs'),
     '--target', 'linux-x64', '--out-dir', linked])));
   const archive = result.artifacts[0].archive;
-  assert.equal(archive, join(linked, `OutaskAI-${releaseVersion}-linux-x64.tar.gz`));
+  assert.equal(archive, join(linked, `Outask-${releaseVersion}-linux-x64.tar.gz`));
   const entries = ok(run('tar', ['-tzf', archive])).split('\n');
   assert.ok(entries.some((path) => path.endsWith('/app/node_modules/jsonc-parser/package.json')));
   assert.ok(entries.some((path) => path.endsWith('/app/mcp/node_modules/@modelcontextprotocol/server/package.json')));
@@ -255,7 +255,7 @@ test('download install, repeat, update and uninstall preserve project data and s
   // A newly extracted version uses the same install/update path.
   writeFileSync(join(f.source, 'release.json'), JSON.stringify({ version: '99.0.0', target: 'linux-x64' }));
   ok(f.install());
-  const newer = join(f.releases, 'OutaskAI');
+  const newer = join(f.releases, process.platform === 'linux' ? 'outask' : 'Outask');
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(newer, 'app/bin/tasks'));
   assert.equal(existsSync(join(newer, 'app/scripts/obsolete.mjs')), false);
   assert.equal(readFileSync(join(newer, 'user-note.txt'), 'utf8'), 'keep user content');
@@ -346,7 +346,7 @@ test('failed staged startup keeps the installed application and user files usabl
   const result = f.install();
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /INVALID_RELEASE: staged application failed startup/);
-  assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env: f.env })).trim(), `Outask AI v${releaseVersion}`);
+  assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env: f.env })).trim(), `Outask v${releaseVersion}`);
   assert.equal(readFileSync(join(f.installed, 'user-note.txt'), 'utf8'), 'retain this');
 });
 
@@ -372,7 +372,7 @@ await import(entry);`;
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /simulated command replacement refusal/);
   assert.equal(JSON.parse(readFileSync(join(f.installed, 'release.json'), 'utf8')).version, releaseVersion);
-  assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env: f.env })).trim(), `Outask AI v${releaseVersion}`);
+  assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env: f.env })).trim(), `Outask v${releaseVersion}`);
   assert.equal(readFileSync(join(f.installed, 'user-note.txt'), 'utf8'), 'retain this');
 });
 
@@ -398,25 +398,74 @@ test('installer refuses an unrelated destination before replacing user files', (
   assert.equal(existsSync(f.bin), false);
 });
 
-test('legacy versioned installations migrate the command without deleting old copies', (t) => {
+test('legacy versioned installations retire managed payloads while retaining unrelated files', (t) => {
   const f = fixture(t);
   ok(f.install());
   const legacy = join(f.releases, `task-tracker-${releaseVersion}-linux-x64`);
   renameSync(f.installed, legacy);
-  rmSync(join(f.bin, 'tasks'));
+  for (const name of ['outask', 'tasks', 'outaskai']) rmSync(join(f.bin, name));
   symlinkSync(join(legacy, 'app/bin/tasks'), join(f.bin, 'tasks'));
   writeFileSync(join(legacy, 'user-note.txt'), 'legacy user content');
   ok(f.install());
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
   assert.equal(readFileSync(join(legacy, 'user-note.txt'), 'utf8'), 'legacy user content');
-  assert.equal(ok(run(join(legacy, 'app/bin/tasks'), ['--version'], { env: f.env })).trim(), `Outask AI v${releaseVersion}`);
+  assert.equal(existsSync(join(legacy, 'app')), false);
+});
+
+test('a legacy packaged updater migrates its default root, registry and command into one Outask installation', t => {
+  const f = fixture(t);
+  const oldRoot = join(f.home, '.local/share/task-tracker/releases');
+  const previous = join(oldRoot, 'OutaskAI');
+  cpSync(f.source, previous, { recursive: true });
+  const manifest = join(previous, 'app/package.json');
+  const pkg = JSON.parse(readFileSync(manifest, 'utf8'));
+  writeFileSync(manifest, JSON.stringify({ ...pkg, name: 'task-tracker-local' }));
+  mkdirSync(f.bin, { recursive: true });
+  symlinkSync(join(previous, 'app/bin/tasks'), join(f.bin, 'tasks'));
+  writeFileSync(join(previous, 'user-owned.txt'), 'preserve');
+  const oldConfig = join(f.home, '.config/task-tracker/config.json');
+  mkdirSync(dirname(oldConfig), { recursive: true });
+  const settings = '{"projects":{},"unknown":{"preserved":[1,2]}}\n';
+  writeFileSync(oldConfig, settings);
+  const env = { ...f.env, XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, TASK_TRACKER_CONFIG: undefined };
+  // This is the exact directory-forwarding behaviour of the old updater.
+  ok(run(process.execPath, [internalInstaller(f.source), 'install', '--bin-dir', f.bin, '--release-root', oldRoot], { env }));
+  for (const name of ['outask', 'tasks', 'outaskai']) {
+    assert.equal(readlinkSync(join(f.bin, name)), join(f.installed, 'app/bin/tasks'));
+    assert.equal(ok(run(join(f.bin, name), ['--version'], { env })).trim(), `Outask v${releaseVersion}`);
+  }
+  assert.equal(readFileSync(join(f.installed, 'config.json'), 'utf8'), settings);
+  assert.equal(existsSync(oldConfig), false);
+  assert.equal(existsSync(join(previous, 'app')), false);
+  assert.equal(readFileSync(join(previous, 'user-owned.txt'), 'utf8'), 'preserve');
+  assert.equal(readdirSync(f.releases).some(name => name.startsWith('.outask-')), false);
+});
+
+test('installation preserves default state created by source commands and refuses conflicting registries', t => {
+  const f = fixture(t);
+  const current = join(f.installed, 'config.json');
+  mkdirSync(join(f.installed, 'cache'), { recursive: true });
+  writeFileSync(current, '{"projects":{}}\n');
+  const oldConfig = join(f.home, '.config/task-tracker/config.json');
+  mkdirSync(dirname(oldConfig), { recursive: true });
+  writeFileSync(oldConfig, '{"projects":{},"unknown":true}\n');
+  const env = { ...f.env, XDG_CONFIG_HOME: undefined, TASK_TRACKER_CONFIG: undefined };
+  const blocked = run(process.execPath, [internalInstaller(f.source)], { env });
+  assert.notEqual(blocked.status, 0);
+  assert.match(blocked.stderr, /CONFIG_CONFLICT/);
+  assert.equal(existsSync(f.bin), false);
+  assert.equal(readFileSync(oldConfig, 'utf8'), '{"projects":{},"unknown":true}\n');
+  rmSync(oldConfig);
+  ok(run(process.execPath, [internalInstaller(f.source)], { env }));
+  assert.equal(readFileSync(current, 'utf8'), '{"projects":{}}\n');
+  assert.ok(existsSync(join(f.installed, 'cache')));
 });
 
 test('custom root is the installation parent and ownership requires the selected root', (t) => {
   const f = fixture(t);
   const parent = join(f.home, 'custom parent');
   ok(f.install('--release-root', parent));
-  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(parent, 'OutaskAI/app/bin/tasks'));
+  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(parent, process.platform === 'linux' ? 'outask' : 'Outask', 'app/bin/tasks'));
   const rejected = f.install();
   assert.notEqual(rejected.status, 0);
   assert.match(rejected.stderr, /COMMAND_EXISTS/);
@@ -777,7 +826,7 @@ fs.renameSync(report + '.tmp', report);`;
   assert.equal(evidence.outputTTY, false);
   assert.equal(evidence.argument, 'structured argument');
   const failed = run(process.execPath, ['--input-type=module', '-'], {
-    input: source.replace("'/usr/bin/osascript'", "'/unavailable-OutaskAI-window-worker'"), env: f.env,
+    input: source.replace("'/usr/bin/osascript'", "'/unavailable-Outask-window-worker'"), env: f.env,
   });
   ok(failed);
   assert.match(failed.stderr, /Automatic window closure unavailable.*Cmd\+W/);
@@ -811,9 +860,9 @@ test('macOS directory selection recognises its stable destination and previous d
   // Test platform-dependent path selection; native acceptance runs separately on macOS.
   const module = "Object.defineProperty(process, 'platform', { value: 'darwin' }); const entry = process.argv[1]; process.argv.splice(1, 1); await import(entry);";
   ok(run(process.execPath, ['--input-type=module', '-e', module, internalInstaller(f.source)], { env: f.env }));
-  const installed = join(f.home, 'Library/Application Support/OutaskAI');
+  const installed = join(f.home, 'Library/Application Support/Outask');
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(installed, 'app/bin/tasks'));
-  assert.equal(existsSync(legacy), true);
+  assert.equal(existsSync(legacy), false);
   ok(run(process.execPath, ['--input-type=module', '-e', module, join(repo, 'app/scripts/install-cli.mjs'),
     'install', '--bin-dir', f.bin], { env: f.env }));
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(repo, 'app/bin/tasks'));
@@ -848,7 +897,7 @@ test('CLI install does not require optional MCP dependencies and reports PATH ac
   const original = readFileSync(profile, 'utf8');
   ok(run(join(f.source, 'install.sh'), [], { env }));
   assert.equal(readFileSync(profile, 'utf8'), original);
-  assert.equal(ok(run('/bin/bash', ['-c', '. "$1"; tasks --version', 'bash', profile], { env })).trim(), `Outask AI v${releaseVersion}`);
+  assert.equal(ok(run('/bin/bash', ['-c', '. "$1"; tasks --version', 'bash', profile], { env })).trim(), `Outask v${releaseVersion}`);
   rmSync(profile);
   mkdirSync(profile);
   assert.match(ok(run(join(f.source, 'install.sh'), [], { env })), /Command installed.*PATH setup failed/);
@@ -882,8 +931,8 @@ test('installer ignores an unrelated non-searchable PATH directory', {
   try {
     assert.throws(() => lstatSync(join(restricted, 'tasks')), { code: 'EACCES' });
     const env = { ...f.env, PATH: `${restricted}:${f.env.PATH}` };
-    assert.match(ok(run(join(f.source, 'install.sh'), [], { env })), /Installed OutaskAI/);
-    assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env })).trim(), `Outask AI v${releaseVersion}`);
+    assert.match(ok(run(join(f.source, 'install.sh'), [], { env })), /Installed Outask/);
+    assert.equal(ok(run(join(f.bin, 'tasks'), ['--version'], { env })).trim(), `Outask v${releaseVersion}`);
   } finally {
     chmodSync(restricted, 0o700);
   }
@@ -902,12 +951,12 @@ test('installer migrates existing checkout and previous release command links', 
   symlinkSync(join(old, 'bin/tasks'), join(f.bin, 'tasks'));
   ok(f.install());
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
-  assert.equal(existsSync(join(old, 'bin/tasks')), true);
+  assert.equal(existsSync(join(old, 'bin/tasks')), false);
 });
 
 test('Windows archive installer checks Node before delegating to the managed installer', () => {
-  const archive = join(archives, `OutaskAI-${releaseVersion}-windows-x64.tar.gz`);
-  const installer = ok(run('tar', ['-xOf', archive, 'OutaskAI/Install.cmd']));
+  const archive = join(archives, `Outask-${releaseVersion}-windows-x64.tar.gz`);
+  const installer = ok(run('tar', ['-xOf', archive, 'Outask/Install.cmd']));
   assert.match(installer, /DEPENDENCY_MISSING/);
   assert.match(installer, /runtime.cjs/);
   assert.match(installer, /app\\scripts\\install-release\.mjs/);

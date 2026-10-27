@@ -34,34 +34,35 @@ const commandGuide = `  list       List tasks
   transition Change a task's status
   hook       Install or remove pre-commit validation
   mcp        Start the MCP adapter`;
-const guide = `Usage: tasks <command> [options]
+const guide = `Usage: outask <command> [options]
 
 ${commandGuide}
 
 Task commands use the current project directory by default.
-Command options: tasks <command> --help. Full guide: tasks --help.
-Installed version: tasks --version.
+Command options: outask <command> --help. Full guide: outask --help.
+Installed version: outask --version.
 `;
 const selectionHelp = `Select one project with a positional path, --project-path <path>, or --project <name>.
 With no selector, use the current working directory. Selectors cannot be combined.
   --config <path>      Program config; overrides TASK_TRACKER_CONFIG, then XDG_CONFIG_HOME
-                      (default: ~/.config/task-tracker/config.json). Paths bypass name mappings.
+                      (default: the platform Outask root/config.json). Paths bypass name mappings.
   --schema-path <file> Project-relative task schema; distinct from registry --config.
 Names resolve immediate projects_root children and explicit projects mappings;
 conflicting locations fail. No parent search or automatic worktree selection.
 `;
-const help = `Outask AI manages project tasks stored as JSON alongside your code.
+const help = `Outask manages project tasks stored as JSON alongside your code.
 
-Usage: tasks <command> [options]
+Usage: outask <command> [options]
 
 ${commandGuide}
 
 Tips:
   Run commands from your project directory, or use --project-path <directory>.
-  Start with tasks create --title "Your task", then tasks list.
-  Use tasks <command> --help for options and examples.
+  Start with outask create --title "Your task", then outask list.
+  Use outask <command> --help for options and examples.
 
-Installed version: tasks --version (or -v).
+Installed version: outask --version (or -v).
+Permanent equivalent commands: tasks and outaskai.
 Repository and documentation: https://github.com/henryh/outask
 `;
 
@@ -69,8 +70,8 @@ export async function main(args) {
   try {
     const [name, ...rest] = args;
     if (['--version', '-v'].includes(name)) {
-      if (rest.length) fail('INVALID_INPUT', 'tasks --version accepts no arguments');
-      process.stdout.write(`Outask AI v${version}\n`);
+      if (rest.length) fail('INVALID_INPUT', 'outask --version accepts no arguments');
+      process.stdout.write(`Outask v${version}\n`);
       return;
     }
     if (name === undefined) {
@@ -78,16 +79,16 @@ export async function main(args) {
       return;
     }
     if (['--help', '-h', 'help'].includes(name)) {
-      if (rest.length) fail('INVALID_INPUT', 'use tasks <command> --help');
+      if (rest.length) fail('INVALID_INPUT', 'use outask <command> --help');
       process.stdout.write(help);
       return;
     }
     if (name === 'mcp') {
       if (rest.length === 1 && ['--help', '-h'].includes(rest[0])) {
-        process.stdout.write('Usage: tasks mcp\nStart the local stdio adapter; select the project in each tool call.\nPublished releases include the adapter and its dependencies.\nConfigure the client with command node and arguments <absolute app/bin/tasks path>, mcp.\nSetup and tool contract: https://github.com/henryh/outask/blob/main/app/mcp/README.md\n');
+        process.stdout.write('Usage: outask mcp\nStart the local stdio adapter; select the project in each tool call.\nPublished releases include the adapter and its dependencies.\nConfigure the client with command outask and argument mcp.\nSetup and tool contract: https://github.com/henryh/outask/blob/main/app/mcp/README.md\n');
         return;
       }
-      if (rest.length) fail('INVALID_INPUT', 'tasks mcp accepts no options; select the project in each tool call');
+      if (rest.length) fail('INVALID_INPUT', 'outask mcp accepts no options; select the project in each tool call');
       const [major, minor, patch] = process.versions.node.split('.').map(Number);
       if (major < 22 || (major === 22 && (minor < 23 || (minor === 23 && patch < 3)))) {
         fail('INCOMPATIBLE_RUNTIME', 'MCP requires Node.js >=22.23.3');
@@ -108,9 +109,9 @@ export async function main(args) {
         fail('ADAPTER_NOT_INSTALLED', 'HTTP release integration is unfinished; use a source checkout');
       }
     }
-    if (!Object.hasOwn(commands, name)) fail('INVALID_INPUT', `unknown command ${name}; use tasks --help`);
+    if (!Object.hasOwn(commands, name)) fail('INVALID_INPUT', `unknown command ${name}; use outask --help`);
     const command = commands[name];
-    const usage = command.usage.replace(/node app\/(?:scripts\/)?[^ ]+/, `tasks ${name}`);
+    const usage = command.usage.replace(/node app\/(?:scripts\/)?[^ ]+/, `outask ${name}`);
     const { values, positionals, tokens } = parseArgs({ args: rest, allowPositionals: true, tokens: true, options: {
       ...command.options, project: { type: 'string' }, 'project-path': { type: 'string' }, config: { type: 'string' },
     } });
@@ -121,7 +122,7 @@ export async function main(args) {
     }
     if (values.help) {
       process.stdout.write(command.help.replace(command.usage, usage).replace(projectHelp, selectionHelp)
-        .replace('Use list-tasks.mjs and get-task.mjs', 'Use tasks list and tasks get'));
+        .replace('Use list-tasks.mjs and get-task.mjs', 'Use outask list and outask get'));
       return;
     }
     const withId = !['list', 'get-many', 'validate', 'create', 'hook', 'http', 'schema'].includes(name);
@@ -139,7 +140,7 @@ export async function main(args) {
     }
     try {
       await command.main([project, ...(withId ? [selected.id] : []), ...forwarded],
-        { args: rest, tokens, invocation: ['tasks', name], config: values.config });
+        { args: rest, tokens, invocation: ['outask', name], config: values.config });
     } catch (error) {
       if (error.message === command.usage) error.message = usage;
       throw error;

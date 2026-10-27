@@ -6,8 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { fail } from '../src/errors.mjs';
 import { reportError } from './output.mjs';
-import { installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
+import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
+import { legacyLocations } from './install-migration.mjs';
 
 const windows = process.platform === 'win32';
 const defaults = installLocations();
@@ -38,7 +39,7 @@ function owned(path, releaseRoots) {
       return releaseRoots.includes(dirname(release))
         && entry === join(release, 'app/bin/tasks')
         && JSON.parse(readFileSync(join(release, 'release.json'), 'utf8')).target === 'windows-x64'
-        && JSON.parse(readFileSync(join(release, 'app/package.json'), 'utf8')).name === 'task-tracker-local';
+        && packageNames.includes(JSON.parse(readFileSync(join(release, 'app/package.json'), 'utf8')).name);
     }
     if (!inspect(path)?.isSymbolicLink()) return false;
     const entry = realpathSync(path);
@@ -47,10 +48,10 @@ function owned(path, releaseRoots) {
     const release = dirname(dirname(dirname(entry)));
     if (!releaseRoots.includes(dirname(release))) return false;
     const metadata = JSON.parse(readFileSync(join(release, 'release.json'), 'utf8'));
-    return (basename(release) === 'OutaskAI' || basename(release) === `task-tracker-${metadata.version}-${metadata.target}`)
+    return (basename(release) === basename(defaults.destination) || basename(release) === 'OutaskAI' || basename(release) === `task-tracker-${metadata.version}-${metadata.target}`)
       && typeof metadata.version === 'string' && /^[\w.+-]+$/.test(metadata.version)
       && ['linux-x64', 'macos-arm64'].includes(metadata.target)
-      && JSON.parse(readFileSync(join(release, 'app/package.json'), 'utf8')).name === 'task-tracker-local';
+      && packageNames.includes(JSON.parse(readFileSync(join(release, 'app/package.json'), 'utf8')).name);
   } catch { return false; }
 }
 function executable(path) {
@@ -64,9 +65,9 @@ try {
   if (values.help) {
     process.stdout.write(`Usage: node app/scripts/install-cli.mjs install|uninstall [--bin-dir <directory>] [--release-root <parent-directory>]
 Requires Node.js 22.23.3 or later on PATH.
-Command: ${windows ? '%USERPROFILE%\\AppData\\Local\\OutaskAI\\bin\\tasks.cmd' : '~/.local/bin/tasks'}
+Command: ${windows ? '%USERPROFILE%\\AppData\\Local\\Programs\\Outask\\commands\\outask.cmd' : '~/.local/bin/outask'}
 Open a new terminal after installation. To update, update this checkout and rerun install.
-Use --release-root for the parent of an existing custom OutaskAI installation.
+Use --release-root for the parent of an existing custom Outask installation.
 Install refuses unrelated commands; uninstall removes the managed command link and preserves application files, projects and configuration.
 `);
   } else {
@@ -74,38 +75,43 @@ Install refuses unrelated commands; uninstall removes the managed command link a
       fail('INVALID_INPUT', 'use install or uninstall, with optional --bin-dir <directory> and --release-root <parent-directory>');
     }
     const bin = resolve(values['bin-dir'] ?? defaults.bin);
-    const legacyRoot = canonical(join(homedir(), '.local/share/task-tracker/releases'));
     const defaultRoot = defaults.releases;
-    const releaseRoots = [canonical(resolve(values['release-root'] ?? defaultRoot)), legacyRoot];
-    const target = join(bin, windows ? 'tasks.cmd' : 'tasks');
-    const present = inspect(target);
-    if (present && !owned(target, releaseRoots)) fail('COMMAND_EXISTS', `${target}: unrelated command; choose another --bin-dir or resolve the collision yourself`);
-    if (positionals[0] === 'uninstall') {
-      if (present) unlinkSync(target);
-      process.stdout.write(present ? `Removed ${target}.\n` : `Already absent: ${target}.\n`);
-    } else {
+    const releaseRoots = [canonical(resolve(values['release-root'] ?? defaultRoot)), ...legacyLocations().map(canonical)];
+    const targets = commandNames.map((name) => join(bin, windows ? `${name}.cmd` : name));
+    for (const target of targets) {
+      if (inspect(target) && !owned(target, releaseRoots)) fail('COMMAND_EXISTS', `${target}: unrelated command; resolve the collision before installing`);
+    }
+    if (positionals[0] === 'install') {
       for (const part of (process.env.PATH ?? '').split(delimiter)) {
-        for (const name of windows ? ['tasks.cmd', 'tasks.exe', 'tasks.bat', 'tasks.com', 'tasks.ps1', 'tasks'] : ['tasks']) {
+        for (const name of windows ? commandNames.flatMap((name) => ['.cmd', '.exe', '.bat', '.com', '.ps1', ''].map((extension) => name + extension)) : commandNames) {
           const candidate = resolve(part || '.', name);
-          if (candidate !== target && executable(candidate) && !owned(candidate, releaseRoots)) {
-            fail('COMMAND_EXISTS', `${candidate}: an unrelated tasks command is already on PATH; resolve the collision before installing`);
+          if (executable(candidate) && !owned(candidate, releaseRoots)) {
+            fail('COMMAND_EXISTS', `${candidate}: an unrelated Outask command is already on PATH; resolve the collision before installing`);
           }
         }
       }
-      const already = present && (windows ? readFileSync(target, 'utf8') === windowsLauncher(source) : realpathSync(target) === source);
-      if (!already) {
-        mkdirSync(bin, { recursive: true });
-        const temporary = mkdtempSync(join(bin, '.OutaskAI-link-'));
-        try {
-          const link = join(temporary, 'tasks');
-          if (windows) writeFileSync(link, windowsLauncher(source));
-          else symlinkSync(source, link);
-          renameSync(link, target);
-        } finally { rmSync(temporary, { recursive: true, force: true }); }
-      }
-      process.stdout.write(`${already ? 'Already installed' : 'Installed'}: ${target} -> ${source}.\n`);
-      for (const message of configurePath(bin)) console.log(message);
     }
+    for (const target of targets) {
+      const present = inspect(target);
+      if (positionals[0] === 'uninstall') {
+        if (present) unlinkSync(target);
+        process.stdout.write(present ? `Removed ${target}.\n` : `Already absent: ${target}.\n`);
+      } else {
+        const already = present && (windows ? readFileSync(target, 'utf8') === windowsLauncher(source) : realpathSync(target) === source);
+        if (!already) {
+          mkdirSync(bin, { recursive: true });
+          const temporary = mkdtempSync(join(bin, '.outask-link-'));
+          try {
+            const link = join(temporary, 'tasks');
+            if (windows) writeFileSync(link, windowsLauncher(source));
+            else symlinkSync(source, link);
+            renameSync(link, target);
+          } finally { rmSync(temporary, { recursive: true, force: true }); }
+        }
+        process.stdout.write(`${already ? 'Already installed' : 'Installed'}: ${target} -> ${source}.\n`);
+      }
+    }
+    if (positionals[0] === 'install') for (const message of configurePath(bin)) console.log(message);
   }
 } catch (error) {
   reportError(error);

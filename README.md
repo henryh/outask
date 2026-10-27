@@ -1,13 +1,16 @@
-# Outask AI
+# Outask
 
-Keep project tasks with your code as readable JSON. Use `tasks` yourself or
+Keep project tasks with your code as readable JSON. Use `outask` yourself or
 connect a local agent through MCP.
+
+`tasks` and `outaskai` are permanent command aliases for the same installation,
+including MCP. Existing client registrations continue to work.
 
 ## Install the CLI
 
 Requires Node.js 22.23.3 or later. Download your platform's archive from
 [Releases](https://github.com/henryh/outask/releases), extract it and open
-`OutaskAI` in a terminal.
+`Outask` in a terminal.
 
 Install on Linux x64:
 
@@ -27,14 +30,14 @@ For macOS Finder/Gatekeeper, updates and removal, see the
 Run in your project directory:
 
 ```bash
-tasks create --title "Write release notes"
-tasks list --format table
-tasks search "release notes"
-tasks transition 1 --status done
+outask create --title "Write release notes"
+outask list --format table
+outask search "release notes"
+outask transition 1 --status done
 ```
 
 Use the ID returned by `create` in place of `1`. The first write prepares task
-storage; no setup command is needed. Discover commands with `tasks --help`,
+storage; no setup command is needed. Discover commands with `outask --help`,
 or use the [operator cookbook](app/README.md).
 
 ## Use with an agent
@@ -42,19 +45,19 @@ or use the [operator cookbook](app/README.md).
 On Linux/macOS, register the installed adapter with Codex:
 
 ```bash
-codex mcp add tasks -- tasks mcp
+codex mcp add outask -- outask mcp
 codex mcp list
 ```
 
 Start a new Codex session. For Windows, client PATH differences and other hosts,
 see [MCP setup](app/mcp/README.md). Point the agent to the
-[Outask AI agent skill guide](docs/outask-ai-skill.md), for example:
+[Outask agent skill guide](docs/outask-ai-skill.md), for example:
 
-> Use the Outask AI agent skill guide for this project. Prefer the connected
-> `tasks` MCP server and respect the project's instructions. Plan and track
+> Use the Outask agent skill guide for this project. Prefer the connected
+> `outask` MCP server and respect the project's instructions. Plan and track
 > this request: _describe the work_.
 
-Outask AI manages task data. Your project workflow controls Git and publishing.
+Outask manages task data. Your project workflow controls Git and publishing.
 
 ## Contributing
 

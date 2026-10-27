@@ -164,7 +164,7 @@ test('standalone and installed batch commands share project selection and contin
   assert.deepEqual(JSON.parse(named.stdout).tasks, [{ id: 8 }]);
   const human = cli(['get-many', '--id', '1', '--id', '2', '--id', '3', '--limit', '1', '--fields', 'id'], { cwd: current });
   assert.equal(human.status, 0, human.stderr);
-  assert.match(human.stderr, /Next page: tasks get-many --cursor [A-Za-z0-9_-]+ --id 1 --id 2 --id 3/);
+  assert.match(human.stderr, /Next page: outask get-many --cursor [A-Za-z0-9_-]+ --id 1 --id 2 --id 3/);
   const duplicate = cli(['get-many', '--id', '1', '--id', '1'], { cwd: current });
   assert.equal(duplicate.status, 1);
   assert.match(duplicate.stderr, /^INVALID_INPUT: ids must not contain duplicates/);
