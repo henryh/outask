@@ -1,26 +1,2 @@
 [
-  {
-    "id": 3,
-    "title": "Make macOS installation independent of fixed Homebrew library paths",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Fix the macOS release installation failure reported as `OutaskAI ./Install.command` followed by `Library not loaded: /opt/homebrew/opt/simdjson/lib/libsimdjson.33.dylib`. The report is one-off; no further information or testing can be requested from that user. Inspect the repository and release installation chain to identify and remove reliance on a developer machine's absolute Homebrew paths or a specific external dylib filename. Keep unnecessary third-party packages out of the repository/distribution. Detect required external programs through normal executable discovery, document and check their minimum supported versions, accept compatible newer versions, and offer installation guidance or an explicit installation action when a prerequisite is missing or too old. Homebrew must not be required merely because it was present on the build machine. Do not treat arbitrary native-library ABI versions as interchangeable or use dylib-name symlinks as a fix. Keep the scope to the macOS installer, its actual prerequisites and affected distribution checks/documentation.",
-    "acceptance": [
-      "The shipped macOS installation/startup chain does not require /opt/homebrew/opt/simdjson/lib/libsimdjson.33.dylib or another developer-specific absolute third-party library path; record the identified source of the dependency, without claiming the unavailable user's environment was confirmed.",
-      "Required external programs are discovered independently of a single package-manager prefix. Their minimum supported versions are documented and checked; supported versions at or above the minimum proceed without requiring one exact package release.",
-      "Missing or too-old prerequisites produce a clear actionable message and an offer/instructions to install or upgrade before a dependent executable can fail with a raw loader error. Check the case where Homebrew itself is absent; do not silently require it or install software.",
-      "Verify the actual macOS archive on native Apple Silicon in an environment without the reported simdjson file: with supported prerequisites, run Install.command and an installed CLI/MCP smoke check successfully. Record evidence in this task; original reporter participation is not required.",
-      "Focused checks cover a missing prerequisite, a version below the minimum, the minimum supported version and a supported newer version, including discovery outside /opt/homebrew. Keep Linux and Windows installation contracts unchanged.",
-      "Update existing installation/prerequisite documentation to match the final behavior; do not add unnecessary bundled packages or promise compatibility with arbitrary native-library ABIs."
-    ],
-    "values": {
-      "goal": "Published archives support macOS Apple silicon with the documented runtime prerequisites.",
-      "value": "Users can install and run Outask without reproducing the developer's Homebrew library layout or manually diagnosing a dyld error.",
-      "observable_result": "The macOS archive installs and runs with supported discovered prerequisites; missing or outdated programs receive an actionable installation explanation.",
-      "verification": "Native Apple Silicon archive installation and CLI/MCP smoke checks without libsimdjson.33.dylib, plus focused prerequisite discovery/version boundary checks."
-    },
-    "notes": "Authorized 2026-10-26. Reporter evidence is limited to the dyld error; their Node provider is unconfirmed.\n\nDiagnosis: archives contain JavaScript and locked npm dependencies, not Node or simdjson. Install.command runs Node from PATH. Homebrew Node depends on simdjson, which fits the report but does not prove the reporter used Homebrew.\n\nCandidate: 63dbd0c on task-3-macos-prerequisites. Requires Node >=22.23.3. macOS preflight distinguishes missing Node, missing dylib, old Node and unknown startup failures. Missing-library and unknown failures retain stderr and status. Homebrew offers install when Node is missing and upgrade/reinstall for formula-owned Node. Installed NVM offers latest LTS install/activation. Both require interactive confirmation and recheck Node. Non-TTY prints one command. Other providers get official Node guidance. No dylib, ABI symlink or provider is bundled; mise/asdf/Volta are out of scope.\n\nReview PASS for 63dbd0c. Release tests PASS 34/34. Final make ci PASS: locked installs/audits, 304 core tests, 14 MCP tests, Linux 1.3 build and installed CLI/MCP smoke. App, archive and release documentation are aligned.\n\nAcceptance: on 2026-10-27 the owner confirmed all remaining checks passed, including the native Apple Silicon archive install and installed CLI/MCP smoke without the reported dylib.",
-    "updated_at": "2026-10-27T06:09:57.885Z"
-  }
-]
+  ]
