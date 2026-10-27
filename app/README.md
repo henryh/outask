@@ -32,14 +32,9 @@ Double-click `Install.command` or run `./Install.command`. If macOS blocks this
 unsigned launcher, use [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
 for a release you trust. Keep Gatekeeper enabled.
 
-From the installed OutaskAI directory, update to GitHub Latest stable with
-`./install.sh update` on Linux, `./Install.command update` on macOS,
-`./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe.
-Update requires network access and tar on PATH; an already-current installation
-reports no change. On failure, follow the error and retry; the existing working
-installation remains usable. You can also install from a newly extracted archive.
-Let existing MCP/HTTP sessions and active writes finish normally. Existing sessions may retain their loaded version;
-fresh launches use the update and `tasks --version` reports `Outask AI v<version>`.
+From the installed OutaskAI directory, update to GitHub Latest stable with `./install.sh update` on Linux, `./Install.command update` on macOS, `./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe. Requires network access and tar on PATH. An already-current installation reports no change; a failed update preserves the working installation.
+
+Let existing MCP/HTTP sessions and active writes finish normally. Existing sessions may retain their loaded version; fresh launches use the update and `tasks --version` reports `Outask AI v<version>`.
 Managed files are replaced; user files, tasks and configuration remain. Resolve
 an unrelated `tasks` collision explicitly. Custom installations must reuse the
 same `--bin-dir` and `--release-root` when updating or removing the command.
