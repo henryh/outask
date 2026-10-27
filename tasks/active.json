@@ -167,13 +167,14 @@
     "status": "pending",
     "priority": "low",
     "blockers": [],
-    "scope": "Add a usable MSI (.msi) distribution of Outask AI for Windows x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native Windows package installer. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task.",
+    "scope": "Add a usable MSI (.msi) distribution of Outask AI for Windows x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native Windows package installer. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the MSI (.msi) artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
       "On Windows x64, install the actual artifact using the native Windows package installer; from the documented user environment, verify the installed version, create/list tasks in a sample project and connect a fresh MCP client through the documented launch command.",
       "Verify updating an older package to the candidate and reinstalling it preserve project records, IDs, unknown fields and project configuration; document any required runtime prerequisites.",
       "Verify native removal cleans the channel's managed installation and command entries, preserves project/skill data and unrelated files, and follows the application's current cleanup contract. Verify interference with an existing installation is handled or clearly documented.",
-      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations."
+      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
     ],
     "values": {
       "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
@@ -181,7 +182,7 @@
       "result": "A releasable MSI (.msi) package with a working installed CLI and MCP.",
       "verification": "Install the actual package on Windows x64, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:52:21.639Z"
+    "updated_at": "2026-10-27T08:54:26.557Z"
   },
   {
     "id": 14,
@@ -189,13 +190,14 @@
     "status": "pending",
     "priority": "low",
     "blockers": [],
-    "scope": "Add a usable DMG (.dmg) distribution of Outask AI for macOS Apple silicon, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the documented mounted-image installation flow. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task.",
+    "scope": "Add a usable DMG (.dmg) distribution of Outask AI for macOS Apple silicon, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the documented mounted-image installation flow. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the DMG (.dmg) artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
       "On macOS Apple silicon, install the actual artifact using the documented mounted-image installation flow; from the documented user environment, verify the installed version, create/list tasks in a sample project and connect a fresh MCP client through the documented launch command.",
       "Verify updating an older package to the candidate and reinstalling it preserve project records, IDs, unknown fields and project configuration; document any required runtime prerequisites.",
       "Verify native removal cleans the channel's managed installation and command entries, preserves project/skill data and unrelated files, and follows the application's current cleanup contract. Verify interference with an existing installation is handled or clearly documented.",
-      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations."
+      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
     ],
     "values": {
       "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
@@ -203,7 +205,7 @@
       "result": "A releasable DMG (.dmg) package with a working installed CLI and MCP.",
       "verification": "Install the actual package on macOS Apple silicon, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:52:21.650Z"
+    "updated_at": "2026-10-27T08:54:26.574Z"
   },
   {
     "id": 15,
@@ -211,13 +213,14 @@
     "status": "pending",
     "priority": "low",
     "blockers": [],
-    "scope": "Add a usable DEB (.deb) distribution of Outask AI for Debian/Ubuntu Linux x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native Debian package manager. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task.",
+    "scope": "Add a usable DEB (.deb) distribution of Outask AI for Debian/Ubuntu Linux x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native Debian package manager. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the DEB (.deb) artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
       "On Debian/Ubuntu Linux x64, install the actual artifact using the native Debian package manager; from the documented user environment, verify the installed version, create/list tasks in a sample project and connect a fresh MCP client through the documented launch command.",
       "Verify updating an older package to the candidate and reinstalling it preserve project records, IDs, unknown fields and project configuration; document any required runtime prerequisites.",
       "Verify native removal cleans the channel's managed installation and command entries, preserves project/skill data and unrelated files, and follows the application's current cleanup contract. Verify interference with an existing installation is handled or clearly documented.",
-      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations."
+      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
     ],
     "values": {
       "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
@@ -225,7 +228,7 @@
       "result": "A releasable DEB (.deb) package with a working installed CLI and MCP.",
       "verification": "Install the actual package on Debian/Ubuntu Linux x64, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:52:21.661Z"
+    "updated_at": "2026-10-27T08:54:26.590Z"
   },
   {
     "id": 16,
@@ -233,13 +236,14 @@
     "status": "pending",
     "priority": "low",
     "blockers": [],
-    "scope": "Add a usable RPM (.rpm) distribution of Outask AI for RPM-based Linux x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native RPM-based package manager. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task.",
+    "scope": "Add a usable RPM (.rpm) distribution of Outask AI for RPM-based Linux x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native RPM-based package manager. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the RPM (.rpm) artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
       "On RPM-based Linux x64, install the actual artifact using the native RPM-based package manager; from the documented user environment, verify the installed version, create/list tasks in a sample project and connect a fresh MCP client through the documented launch command.",
       "Verify updating an older package to the candidate and reinstalling it preserve project records, IDs, unknown fields and project configuration; document any required runtime prerequisites.",
       "Verify native removal cleans the channel's managed installation and command entries, preserves project/skill data and unrelated files, and follows the application's current cleanup contract. Verify interference with an existing installation is handled or clearly documented.",
-      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations."
+      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
     ],
     "values": {
       "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
@@ -247,7 +251,7 @@
       "result": "A releasable RPM (.rpm) package with a working installed CLI and MCP.",
       "verification": "Install the actual package on RPM-based Linux x64, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:52:21.672Z"
+    "updated_at": "2026-10-27T08:54:26.608Z"
   },
   {
     "id": 17,
@@ -255,13 +259,14 @@
     "status": "pending",
     "priority": "low",
     "blockers": [],
-    "scope": "Add a usable Flatpak distribution of Outask AI for Linux x64 with Flatpak, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using Flatpak. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task.",
+    "scope": "Add a usable Flatpak distribution of Outask AI for Linux x64 with Flatpak, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using Flatpak. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the Flatpak artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
       "On Linux x64 with Flatpak, install the actual artifact using Flatpak; from the documented user environment, verify the installed version, create/list tasks in a sample project and connect a fresh MCP client through the documented launch command.",
       "Verify updating an older package to the candidate and reinstalling it preserve project records, IDs, unknown fields and project configuration; document any required runtime prerequisites.",
       "Verify native removal cleans the channel's managed installation and command entries, preserves project/skill data and unrelated files, and follows the application's current cleanup contract. Verify interference with an existing installation is handled or clearly documented.",
-      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations."
+      "Add focused package lifecycle verification appropriate to this format and update the owning installation/release documentation. Record actual native evidence and explicit platform limitations.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
     ],
     "values": {
       "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
@@ -269,7 +274,7 @@
       "result": "A releasable Flatpak package with a working installed CLI and MCP.",
       "verification": "Install the actual package on Linux x64 with Flatpak, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:52:21.683Z"
+    "updated_at": "2026-10-27T08:54:26.625Z"
   },
   {
     "id": 18,
@@ -277,13 +282,14 @@
     "status": "pending",
     "priority": "medium",
     "blockers": [],
-    "scope": "Provide a publicly downloadable POSIX install.sh bootstrap so users can install Outask AI with curl -fsSL <published-script-url> | sh without manually downloading and extracting an archive. Support Linux x64 and macOS Apple silicon using existing release artifacts and installation behavior. Distinguish this bootstrap from the install.sh already shipped inside archives. Document the real script URL, prerequisites, supported targets, PATH behavior and repeat-install behavior; reuse existing installer ownership rather than create another updater service.",
+    "scope": "Provide a publicly downloadable POSIX install.sh bootstrap so users can install Outask AI with curl -fsSL <published-script-url> | sh without manually downloading and extracting an archive. Support Linux x64 and macOS Apple silicon using existing release artifacts and installation behavior. Distinguish this bootstrap from the install.sh already shipped inside archives. Document the real script URL, prerequisites, supported targets, PATH behavior and repeat-install behavior; reuse existing installer ownership rather than create another updater service. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "The documented published HTTPS URL serves the script itself; curl -fsSL <url> | sh installs the latest stable release on supported Linux and macOS targets without a prior checkout or archive extraction.",
       "Detect supported OS/architecture and required runtime/tools, select the matching published artifact and fail with concise actionable errors for unsupported targets or failed downloads. A failure must preserve a previously working installation.",
       "Verify first install and repeat execution from an isolated user environment; installed version, sample CLI create/list and a fresh MCP connection use the intended release.",
       "Preserve project/skill data and existing configuration during reinstall; document how users update and remove the resulting installation using the existing supported routes.",
-      "Add focused bootstrap checks and owning installation/release documentation. Integrate script publication into the approved release workflow; record actual public URL/download checks as read-only post-merge verification."
+      "Add focused bootstrap checks and owning installation/release documentation. Integrate script publication into the approved release workflow; record actual public URL/download checks as read-only post-merge verification.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
     ],
     "values": {
       "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
@@ -291,7 +297,7 @@
       "result": "A public bootstrap URL and a working installation from the documented curl command.",
       "verification": "Run the published curl command in clean supported environments, check CLI/MCP and repeat-install behavior."
     },
-    "updated_at": "2026-10-27T08:52:21.694Z"
+    "updated_at": "2026-10-27T08:54:26.642Z"
   },
   {
     "id": 19,
@@ -299,13 +305,14 @@
     "status": "pending",
     "priority": "medium",
     "blockers": [],
-    "scope": "Distribute Outask AI through the npm registry with global install, update and uninstall commands. Prepare the package, executable entries, release/publication integration and concise operator/user instructions. Guide the owner step by step through account setup, package-name or namespace selection, ownership verification, authentication and first publication so the owner can perform the complete registration/publication process personally. Never require credentials to be copied into task records or chat. Use the existing application/runtime and command contracts; coordinate with the canonical-command task without duplicating its rename scope.",
+    "scope": "Distribute Outask AI through the npm registry with global install, update and uninstall commands. Prepare the package, executable entries, release/publication integration and concise operator/user instructions. Guide the owner step by step through account setup, package-name or namespace selection, ownership verification, authentication and first publication so the owner can perform the complete registration/publication process personally. Never require credentials to be copied into task records or chat. Use the existing application/runtime and command contracts; coordinate with the canonical-command task without duplicating its rename scope. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Prepare an npm-distributable package containing the runtime files and command entries required for CLI/MCP; verify actual packed contents and supported-platform behavior.",
       "Document the confirmed package name and exact npm install -g, update -g and uninstall -g commands, runtime requirements and how to launch MCP through the installed command.",
       "Provide and follow a step-by-step owner walkthrough for npm registration, name/namespace availability, ownership, authentication and initial publication. The owner can complete these actions personally with agent guidance; record the actual publication outcome without secrets.",
       "From the public registry, verify global installation, sample CLI create/list, version and a fresh MCP connection; verify updating from an older published version and uninstalling. Preserve project/skill data, and document the scope of npm removal and any application cleanup required by the current contract.",
-      "Align subsequent releases with the project's approved publication process, add focused package/lifecycle checks and update owning documentation. Treat real registry download checks as read-only after the approved publication boundary."
+      "Align subsequent releases with the project's approved publication process, add focused package/lifecycle checks and update owning documentation. Treat real registry download checks as read-only after the approved publication boundary.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
     ],
     "values": {
       "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
@@ -313,21 +320,22 @@
       "result": "An owner-published npm package with documented, verified global lifecycle commands.",
       "verification": "Owner completes the guided publication and a clean user environment installs/updates/removes the registry package with working CLI/MCP."
     },
-    "updated_at": "2026-10-27T08:52:21.705Z"
+    "updated_at": "2026-10-27T08:54:26.655Z"
   },
   {
     "id": 20,
     "title": "Add Homebrew installation, updates and removal with guided owner publication",
     "status": "pending",
-    "priority": "medium",
+    "priority": "low",
     "blockers": [],
-    "scope": "Distribute Outask AI through Homebrew with install, upgrade and uninstall commands, initially for the supported macOS Apple silicon target. Choose and explain the appropriate Homebrew package type for this CLI/MCP product (formula or cask), without introducing a GUI to fit a package type. Prepare the package definition, release maintenance and concise instructions. Guide the owner step by step through the required account/repository setup, package naming, tap or registry submission, authentication and first publication so the owner can perform the complete registration/publication process personally. Do not assume acceptance into an external curated repository; the chosen route must produce a usable public installation.",
+    "scope": "Distribute Outask AI through Homebrew with install, upgrade and uninstall commands, initially for the supported macOS Apple silicon target. Choose and explain the appropriate Homebrew package type for this CLI/MCP product (formula or cask), without introducing a GUI to fit a package type. Prepare the package definition, release maintenance and concise instructions. Guide the owner step by step through the required account/repository setup, package naming, tap or registry submission, authentication and first publication so the owner can perform the complete registration/publication process personally. Do not assume acceptance into an external curated repository; the chosen route must produce a usable public installation. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Record the chosen formula/cask and distribution route with the concrete reason; provide the exact public installation command and any required tap setup for the confirmed package name.",
       "Package the supported application/runtime correctly; verify installed version, sample CLI create/list and a fresh MCP connection on macOS Apple silicon using the Homebrew-installed command.",
       "Provide and follow a step-by-step walkthrough covering owner setup, package/repository registration or submission, permissions/authentication and first publication. The owner performs these actions personally with guidance; record the result without secrets.",
       "Using the published package route, verify brew install, brew upgrade from an older version and brew uninstall with the applicable flags. Preserve project/skill data and document Homebrew removal behavior and any application cleanup required by the current contract.",
-      "Document and verify how the Homebrew definition is kept current with approved application releases; add focused package/lifecycle checks and owning documentation. Treat actual public download checks as read-only after approved publication."
+      "Document and verify how the Homebrew definition is kept current with approved application releases; add focused package/lifecycle checks and owning documentation. Treat actual public download checks as read-only after approved publication.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
     ],
     "values": {
       "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
@@ -335,6 +343,6 @@
       "result": "A publicly installable Homebrew package and a completed owner publication walkthrough.",
       "verification": "Owner completes guided publication; install, upgrade and remove via Homebrew on macOS Apple silicon and exercise CLI/MCP."
     },
-    "updated_at": "2026-10-27T08:52:21.718Z"
+    "updated_at": "2026-10-27T08:54:26.671Z"
   }
 ]
