@@ -36,7 +36,11 @@ pre-commit hook is independent.
    Apply the [release value gate](releases.md#prepare-the-candidate). Fetch and
    merge current `origin/main` locally, resolve conflicts there, inspect the
    combined candidate and run `make ci` plus affected gates. Repeat integration
-   if main advances; do not use GitHub's conflict editor.
+   if main advances; do not use GitHub's conflict editor. Local verification
+   covers available hosts. Lack of another native OS does not block a candidate:
+   review its affected contracts and existing gates, then rely on required hosted
+   CI for that OS. Do not simulate a pass or require owner-run native checks unless
+   acceptance names a scenario that hosted CI cannot cover.
 3. PM records acceptance, sets `completed_at`, closes the candidate task and runs
    task validation. Commit stores and `tasks/.task-tracker.json` with the complete
    implementation before requesting the final push. Do not defer known work to
@@ -55,6 +59,8 @@ pre-commit hook is independent.
    close/validate/commit again and obtain agreement for the new push. If main
    advances, repeat local integration, verification and push agreement. Mark ready
    only after success; the agreed sequence already covers that ready transition.
+   Native tests must inspect the selected runtime and archive, not unrelated global
+   runner state. A host file or package is a gate only when the tested contract owns it.
 6. Hand the ready PR to the owner for **Create a merge commit**, or owner-run
    `gh pr merge <number> --merge`. Never directly push main, rewrite history,
    squash/rebase delivery, perform a local delivery merge or tag/upload manually.
@@ -83,6 +89,12 @@ PR CI covers Linux x64, native macOS arm64 and native Windows x64. Linux runs th
 core/MCP suites; all platforms install locked dependencies, audit them and accept
 an installed archive with Node.js 22.23.3 and 24. Release jobs accept the actual
 archives before publication and downloaded archives afterward.
+
+Run native commands locally only on available hosts. Hosted PR CI supplies the
+required evidence for unavailable operating systems; local emulation is not a
+substitute. Before push, review affected platform tests for isolation, prior
+contracts and assumptions about the host. Keep diagnostics about ambient state
+separate from assertions about the selected executable or archive.
 
 On Linux/macOS, with each required Node version:
 
