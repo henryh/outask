@@ -111,5 +111,34 @@
     "notes": "Authorized 2026-10-26. Reporter evidence is limited to the dyld error; their Node provider is unconfirmed.\n\nDiagnosis: archives contain JavaScript and locked npm dependencies, not Node or simdjson. Install.command runs Node from PATH. Homebrew Node depends on simdjson, which fits the report but does not prove the reporter used Homebrew.\n\nCandidate: e05aa4d on task-3-macos-prerequisites. Requires Node >=22.23.3. macOS preflight distinguishes missing Node, missing dylib, old Node and unknown startup failures. Missing-library and unknown failures retain stderr and status. Homebrew offers install when Node is missing and upgrade/reinstall for formula-owned Node. Installed NVM offers latest LTS install/activation. Both require interactive confirmation and recheck Node. Non-TTY prints one command. Other providers get official Node guidance. No dylib, ABI symlink or provider is bundled; mise/asdf/Volta are out of scope.\n\nReview PASS for 7648d0e. Release tests PASS 34/34. Final make ci PASS: locked installs/audits, 304 core tests, 14 MCP tests, Linux 1.3 build and installed CLI/MCP smoke. App, archive and release documentation are aligned.\n\nHosted run 40459199628 passed release, Linux and Windows checks. macOS exposed an invalid smoke assumption: a runner-wide dylib may exist even when selected Node does not use it. The test now records file presence and still rejects Homebrew-linked Node through otool.\n\nAcceptance: on 2026-10-27 the owner confirmed the native Apple Silicon archive install and installed CLI/MCP smoke passed without the reported dylib. The corrected hosted macOS rerun remains a delivery gate.\n\nDelivery flow: unavailable native OS checks run in required hosted CI. Local work reviews affected contracts and existing gates; native tests assert the selected runtime/archive rather than unrelated runner state. Documentation review PASS.",
     "updated_at": "2026-10-27T07:00:42.951Z",
     "completed_at": "2026-10-27T07:00:42.874Z"
+  },
+  {
+    "id": 7,
+    "title": "Add latest-release updates to platform installers",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Make every published stable release explicitly become GitHub's Latest release, while prereleases do not replace it. Add an update action alongside install and uninstall to the packaged Linux, macOS and Windows installers. The action must resolve the latest stable GitHub release, download the matching supported-platform archive and reuse the existing installation path so user task data and configuration are preserved. Keep prompts, output, documentation and failure handling concise; do not add a separate updater service or background update mechanism.",
+    "acceptance": [
+      "Publishing a stable release explicitly marks it Latest, and GitHub's latest-release API resolves that release; a prerelease does not replace the latest stable release.",
+      "The packaged commands ./install.sh update, ./Install.command update and Install.cmd update upgrade an older installed release to the latest stable release on Linux x64, macOS Apple silicon and Windows x64 respectively.",
+      "After update, tasks --version reports the latest release and fresh CLI/MCP launches use it, while project tasks, user configuration and the existing compatible-session behavior are preserved.",
+      "An already-current installation reports a concise no-change result; resolution, download or installation failure leaves the working installed release usable and emits an actionable error.",
+      "Focused installer and release-publication checks cover latest selection, platform asset selection, successful update, no-change and failure behavior; required project CI passes and concise operator documentation lists the update commands."
+    ],
+    "values": {
+      "goal": "Keep the published Outask AI distribution simple and reliable for developers and local AI agents.",
+      "value": "Users can move an existing installation to the current stable release with one documented command instead of manually finding, downloading and extracting a versioned archive.",
+      "observable_result": "Each supported packaged installer upgrades an older installation to the GitHub Latest stable release, and release publication maintains that pointer.",
+      "verification": "Publish or simulate the release contract, verify the latest-release API selection, then run native packaged update acceptance from an older version on Linux, macOS and Windows and confirm tasks --version plus preserved user data."
+    },
+    "notes": [
+      "Requested after installing v1.3 manually. GitHub currently resolves v1.3 through releases/latest, but the publication script only clears the draft flag and does not explicitly pass --latest. Task creation does not authorise implementation or a remote release edit.",
+      "Candidate acceptance for Outask AI v1.4 (package 1.4.0): implementation 819a090, publisher retry correction e722ba4, documentation audit f8a008d. Independent feature review PASS after reproducing and fixing a retry that could skip Latest verification; existing-publication retries now verify Latest read-only, with regression coverage (12 publication tests PASS).",
+      "QA PASS on native Linux x64 with Node 24.21.0 and 22.23.3: full make ci on each runtime passed locked dependency installs/audits, core 310 tests, MCP 14 tests and actual packaged archive installation/update/uninstall. Native acceptance verified newer stable selection, current/no-change, resolution/download/install-startup failure preservation, project/config/local-file preservation, compatible live MCP reads/writes and fresh CLI/MCP version. GitHub network is fixture-controlled; actual packaged updater and installer execute. Final publisher correction suite passed separately. Release candidate/version/lockfile/exact-notes validation and git diff --check passed; operator README is 198 lines.",
+      "Value gate PASS: users can update an installed CLI/MCP to latest stable with one platform installer command; measured at the installed archive boundary with preserved data and working live/fresh sessions. Candidate closure is branch-local acceptance, not delivered main completion. Required hosted six native CI jobs and three native release archive jobs remain pre-ready gates; local absence of macOS/Windows is handled by the declared delivery policy. Actual publication, stable Latest API selection and six published-download checks remain read-only post-owner-merge gates. No remote writes authorised yet."
+    ],
+    "updated_at": "2026-10-27T09:47:32.610Z",
+    "completed_at": "2026-10-27T09:46:58Z"
   }
 ]
