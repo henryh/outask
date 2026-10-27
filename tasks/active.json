@@ -166,7 +166,10 @@
     "title": "Add a Windows MSI distribution",
     "status": "pending",
     "priority": "low",
-    "blockers": [],
+    "blockers": [
+      7,
+      11
+    ],
     "scope": "Add a usable MSI (.msi) distribution of Outask AI for Windows x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native Windows package installer. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the MSI (.msi) artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
@@ -182,14 +185,17 @@
       "result": "A releasable MSI (.msi) package with a working installed CLI and MCP.",
       "verification": "Install the actual package on Windows x64, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:54:26.557Z"
+    "updated_at": "2026-10-27T08:55:11.150Z"
   },
   {
     "id": 14,
     "title": "Add a macOS DMG distribution",
     "status": "pending",
     "priority": "low",
-    "blockers": [],
+    "blockers": [
+      7,
+      11
+    ],
     "scope": "Add a usable DMG (.dmg) distribution of Outask AI for macOS Apple silicon, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the documented mounted-image installation flow. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the DMG (.dmg) artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
@@ -205,14 +211,17 @@
       "result": "A releasable DMG (.dmg) package with a working installed CLI and MCP.",
       "verification": "Install the actual package on macOS Apple silicon, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:54:26.574Z"
+    "updated_at": "2026-10-27T08:55:11.166Z"
   },
   {
     "id": 15,
     "title": "Add a Debian package distribution",
     "status": "pending",
     "priority": "low",
-    "blockers": [],
+    "blockers": [
+      7,
+      11
+    ],
     "scope": "Add a usable DEB (.deb) distribution of Outask AI for Debian/Ubuntu Linux x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native Debian package manager. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the DEB (.deb) artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
@@ -228,14 +237,17 @@
       "result": "A releasable DEB (.deb) package with a working installed CLI and MCP.",
       "verification": "Install the actual package on Debian/Ubuntu Linux x64, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:54:26.590Z"
+    "updated_at": "2026-10-27T08:55:11.182Z"
   },
   {
     "id": 16,
     "title": "Add an RPM package distribution",
     "status": "pending",
     "priority": "low",
-    "blockers": [],
+    "blockers": [
+      7,
+      11
+    ],
     "scope": "Add a usable RPM (.rpm) distribution of Outask AI for RPM-based Linux x64, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using the native RPM-based package manager. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the RPM (.rpm) artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
@@ -251,14 +263,17 @@
       "result": "A releasable RPM (.rpm) package with a working installed CLI and MCP.",
       "verification": "Install the actual package on RPM-based Linux x64, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:54:26.608Z"
+    "updated_at": "2026-10-27T08:55:11.198Z"
   },
   {
     "id": 17,
     "title": "Add a Flatpak distribution",
     "status": "pending",
     "priority": "low",
-    "blockers": [],
+    "blockers": [
+      7,
+      11
+    ],
     "scope": "Add a usable Flatpak distribution of Outask AI for Linux x64 with Flatpak, alongside existing archives. Include reproducible packaging, release integration and concise platform-specific installation, update and removal instructions using Flatpak. Expose the existing CLI and MCP with the command names supported at delivery time; preserve the current runtime requirements and project data contracts. Do not add a GUI or redesign other distribution channels. Resolve format-specific runtime, executable-path and sandbox limitations within this task. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Build the Flatpak artifact from the release candidate and make it available through the project's owner-approved release workflow; declare actual published-download verification as a read-only post-merge check.",
@@ -274,14 +289,17 @@
       "result": "A releasable Flatpak package with a working installed CLI and MCP.",
       "verification": "Install the actual package on Linux x64 with Flatpak, exercise CLI/MCP, update and remove it; verify published download after merge."
     },
-    "updated_at": "2026-10-27T08:54:26.625Z"
+    "updated_at": "2026-10-27T08:55:11.213Z"
   },
   {
     "id": 18,
     "title": "Add a one-command curl installation script",
     "status": "pending",
     "priority": "medium",
-    "blockers": [],
+    "blockers": [
+      7,
+      11
+    ],
     "scope": "Provide a publicly downloadable POSIX install.sh bootstrap so users can install Outask AI with curl -fsSL <published-script-url> | sh without manually downloading and extracting an archive. Support Linux x64 and macOS Apple silicon using existing release artifacts and installation behavior. Distinguish this bootstrap from the install.sh already shipped inside archives. Document the real script URL, prerequisites, supported targets, PATH behavior and repeat-install behavior; reuse existing installer ownership rather than create another updater service. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "The documented published HTTPS URL serves the script itself; curl -fsSL <url> | sh installs the latest stable release on supported Linux and macOS targets without a prior checkout or archive extraction.",
@@ -297,14 +315,17 @@
       "result": "A public bootstrap URL and a working installation from the documented curl command.",
       "verification": "Run the published curl command in clean supported environments, check CLI/MCP and repeat-install behavior."
     },
-    "updated_at": "2026-10-27T08:54:26.642Z"
+    "updated_at": "2026-10-27T08:55:11.227Z"
   },
   {
     "id": 19,
     "title": "Add npm global installation, updates and removal with guided owner publication",
     "status": "pending",
     "priority": "medium",
-    "blockers": [],
+    "blockers": [
+      7,
+      11
+    ],
     "scope": "Distribute Outask AI through the npm registry with global install, update and uninstall commands. Prepare the package, executable entries, release/publication integration and concise operator/user instructions. Guide the owner step by step through account setup, package-name or namespace selection, ownership verification, authentication and first publication so the owner can perform the complete registration/publication process personally. Never require credentials to be copied into task records or chat. Use the existing application/runtime and command contracts; coordinate with the canonical-command task without duplicating its rename scope. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Prepare an npm-distributable package containing the runtime files and command entries required for CLI/MCP; verify actual packed contents and supported-platform behavior.",
@@ -320,14 +341,17 @@
       "result": "An owner-published npm package with documented, verified global lifecycle commands.",
       "verification": "Owner completes the guided publication and a clean user environment installs/updates/removes the registry package with working CLI/MCP."
     },
-    "updated_at": "2026-10-27T08:54:26.655Z"
+    "updated_at": "2026-10-27T08:55:11.240Z"
   },
   {
     "id": 20,
     "title": "Add Homebrew installation, updates and removal with guided owner publication",
     "status": "pending",
     "priority": "low",
-    "blockers": [],
+    "blockers": [
+      7,
+      11
+    ],
     "scope": "Distribute Outask AI through Homebrew with install, upgrade and uninstall commands, initially for the supported macOS Apple silicon target. Choose and explain the appropriate Homebrew package type for this CLI/MCP product (formula or cask), without introducing a GUI to fit a package type. Prepare the package definition, release maintenance and concise instructions. Guide the owner step by step through the required account/repository setup, package naming, tap or registry submission, authentication and first publication so the owner can perform the complete registration/publication process personally. Do not assume acceptance into an external curated repository; the chosen route must produce a usable public installation. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
     "acceptance": [
       "Record the chosen formula/cask and distribution route with the concrete reason; provide the exact public installation command and any required tap setup for the confirmed package name.",
@@ -343,6 +367,6 @@
       "result": "A publicly installable Homebrew package and a completed owner publication walkthrough.",
       "verification": "Owner completes guided publication; install, upgrade and remove via Homebrew on macOS Apple silicon and exercise CLI/MCP."
     },
-    "updated_at": "2026-10-27T08:54:26.671Z"
+    "updated_at": "2026-10-27T08:55:11.256Z"
   }
 ]
