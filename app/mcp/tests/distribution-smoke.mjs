@@ -298,7 +298,7 @@ try {
   mkdirSync(join(releases, 'OutaskAI', localDirectory), { recursive: true });
   writeFileSync(join(releases, 'OutaskAI', localDirectory, 'note.txt'), 'Retain nested local note');
 
-  // A second extracted installation exercises the update path with a new version fixture.
+  // Serve a new native archive through a fixture of GitHub Latest, then run the packaged update action.
   mkdirSync(downloads);
   run('tar', ['-xzf', archive, '-C', downloads]);
   const updateVersion = '99.0.1';
@@ -308,7 +308,37 @@ try {
   // Distinguish newly loaded adapter bytes without changing its production metadata contract.
   const serverPath = join(source, 'app/mcp/server.mjs');
   writeFileSync(serverPath, readFileSync(serverPath, 'utf8').replace("version: '0.1.0'", `version: '${updateVersion}'`));
-  run(installer);
+  const latestArchive = join(temporary, `OutaskAI-${updateVersion}-${target}.tar.gz`);
+  run('tar', ['-czf', latestArchive, '-C', downloads, 'OutaskAI']);
+  const updateFixture = join(temporary, 'latest.json');
+  const writeLatest = (failure = false) => writeFileSync(updateFixture, JSON.stringify({ version: failure ? '99.0.2' : updateVersion, target, archive: latestArchive, failure }));
+  writeLatest();
+  const updateEnv = { ...env, OUTASK_UPDATE_FIXTURE: updateFixture,
+    NODE_OPTIONS: `--import=${pathToFileURL(fileURLToPath(new URL('../../tests/helpers/latest-fetch.mjs', import.meta.url))).href}` };
+  const updateInstaller = join(releases, 'OutaskAI', installerName);
+  const candidateEntry = join(source, 'app/bin/tasks');
+  const validEntry = readFileSync(candidateEntry);
+  writeFileSync(candidateEntry, "throw new Error('fixture startup failure');\n");
+  run('tar', ['-czf', latestArchive, '-C', downloads, 'OutaskAI']);
+  const rejectedInstall = invoke(updateInstaller, ['update'], updateEnv);
+  assert.notEqual(rejectedInstall.status, 0);
+  assert.match(rejectedInstall.stderr, /UPDATE_FAILED.*install latest release/);
+  assert.equal(run(command, ['--version']).trim(), `Outask AI v${metadata.version}`);
+  writeFileSync(candidateEntry, validEntry);
+  run('tar', ['-czf', latestArchive, '-C', downloads, 'OutaskAI']);
+  const updateResult = invoke(updateInstaller, ['update'], updateEnv);
+  assert.equal(updateResult.status, 0, updateResult.stderr || updateResult.stdout);
+  assert.match(updateResult.stdout, /Updated to Outask AI v99.0.1/);
+  const current = invoke(updateInstaller, ['update'], updateEnv);
+  assert.equal(current.status, 0, current.stderr);
+  assert.match(current.stdout, /already current/);
+  for (const failure of [true, 'download']) {
+    writeLatest(failure);
+    const failedUpdate = invoke(updateInstaller, ['update'], updateEnv);
+    assert.notEqual(failedUpdate.status, 0);
+    assert.match(failedUpdate.stderr, /UPDATE_FAILED.*HTTP 503/);
+    assert.equal(run(command, ['--version']).trim(), `Outask AI v${updateVersion}`);
+  }
   const updatedInstall = join(releases, 'OutaskAI');
   if (!windows) assert.equal(readlinkSync(command), join(updatedInstall, 'app/bin/tasks'));
   assert.equal(existsSync(join(updatedInstall, 'app/scripts/obsolete.mjs')), false);
@@ -357,7 +387,7 @@ try {
     ...(macosPrerequisites ? { macosPrerequisites } : {}),
     artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
-    checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
+    checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);

@@ -172,6 +172,7 @@ test('each archive README and installer help describe only their destination pla
     assert.match(readme, /^tasks list(?: --format table)?$/m);
     assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/mcp/README.md`));
     assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/README.md`));
+    assert.ok(readme.includes(`./${installerEntries[target]} update`));
     assert.match(help, /\[--bin-dir <directory>\] \[--release-root <parent-directory>\]/);
     if (target === 'windows-x64') {
       assert.match(readme, /PowerShell: `\.\/Install\.cmd`/);
@@ -187,7 +188,7 @@ test('each archive README and installer help describe only their destination pla
       assert.equal((readme.match(/codex mcp add/g) || []).length, 1);
       const installed = platform.application.replace('~', '$HOME');
       assert.ok(readme.includes(`"${installed}/${installerEntries[target]}" uninstall`));
-      assert.ok(help.includes(`Usage: ./${installerEntries[target]} [install|uninstall]`));
+      assert.ok(help.includes(`Usage: ./${installerEntries[target]} [install|update|uninstall]`));
       for (const [, commands] of readme.matchAll(/```sh\n([\s\S]*?)\n```/g)) ok(run('/bin/sh', ['-n'], { input: commands }));
     }
   }

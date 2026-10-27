@@ -1,8 +1,8 @@
 ## Downloads
 
-- [Linux x64](https://github.com/henryh/outask/releases/download/v1.3/OutaskAI-1.3-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.3/OutaskAI-1.3-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/henryh/outask/releases/download/v1.3/OutaskAI-1.3-windows-x64.tar.gz)
+- [Linux x64](https://github.com/henryh/outask/releases/download/v1.4/OutaskAI-1.4-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.4/OutaskAI-1.4-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/henryh/outask/releases/download/v1.4/OutaskAI-1.4-windows-x64.tar.gz)
 
 ## Current version
 
@@ -10,11 +10,9 @@ Outask AI keeps project tasks in local JSON files, with CLI and local MCP access
 
 ## What's new
 
-- Identify the installed CLI with `tasks --version` as `Outask AI v<version>`.
-- Preserve running MCP/HTTP sessions during compatible upgrades; fresh launches use the updated installation.
-- Check that macOS Node.js can start and meets the minimum supported version before installation.
-- Identify missing Node.js libraries, retain diagnostics and offer confirmed Homebrew or NVM repairs.
-- Discover macOS Node.js through PATH without adding fixed Homebrew locations. Homebrew is optional.
+- Update to the latest stable release with `./install.sh update` on Linux, `./Install.command update` on macOS or `Install.cmd update` on Windows.
+- Preserve project tasks, configuration and compatible running sessions through updates; report an already-current installation without reinstalling.
+- Mark stable publications as GitHub Latest explicitly; prereleases keep the existing stable selection.
 
 ## Install
 
@@ -48,6 +46,6 @@ tasks list --format table
 
 ## Documentation
 
-- [Basic use](https://github.com/henryh/outask/blob/v1.3/README.md#basic-use)
-- [Full operator reference](https://github.com/henryh/outask/blob/v1.3/app/README.md)
-- [MCP setup](https://github.com/henryh/outask/blob/v1.3/app/mcp/README.md)
+- [Basic use](https://github.com/henryh/outask/blob/v1.4/README.md#basic-use)
+- [Full operator reference](https://github.com/henryh/outask/blob/v1.4/app/README.md)
+- [MCP setup](https://github.com/henryh/outask/blob/v1.4/app/mcp/README.md)

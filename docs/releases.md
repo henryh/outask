@@ -72,7 +72,9 @@ After owner merge, `Release` verifies the owner, two-parent merge of the exact P
 head and exact notes, then reruns merged-main CI and the shared native archive
 workflow at that merge. Only the publisher has `contents: write`: it creates the
 annotated main tag, stages all three verified archives in a draft with exact
-name/notes and publishes. It never creates source/task commits or pushes branches.
+name/notes and publishes. Stable publication explicitly sets GitHub Latest and
+checks the latest-release API; prereleases explicitly leave Latest unchanged.
+It never creates source/task commits or pushes branches.
 Failed required checks stop tagging/publication.
 
 Six downloaded-archive jobs verify the published assets on the three platforms

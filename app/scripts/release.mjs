@@ -31,6 +31,7 @@ const runtimeScripts = [
   'task-write-input.mjs',
   'transition-task.mjs',
   'update-task.mjs',
+  'update-release.mjs',
   'validate-task-stores.mjs',
 ];
 
@@ -461,7 +462,7 @@ Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
 
 ## Update and remove
 
-Update: extract the new archive and run \`./Install.cmd\` from its OutaskAI directory.
+Update to GitHub Latest stable: run \`./Install.cmd update\` (PowerShell) or \`Install.cmd update\` (cmd.exe) from the installed OutaskAI directory. Requires network access and tar on PATH.
 Uninstall (PowerShell): \`& "$env:USERPROFILE\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall\`
 Uninstall (cmd.exe): \`"%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall\`
 Uninstall removes the managed launcher; application files, projects and configuration remain.
@@ -503,7 +504,7 @@ Start a new Codex session; use \`/mcp\` to inspect the server.
 
 ## Update and remove
 
-Update: extract the new archive and run \`./${installer}\` from its OutaskAI directory.
+Update to GitHub Latest stable: run \`./${installer} update\` from the installed OutaskAI directory. Requires network access and tar on PATH.
 Uninstall: \`${uninstall}\`
 Uninstall removes the managed command link; application files, projects and configuration remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.

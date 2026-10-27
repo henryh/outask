@@ -104,7 +104,11 @@ try {
     }
     requireArchives(targets, releaseId);
     verifyAssets(final, targets, releaseId);
-    run('gh', ['release', 'edit', tag, '--repo', repo, '--draft=false']);
+    run('gh', ['release', 'edit', tag, '--repo', repo, '--draft=false', packageId.includes('-') ? '--latest=false' : '--latest']);
+    if (!packageId.includes('-')) {
+      const latest = JSON.parse(run('gh', ['api', `repos/${repo}/releases/latest`], { stdio: ['ignore', 'pipe', 'pipe'] }).stdout);
+      if (latest.tag_name !== tag) fail('COMMAND_FAILED', `Published ${tag}, but GitHub Latest resolves ${latest.tag_name}; inspect the Release workflow`);
+    }
     console.log(`${tag}: published`);
   }
 } catch (error) {
