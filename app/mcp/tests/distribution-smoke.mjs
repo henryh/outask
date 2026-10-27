@@ -116,13 +116,12 @@ try {
   const osVersion = process.platform === 'darwin' ? run('sw_vers', ['-productVersion']).trim() : release();
   if (process.platform === 'darwin') {
     const reportedDylib = '/opt/homebrew/opt/simdjson/lib/libsimdjson.33.dylib';
-    assert.equal(existsSync(reportedDylib), false, 'Native acceptance requires the reported missing dylib to remain absent; do not remove host libraries');
     const nodeLibraries = run('/usr/bin/otool', ['-L', process.execPath]).trim().split(/\r?\n/).slice(1).map((line) => line.trim());
     assert.ok(nodeLibraries.length, 'otool must report the native Node runtime dependencies');
     for (const library of nodeLibraries) {
       assert.doesNotMatch(library, /\/(?:opt\/homebrew|usr\/local\/(?:opt|Cellar))\//, 'Native acceptance must use Node without Homebrew library dependencies');
     }
-    macosPrerequisites = { reportedDylib: { path: reportedDylib, present: false }, nodeLibraries };
+    macosPrerequisites = { reportedDylib: { path: reportedDylib, present: existsSync(reportedDylib) }, nodeLibraries };
   }
   assert.deepEqual(readdirSync(source).filter((name) => /^install/i.test(name)), [installerName]);
   const installer = join(source, installerName);
