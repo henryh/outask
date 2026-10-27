@@ -1,2 +1,26 @@
 [
-  ]
+  {
+    "id": 6,
+    "title": "Provide private vulnerability reporting and automated security maintenance",
+    "status": "pending",
+    "priority": "low",
+    "blockers": [],
+    "scope": "Add a concise public SECURITY.md with a private reporting route and supported-version policy; enable GitHub private vulnerability reporting and Dependabot security updates for this repository. Configure bounded dependency-update coverage for app and app/mcp and review GitHub Actions update coverage and immutable action references. Preserve the owner-only merge and approval workflow; do not change main branch protections or release signing in this task.",
+    "acceptance": [
+      "Visitors can find the security policy and open a private vulnerability report without filing a public issue; verify the reporting route and GitHub setting.",
+      "GitHub API confirms private vulnerability reporting and Dependabot security updates are enabled.",
+      "Dependabot configuration covers the two existing npm lockfiles and GitHub Actions with a bounded update schedule; validate the configuration and confirm security/update changes still require the repository's ordinary PR and owner-merge workflow.",
+      "Document and verify the chosen Actions dependency controls against the existing release workflows; existing required CI passes for any workflow changes."
+    ],
+    "values": {
+      "goal": "Maintain trusted local task operations for developers and AI agents using the public Outask AI distribution.",
+      "value": "Users can disclose vulnerabilities privately and the owner receives automated dependency-remediation PRs.",
+      "observable_result": "A usable private reporting route and enabled, verifiable automated security maintenance in the public repository.",
+      "verification": "Inspect the public security policy/reporting route, GitHub security-setting API responses and update configuration; verify affected CI contracts."
+    },
+    "notes": [
+      "Requested as low priority after the repository audit. Observed: SECURITY.md absent, private vulnerability reporting disabled, Dependabot security updates disabled; dependency audits currently run in CI. Creating this task does not authorise implementation or remote-setting changes."
+    ],
+    "updated_at": "2026-10-27T07:42:14.499Z"
+  }
+]
