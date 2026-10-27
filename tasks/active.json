@@ -143,5 +143,22 @@
       "verification": "Use all three installed commands for the same CLI operations and MCP startup, inspect CLI help and MCP/HTTP service identity, and verify upgrade compatibility and managed launcher lifecycle in supported distribution acceptance."
     },
     "updated_at": "2026-10-27T08:16:52.988Z"
+  },
+  {
+    "id": 12,
+    "title": "Remove installed application files, global configuration and caches during uninstall",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Change the standard uninstall flow so removing Outask AI deletes the managed tasks command, installed application copies, application-owned global/user configuration and application caches, when present. Cover the supported packaged installers on Linux x64, macOS arm64 and Windows x64 and the documented source-checkout uninstall route where applicable. Preserve task records and configuration inside projects and skills, source checkouts and unrelated user files. Update affected uninstall help, messages and documentation to describe the resulting behavior.",
+    "acceptance": [
+      "For each supported installation/uninstall route, inventory the application-owned installation, global configuration and cache paths actually created or used, including configured locations, and make standard uninstall remove those artifacts together with the managed tasks command.",
+      "Verify an install -> use/configure -> uninstall scenario in an isolated user environment: installed application files, application-owned global configuration and any generated caches are absent afterward.",
+      "Verify project task records and configuration, configuration inside skills, source checkout contents and unrelated neighboring files remain unchanged after uninstall.",
+      "Verify uninstall succeeds when optional configuration or cache paths are absent and that existing protection against removing an unrelated command remains effective.",
+      "Update focused installer/distribution checks and uninstall help/documentation to reflect complete application cleanup and retained project/skill data; verify supported platform behavior through the project's native distribution gates."
+    ],
+    "values": "Goal: keep project tasks in readable repository-local JSON usable without the tracker (docs/product.md). User value: uninstall leaves no installed application, global configuration or cache behind while retaining the user's project and skill data. Immediate observable result: a completed standard uninstall cleans the application-owned machine/user footprint. Verification: install and exercise Outask AI in an isolated user environment, uninstall it, assert the application-owned paths are absent and compare retained project/skill files with their pre-uninstall contents.",
+    "updated_at": "2026-10-27T08:19:54.905Z"
   }
 ]
