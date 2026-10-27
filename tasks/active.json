@@ -102,5 +102,22 @@
       "Choose the smallest deployable service/storage option during technical design. Do not assume a hosting provider or create paid infrastructure from this planning request. Task creation does not start implementation or deployment."
     ],
     "updated_at": "2026-10-27T08:06:39.389Z"
+  },
+  {
+    "id": 10,
+    "title": "Simplify installer completion messages across platforms",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Update the packaged Linux, macOS and Windows installer messages and completion behavior. Remove all suggestions to close the window using keyboard shortcuts, including 'If the window stays open, close it with Cmd+W.'. Always display the short command 'tasks' in Command; retain the platform-appropriate full executable path with correct quoting in Run immediately for use before a new terminal is opened. End successful installation with 'Installation complete. Open a new terminal to start working.'. Append 'Press any key to finish.' and wait for a key only in launch contexts where the installer window would otherwise close automatically; omit both the prompt and wait when the terminal remains open. Preserve the installed-location line and readable spacing. This task covers completion messages and pause behavior, not update functionality.",
+    "acceptance": [
+      "Successful installation shows 'Installed OutaskAI at <installation path>.', a blank line, 'Command: tasks', 'Run immediately: <correctly quoted full executable path> --help', a blank line, and 'Installation complete. Open a new terminal to start working.'.",
+      "macOS output uses the actual paths, for example: Installed OutaskAI at /Users/user/Library/Application Support/OutaskAI. followed by Command: tasks and Run immediately: '/Users/user/.local/bin/tasks' --help, with the agreed blank lines.",
+      "No installer message suggests closing the window with Cmd+W or another keyboard shortcut.",
+      "'Press any key to finish.' and its key wait are present only for launch contexts where the window otherwise closes automatically. Persistent terminal sessions show neither the prompt nor the wait.",
+      "Focused platform installer checks verify final output, short Command, executable-path quoting for paths containing spaces, and pause behavior in automatically closing windows versus persistent terminals; inspect captured successful installation output at the user boundary and run the applicable project gates."
+    ],
+    "values": "Goal: provide usable packaged CLI/MCP installation on supported Linux, macOS and Windows platforms (docs/product.md). Value: users immediately see the short CLI command and a usable immediate-run command, without unnecessary window-closing instructions or key waits. Observable result: the completed installer presents the agreed concise message and pauses only when needed to keep an automatically closing window readable. Verification: inspect successful installer output and exit/pause behavior for automatically closing launches and persistent terminal sessions on the supported platform routes.",
+    "updated_at": "2026-10-27T08:15:03.280Z"
   }
 ]
