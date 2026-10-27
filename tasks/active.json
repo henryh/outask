@@ -22,5 +22,30 @@
       "Requested as low priority after the repository audit. Observed: SECURITY.md absent, private vulnerability reporting disabled, Dependabot security updates disabled; dependency audits currently run in CI. Creating this task does not authorise implementation or remote-setting changes."
     ],
     "updated_at": "2026-10-27T07:42:14.499Z"
+  },
+  {
+    "id": 7,
+    "title": "Add latest-release updates to platform installers",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Make every published stable release explicitly become GitHub's Latest release, while prereleases do not replace it. Add an update action alongside install and uninstall to the packaged Linux, macOS and Windows installers. The action must resolve the latest stable GitHub release, download the matching supported-platform archive and reuse the existing installation path so user task data and configuration are preserved. Keep prompts, output, documentation and failure handling concise; do not add a separate updater service or background update mechanism.",
+    "acceptance": [
+      "Publishing a stable release explicitly marks it Latest, and GitHub's latest-release API resolves that release; a prerelease does not replace the latest stable release.",
+      "The packaged commands ./install.sh update, ./Install.command update and Install.cmd update upgrade an older installed release to the latest stable release on Linux x64, macOS Apple silicon and Windows x64 respectively.",
+      "After update, tasks --version reports the latest release and fresh CLI/MCP launches use it, while project tasks, user configuration and the existing compatible-session behavior are preserved.",
+      "An already-current installation reports a concise no-change result; resolution, download or installation failure leaves the working installed release usable and emits an actionable error.",
+      "Focused installer and release-publication checks cover latest selection, platform asset selection, successful update, no-change and failure behavior; required project CI passes and concise operator documentation lists the update commands."
+    ],
+    "values": {
+      "goal": "Keep the published Outask AI distribution simple and reliable for developers and local AI agents.",
+      "value": "Users can move an existing installation to the current stable release with one documented command instead of manually finding, downloading and extracting a versioned archive.",
+      "observable_result": "Each supported packaged installer upgrades an older installation to the GitHub Latest stable release, and release publication maintains that pointer.",
+      "verification": "Publish or simulate the release contract, verify the latest-release API selection, then run native packaged update acceptance from an older version on Linux, macOS and Windows and confirm tasks --version plus preserved user data."
+    },
+    "notes": [
+      "Requested after installing v1.3 manually. GitHub currently resolves v1.3 through releases/latest, but the publication script only clears the draft flag and does not explicitly pass --latest. Task creation does not authorise implementation or a remote release edit."
+    ],
+    "updated_at": "2026-10-27T07:59:41.719Z"
   }
 ]
