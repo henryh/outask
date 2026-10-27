@@ -37,6 +37,7 @@ fs.appendFileSync(process.env.CALL_LOG, JSON.stringify(args) + '\\n');
 let state = JSON.parse(fs.readFileSync(process.env.RELEASE_STATE, 'utf8'));
 if (args[0] === 'api') {
   if (args[1].includes('/releases/tags/') && state?.draft) { console.error('HTTP 404: draft lookup by tag is unavailable'); process.exit(1); }
+  if (args[1].endsWith('/releases/latest')) { console.log(JSON.stringify({tag_name: process.env.WRONG_LATEST || 'v${version}'})); process.exit(0); }
   if (!state || (!args[1].includes('/releases/tags/') && args[1] !== 'https://api.github.com/repos/owner/project/releases/' + state.id)) process.exit(1);
   console.log(JSON.stringify(state)); process.exit(0);
 }
@@ -79,6 +80,8 @@ test('publication stages all verified archives in a draft with the exact approve
   assert.deepEqual(mutations(result).map(args => args[1]), ['create', 'upload', 'edit']);
   assert.ok(result.calls.find(args => args[1] === 'create').includes('--draft'));
   assert.ok(!result.calls.find(args => args[1] === 'create').includes('--prerelease'));
+  assert.ok(result.calls.find(args => args[1] === 'edit').includes('--latest'));
+  assert.ok(result.calls.some(args => args[0] === 'api' && args[1] === 'repos/owner/project/releases/latest'));
   assert.equal(result.release.body, approvedNotes(f.version));
   assert.equal(result.release.name, 'Outask AI v0.16');
   assert.equal(result.release.draft, false);
@@ -132,6 +135,9 @@ test('patch and prerelease identifiers remain complete', t => {
     const f = fixture(t, version), result = f.invoke();
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.release.name, `Outask AI v${f.version}`);
+    const edit = result.calls.find(args => args[1] === 'edit');
+    assert.ok(edit.includes(version.includes('-') ? '--latest=false' : '--latest'));
+    if (version.includes('-')) assert.ok(!result.calls.some(args => args[1]?.endsWith('/releases/latest')));
     assert.ok(result.release.assets.every(asset => asset.name.includes(`-${f.version}-`)));
   }
 });
@@ -233,4 +239,22 @@ test('retry preserves approved v1.0 installer commands for draft and published r
       assert.equal(result.release.body, notes);
     }
   }
+});
+
+test('publication fails verification when GitHub Latest does not resolve the published stable tag', t => {
+  const f = fixture(t);
+  const result = f.invoke({ WRONG_LATEST: 'v0.15' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /GitHub Latest resolves v0.15/);
+  assert.equal(result.release.draft, false);
+  const retry = f.invoke({ existing: result.release, WRONG_LATEST: 'v0.15' });
+  assert.notEqual(retry.status, 0);
+  assert.match(retry.stderr, /GitHub Latest resolves v0.15/);
+  assert.equal(mutations(retry).length, 0);
+  assert.deepEqual(retry.release, result.release);
+  const verified = f.invoke({ existing: result.release });
+  assert.equal(verified.status, 0, verified.stderr);
+  assert.ok(verified.calls.some(args => args[0] === 'api' && args[1] === 'repos/owner/project/releases/latest'));
+  assert.equal(mutations(verified).length, 0);
+  assert.deepEqual(verified.release, result.release);
 });

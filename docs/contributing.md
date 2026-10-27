@@ -114,4 +114,7 @@ node scripts/ci.mjs distribution
 Make/WSL is unnecessary on Windows; use native Windows tar. Record actual native
 results in the task. Archive composition or configured jobs do not prove native
 acceptance. CI reports OS/Node/target/version/SHA256 and verifies installation,
-CLI/MCP, update/uninstall and user-data preservation.
+CLI/MCP, packaged GitHub Latest update/current/failure paths and uninstall,
+including live-session and user-data preservation. Native update acceptance
+substitutes GitHub network responses with a local newer archive; installation
+and runtime checks use the actual packaged updater.

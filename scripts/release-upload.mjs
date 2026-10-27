@@ -89,7 +89,6 @@ try {
   if (!release.draft) {
     requireArchives(targets, releaseId);
     verifyAssets(release, targets, releaseId);
-    console.log(`${tag}: already published with identical notes and assets`);
   } else {
     if (missing.length) run('gh', ['release', 'upload', tag, '--repo', repo, ...missing.map((target) => archivePath(target, releaseId))]);
     const final = readRelease(repo, tag);
@@ -104,9 +103,13 @@ try {
     }
     requireArchives(targets, releaseId);
     verifyAssets(final, targets, releaseId);
-    run('gh', ['release', 'edit', tag, '--repo', repo, '--draft=false']);
-    console.log(`${tag}: published`);
+    run('gh', ['release', 'edit', tag, '--repo', repo, '--draft=false', packageId.includes('-') ? '--latest=false' : '--latest']);
   }
+  if (!packageId.includes('-')) {
+    const latest = JSON.parse(run('gh', ['api', `repos/${repo}/releases/latest`], { stdio: ['ignore', 'pipe', 'pipe'] }).stdout);
+    if (latest.tag_name !== tag) fail('COMMAND_FAILED', `Published ${tag}, but GitHub Latest resolves ${latest.tag_name}; inspect the Release workflow`);
+  }
+  console.log(`${tag}: ${release.draft ? 'published' : 'already published with identical notes and assets'}`);
 } catch (error) {
   reportError(error);
   process.exitCode = 1;

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
+import { updateRelease } from './update-release.mjs';
 
 const windows = process.platform === 'win32';
 // Node 22's native recursive copy can misplace UTF-8 Windows paths. A filter
@@ -64,14 +65,15 @@ try {
       : target === 'macos-arm64' ? '~/Library/Application Support/OutaskAI' : '~/.local/share/task-tracker/releases/OutaskAI';
     const command = target === 'windows-x64' ? '%USERPROFILE%\\AppData\\Local\\OutaskAI\\bin\\tasks.cmd' : '~/.local/bin/tasks';
     console.log(`Outask AI installer (${platform})
-Usage: ${target === 'windows-x64' ? './Install.cmd (PowerShell), Install.cmd (cmd.exe)' : `./${publicInstallers[target]}`} [install|uninstall] [--bin-dir <directory>] [--release-root <parent-directory>]
+Usage: ${target === 'windows-x64' ? './Install.cmd (PowerShell), Install.cmd (cmd.exe)' : `./${publicInstallers[target]}`} [install|update|uninstall] [--bin-dir <directory>] [--release-root <parent-directory>]
 Requires Node.js 22.23.3 or later on PATH. Open a new terminal after installation.
 Application: ${application}
 Command: ${command}
-Install or update from the extracted OutaskAI directory; options change the command directory and application parent.
+Install from the extracted OutaskAI directory. Update downloads GitHub Latest stable; tar and network access are required.
+Options change the command directory and application parent; reuse them for update/uninstall.
 Uninstall removes the managed command link; application files, projects and configuration remain.`);
   } else {
-    if (positionals.length > 1 || !['install', 'uninstall'].includes(positionals[0] ?? 'install')
+    if (positionals.length > 1 || !['install', 'update', 'uninstall'].includes(positionals[0] ?? 'install')
       || values['bin-dir'] === '' || values['release-root'] === '') throw new Error('INVALID_INPUT: invalid action or empty directory');
     const bin = canonical(resolve(values['bin-dir'] ?? defaults.bin));
     const legacyRoot = canonical(join(homedir(), '.local/share/task-tracker/releases'));
@@ -115,6 +117,9 @@ Uninstall removes the managed command link; application files, projects and conf
     if (positionals[0] === 'uninstall') {
       if (owned(target)) unlinkSync(target);
       console.log(`Removed managed command link at ${target}. Application copies, project data and configuration are preserved.`);
+    } else if (positionals[0] === 'update') {
+      if (!managed(destination) || !owned(target)) throw new Error('NOT_INSTALLED: install first, or reuse your original --bin-dir and --release-root');
+      await updateRelease({ destination, bin, releases });
     } else {
       accessSync(join(root, 'app/bin/tasks'), constants.X_OK);
       await import('../cli.mjs');
