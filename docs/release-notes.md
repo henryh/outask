@@ -3,6 +3,7 @@
 - [Linux x64](https://github.com/henryh/outask/releases/download/v1.5/Outask-1.5-linux-x64.tar.gz)
 - [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.5/Outask-1.5-macos-arm64.tar.gz)
 - [Windows x64](https://github.com/henryh/outask/releases/download/v1.5/Outask-1.5-windows-x64.tar.gz)
+- [SHA256SUMS](https://github.com/henryh/outask/releases/download/v1.5/SHA256SUMS)
 
 ## Current version
 
@@ -16,6 +17,7 @@ Outask keeps project tasks in local JSON files, with CLI and local MCP access.
 - Consolidate generated shell PATH blocks and replace managed launchers for both commands during installation and updates.
 - Download one Outask archive for your platform. Existing command links from an unrecognised layout need removal with that installation's own installer before replacement.
 - Before starting this Windows writer generation, finish active writes and close all previous CLI/MCP/HTTP sessions; do not mix generations. Compatible updates within one generation preserve sessions.
+- Verify downloaded archives with the release's `SHA256SUMS` file before installing. Publication and retries check all three archives and their checksums; native download acceptance checks each published archive. See the [platform verification commands](https://github.com/henryh/outask/blob/v1.5/docs/releases.md#verify-a-download). Checksums verify file integrity and are not a signature of origin.
 
 ## Install
 

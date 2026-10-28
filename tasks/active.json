@@ -44,9 +44,10 @@
       "verification": "Compare SHA256SUMS with the actual published/downloaded archives and exercise matching and tampered-file verification scenarios."
     },
     "notes": [
-      "Requested by the owner after the release-integrity discussion. This task adds checksums, not signing, notarization or artifact attestations. Priority defaults to medium; only the separate security-maintenance task was explicitly requested as low."
+      "Requested by the owner after the release-integrity discussion. This task adds checksums, not signing, notarization or artifact attestations. Priority defaults to medium; only the separate security-maintenance task was explicitly requested as low.",
+      "Owner authorised task 8 implementation and preparation of stable v1.5 in the same task branch, task-8-release-checksums. Main already contains package/lock version 1.5.0 from task 11; latest published release is v1.4. Current release candidate gate requires advancement from main and changed package/lock files, so v1.5 preparation needs an explicit decision on that existing gate contract. Asked owner whether to permit an already-prepared main version newer than the latest published release; dependent gate changes remain unimplemented pending the answer. Checksum implementation, documentation and independent verification continue within the original scope. Publication/download acceptance remains read-only after owner merge; no push or PR authorised yet."
     ],
-    "updated_at": "2026-10-28T21:59:26.850Z"
+    "updated_at": "2026-10-28T22:03:59.289Z"
   },
   {
     "id": 9,

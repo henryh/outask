@@ -14,7 +14,7 @@ function fixture(t, packageVersion = '0.16.0') {
   const root = mkdtempSync(join(tmpdir(), 'outask-upload-test-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const dir of ['app/scripts', 'app/src', 'scripts', 'dist', 'tools']) mkdirSync(join(root, dir), { recursive: true });
-  for (const name of ['scripts/release-upload.mjs', 'scripts/release-notes.mjs', 'scripts/release-config.mjs', 'app/scripts/output.mjs', 'app/src/errors.mjs', 'app/src/limits.mjs', 'app/src/fields.mjs', 'app/src/response.mjs', 'app/src/version.mjs']) cpSync(join(repo, name), join(root, name));
+  for (const name of ['scripts/release-upload.mjs', 'scripts/release-checksums.mjs', 'scripts/release-notes.mjs', 'scripts/release-config.mjs', 'app/scripts/output.mjs', 'app/src/errors.mjs', 'app/src/limits.mjs', 'app/src/fields.mjs', 'app/src/response.mjs', 'app/src/version.mjs']) cpSync(join(repo, name), join(root, name));
   writeFileSync(join(root, 'app/package.json'), JSON.stringify({name: 'outask', version: packageVersion}));
   const version = distributionVersion(packageVersion);
   const assets = ['linux-x64', 'macos-arm64', 'windows-x64'].map(target => {
@@ -53,7 +53,8 @@ if (args[1] === 'create') state = {id: 42, draft: true, assets: [], name: args[a
 if (args[1] === 'upload') {
   if (process.env.UPLOAD_FAIL) process.exit(1);
   if (process.env.MUTATE_NOTES) fs.writeFileSync(process.env.SOURCE_NOTES, 'changed after validation\\n');
-  for (const file of args.filter(a => a.endsWith('.tar.gz'))) {
+  if (process.env.MUTATE_ARCHIVE) fs.writeFileSync(args.find(a => a.endsWith('.tar.gz')), 'changed after validation');
+  for (const file of args.filter(a => a.endsWith('.tar.gz') || path.basename(a) === 'SHA256SUMS')) {
     const bytes = fs.readFileSync(file);
     state.assets.push({name: path.basename(file), size: bytes.length, state: 'uploaded', digest: 'sha256:' + require('node:crypto').createHash('sha256').update(bytes).digest('hex')});
   }
@@ -72,6 +73,68 @@ fs.writeFileSync(process.env.RELEASE_STATE, JSON.stringify(state));
   };
 }
 const mutations = (result) => result.calls.filter(args => ['create', 'upload', 'edit', 'delete-asset'].includes(args[1]));
+
+test('checksum publication hashes the accepted archive bytes and retries only missing assets', t => {
+  const f = fixture(t), notesText = approvedNotes(f.version, { checksums: true });
+  const partial = f.invoke({ notesText, TARGETS: 'linux-x64' });
+  assert.notEqual(partial.status, 0);
+  assert.equal(partial.release.draft, true);
+  assert.deepEqual(partial.release.assets.map(asset => asset.name), [f.assets[0].name, 'SHA256SUMS']);
+  const checksums = readFileSync(join(f.root, 'dist/SHA256SUMS'), 'utf8');
+  assert.equal(checksums, f.assets.map(asset => `${asset.digest.slice(7)}  ${asset.name}\n`).join(''));
+  const retried = f.invoke({ notesText, existing: partial.release });
+  assert.equal(retried.status, 0, retried.stderr);
+  const upload = retried.calls.find(args => args[1] === 'upload');
+  assert.deepEqual(upload.slice(5).map(path => path.split('/').at(-1)), f.assets.slice(1).map(asset => asset.name));
+  assert.equal(retried.release.assets.length, 4);
+  assert.equal(retried.release.draft, false);
+  const identical = f.invoke({ notesText, existing: retried.release });
+  assert.equal(identical.status, 0, identical.stderr);
+  assert.deepEqual(mutations(identical), []);
+});
+
+test('checksum publication requires every local archive even for a partial upload', t => {
+  const f = fixture(t);
+  rmSync(join(f.root, 'dist', f.assets[2].name));
+  const result = f.invoke({ notesText: approvedNotes(f.version, { checksums: true }), TARGETS: 'linux-x64' });
+  assert.notEqual(result.status, 0);
+  assert.deepEqual(mutations(result), []);
+});
+
+test('archives changed during upload cannot publish a stale checksum manifest', t => {
+  const f = fixture(t);
+  const result = f.invoke({ notesText: approvedNotes(f.version, { checksums: true }), MUTATE_ARCHIVE: '1' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Local SHA256SUMS differs/);
+  assert.equal(result.release.draft, true);
+  assert.ok(!result.calls.some(args => args[1] === 'edit'));
+});
+
+test('checksum retries reject inconsistent checksum, archive and duplicate assets before mutations', t => {
+  const f = fixture(t), notesText = approvedNotes(f.version, { checksums: true });
+  const published = f.invoke({ notesText });
+  assert.equal(published.status, 0, published.stderr);
+  const assets = published.release.assets;
+  for (const draft of [true, false]) {
+    for (const changed of [
+      assets.map(asset => asset.name === 'SHA256SUMS' ? { ...asset, digest: 'sha256:wrong' } : asset),
+      assets.map((asset, index) => index === 2 ? { ...asset, digest: 'sha256:wrong' } : asset),
+      [...assets, assets[0]],
+    ]) {
+      const result = f.invoke({ notesText, TARGETS: 'linux-x64', existing: { ...published.release, draft, assets: changed } });
+      assert.notEqual(result.status, 0);
+      assert.deepEqual(mutations(result), []);
+    }
+  }
+  const incomplete = f.invoke({ notesText, existing: { ...published.release, assets: assets.filter(asset => asset.name !== 'SHA256SUMS') } });
+  assert.notEqual(incomplete.status, 0);
+  assert.deepEqual(mutations(incomplete), []);
+  writeFileSync(join(f.root, 'dist', f.assets[0].name), 'tampered archive');
+  const tampered = f.invoke({ notesText, existing: published.release });
+  assert.notEqual(tampered.status, 0);
+  assert.match(tampered.stderr, /Local SHA256SUMS differs/);
+  assert.deepEqual(mutations(tampered), []);
+});
 
 test('publication stages all verified archives in a draft with the exact approved notes before publishing', t => {
   const f = fixture(t);

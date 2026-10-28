@@ -6,6 +6,12 @@ import { targets } from './release-config.mjs';
 const headings = ['Downloads', 'Current version', "What's new", 'Install', 'Run', 'Documentation'];
 const downloadLabels = { 'linux-x64': 'Linux x64', 'macos-arm64': 'macOS Apple silicon', 'windows-x64': 'Windows x64' };
 
+export function checksumsEnabled(notes, version, repo) {
+  return section(notes, 'Downloads', 'Current version').includes(
+    `- [SHA256SUMS](https://github.com/${repo}/releases/download/v${version}/SHA256SUMS)`,
+  );
+}
+
 function section(notes, heading, next) {
   const marker = `## ${heading}\n`;
   const start = notes.indexOf(marker) + marker.length;
