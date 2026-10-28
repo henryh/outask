@@ -1,10 +1,10 @@
 # Outask
 
-Track AI-assisted development with readable JSON tasks kept alongside your code.
-Use `outask` yourself or connect a local coding agent through MCP.
+Outask is a lightweight task tracker for personal projects and your AI harness.
+Keep active, completed and archived tasks alongside project code as readable JSON,
+so you and local coding agents share the same task history through CLI or MCP.
 
-`tasks` and `outaskai` are permanent command aliases for the same installation,
-including MCP. Existing client registrations continue to work.
+Use `outask` from your terminal. `tasks` is a permanent alias for the same installation.
 
 ## Install the CLI
 
@@ -34,6 +34,7 @@ outask create --title "Write release notes"
 outask list --format table
 outask search "release notes"
 outask transition 1 --status done
+outask list --group Done
 ```
 
 Use the ID returned by `create` in place of `1`. The first write prepares task
@@ -51,7 +52,7 @@ codex mcp list
 
 Start a new Codex session. For Windows, client PATH differences and other hosts,
 see [MCP setup](app/mcp/README.md). Point the agent to the
-[Outask agent skill guide](docs/outask-ai-skill.md), for example:
+[Outask agent skill guide](docs/outask-skill.md), for example:
 
 > Use the Outask agent skill guide for this project. Prefer the connected
 > `outask` MCP server and respect the project's instructions. Plan and track

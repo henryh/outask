@@ -26,13 +26,6 @@ test('Latest selects the exact native archive and excludes drafts, prereleases a
   assert.throws(() => latestAsset(redirected, 'linux-x64'), /no supported archive/);
 });
 
-test('Latest still recognises the already-published OutaskAI asset contract', () => {
-  const previous = release();
-  previous.assets[0].name = previous.assets[0].name.replace('Outask-', 'OutaskAI-');
-  previous.assets[0].browser_download_url = previous.assets[0].browser_download_url.replace('Outask-', 'OutaskAI-');
-  assert.equal(latestAsset(previous, 'linux-x64').name, 'OutaskAI-1.4-linux-x64.tar.gz');
-});
-
 function installation(t) {
   const work = mkdtempSync(join(tmpdir(), 'outask-update-test-'));
   t.after(() => rmSync(work, { recursive: true, force: true }));

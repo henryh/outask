@@ -2,6 +2,13 @@
 // preload stays outside distribution archives and adds no production switch.
 import childProcess from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
+import os from 'node:os';
+
+export function isolateUserHome(home) {
+  const userInfo = os.userInfo;
+  os.userInfo = options => ({ ...userInfo(options), homedir: home });
+  syncBuiltinESMExports();
+}
 
 export function isolateRegistry(key) {
   if (!/^Software\\OutaskTest-[a-f0-9-]+$/.test(key)) throw new Error('Invalid test registry key');
@@ -20,3 +27,4 @@ export function isolateRegistry(key) {
 }
 
 if (process.env.OUTASK_TEST_REGISTRY_KEY) isolateRegistry(process.env.OUTASK_TEST_REGISTRY_KEY);
+if (process.env.OUTASK_TEST_USER_HOME) isolateUserHome(process.env.OUTASK_TEST_USER_HOME);

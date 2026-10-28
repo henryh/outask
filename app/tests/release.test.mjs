@@ -6,7 +6,6 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { distributionVersion } from '../src/version.mjs';
-import { createHash } from 'node:crypto';
 import { cleanupProjectLocks } from './helpers/cleanup-project-locks.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -118,6 +117,8 @@ test('builders reject unsupported targets before creating artifacts', () => {
 });
 
 test('archives contain app resources without runtimes, HTTP, plugins, development stores or checksums', () => {
+  assert.deepEqual(readdirSync(archives).filter(name => name.endsWith('.tar.gz')).sort(),
+    ['linux-x64', 'macos-arm64', 'windows-x64'].map(target => `Outask-${releaseVersion}-${target}.tar.gz`).sort());
   for (const target of ['linux-x64', 'macos-arm64', 'windows-x64']) {
     const archive = join(archives, `Outask-${releaseVersion}-${target}.tar.gz`);
     const entries = ok(run('tar', ['-tzf', archive])).split('\n').filter(Boolean);
@@ -139,32 +140,6 @@ test('archives contain app resources without runtimes, HTTP, plugins, developmen
     assert.ok(!entries.some((path) => /\/(?:runtime|tasks|tests|references|\.git|plugin[^/]*)(?:\/|$)|\/http.mjs$|SHA256SUMS/.test(path.replace(/\/app\/bin\/tasks$/, '/entry').replace(/\/bin\/tasks$/, '/entry'))));
   }
   assert.equal(existsSync(join(archives, 'SHA256SUMS')), false);
-});
-
-test('canonical and legacy archive formats contain identical application and installer bytes', () => {
-  const entries = directory => {
-    const result = new Map();
-    const visit = (path, prefix = '') => {
-      for (const entry of readdirSync(path, { withFileTypes: true })) {
-        const name = prefix + entry.name;
-        const child = join(path, entry.name);
-        if (entry.isDirectory()) visit(child, `${name}/`);
-        else result.set(name, entry.isSymbolicLink() ? `link:${readlinkSync(child)}`
-          : createHash('sha256').update(readFileSync(child)).digest('hex'));
-      }
-    };
-    visit(directory);
-    return result;
-  };
-  for (const target of ['linux-x64', 'macos-arm64', 'windows-x64']) {
-    const extracted = join(root, `format-parity-${target}`);
-    mkdirSync(extracted);
-    for (const brand of ['Outask', 'OutaskAI']) ok(run('tar', ['-xzf', join(archives, `${brand}-${releaseVersion}-${target}.tar.gz`), '-C', extracted]));
-    const canonical = entries(join(extracted, 'Outask'));
-    const compatibility = entries(join(extracted, 'OutaskAI'));
-    assert.equal(compatibility.size, canonical.size, target);
-    for (const [path, digest] of canonical) assert.equal(compatibility.get(path), digest, `${target}: ${path}`);
-  }
 });
 
 test('each archive README and installer help describe only their destination platform', (t) => {
@@ -435,20 +410,20 @@ test('legacy versioned installations retire managed payloads while retaining unr
   ok(f.install());
   const legacy = join(f.releases, `task-tracker-${releaseVersion}-linux-x64`);
   renameSync(f.installed, legacy);
-  for (const name of ['outask', 'tasks', 'outaskai']) rmSync(join(f.bin, name));
+  for (const name of ['outask', 'tasks']) rmSync(join(f.bin, name));
   symlinkSync(join(legacy, 'app/bin/tasks'), join(f.bin, 'tasks'));
   writeFileSync(join(legacy, 'user-note.txt'), 'legacy user content');
   ok(f.install());
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
   assert.equal(readFileSync(join(legacy, 'user-note.txt'), 'utf8'), 'legacy user content');
   assert.equal(existsSync(join(legacy, 'app/package.json')), false);
-  assert.equal(ok(run(join(legacy, 'app/bin/tasks'), ['--version'], { env: f.env })).trim(), `Outask v${releaseVersion}`);
+  assert.equal(existsSync(join(legacy, 'app/bin/tasks')), false);
 });
 
 test('a legacy packaged updater migrates its default root, registry and command into one Outask installation', t => {
   const f = fixture(t);
   const oldRoot = join(f.home, '.local/share/task-tracker/releases');
-  const previous = join(oldRoot, 'OutaskAI');
+  const previous = join(oldRoot, 'Outask');
   cpSync(f.source, previous, { recursive: true });
   const manifest = join(previous, 'app/package.json');
   const pkg = JSON.parse(readFileSync(manifest, 'utf8'));
@@ -463,7 +438,7 @@ test('a legacy packaged updater migrates its default root, registry and command 
   const env = { ...f.env, XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, TASK_TRACKER_CONFIG: undefined };
   // This is the exact directory-forwarding behaviour of the old updater.
   ok(run(process.execPath, [internalInstaller(f.source), 'install', '--bin-dir', f.bin, '--release-root', oldRoot], { env }));
-  for (const name of ['outask', 'tasks', 'outaskai']) {
+  for (const name of ['outask', 'tasks']) {
     assert.equal(readlinkSync(join(f.bin, name)), join(f.installed, 'app/bin/tasks'));
     assert.equal(ok(run(join(f.bin, name), ['--version'], { env })).trim(), `Outask v${releaseVersion}`);
   }
@@ -505,7 +480,7 @@ test('command uninstall preserves a user-selected symlinked legacy registry with
   ok(run(process.execPath, [internalInstaller(f.installed), 'uninstall'], {
     env: { ...f.env, XDG_CONFIG_HOME: undefined, TASK_TRACKER_CONFIG: undefined },
   }));
-  for (const name of ['outask', 'tasks', 'outaskai']) assert.equal(existsSync(join(f.bin, name)), false);
+  for (const name of ['outask', 'tasks']) assert.equal(existsSync(join(f.bin, name)), false);
   assert.equal(readlinkSync(legacy), external);
   assert.equal(readFileSync(external, 'utf8'), '{"unknown":"preserve"}\n');
 });
@@ -1000,7 +975,7 @@ test('installer migrates existing checkout and previous release command links', 
   symlinkSync(join(old, 'bin/tasks'), join(f.bin, 'tasks'));
   ok(f.install());
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
-  assert.equal(ok(run(join(old, 'bin/tasks'), ['--version'], { env: f.env })).trim(), `Outask v${releaseVersion}`);
+  assert.equal(existsSync(join(old, 'bin/tasks')), false);
 });
 
 test('Windows archive installer checks Node before delegating to the managed installer', () => {

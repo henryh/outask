@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 
 const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
-const managedBlocks = /^# Outask(?: AI)? command path\ncase ":\$\{PATH-\}:" in\n  \*:(.+):\*\) ;;\n  \*\) export PATH=\1:"\$PATH" ;;\nesac\n/gm;
+const managedBlocks = /^# Outask command path\ncase ":\$\{PATH-\}:" in\n  \*:(.+):\*\) ;;\n  \*\) export PATH=\1:"\$PATH" ;;\nesac\n/gm;
 
 // Both installers configure future terminals after the command is installed.
 // Profile errors must not turn a usable installation into a reported failure.

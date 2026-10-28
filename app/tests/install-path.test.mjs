@@ -80,18 +80,18 @@ test('profile errors and unsupported shells explain immediate use and manual rem
   assert.match(unsupported, /export PATH=/);
 });
 
-test('reinstallation retires complete legacy PATH blocks while preserving user shell content', t => {
+test('reinstallation consolidates complete Outask PATH blocks while preserving user shell content', t => {
   const f = fixture(t);
   const profile = join(f.home, '.bashrc');
-  const legacy = path => `# Outask AI command path\ncase ":\${PATH-}:" in\n  *:'${path}':*) ;;\n  *) export PATH='${path}':"$PATH" ;;\nesac\n`;
-  writeFileSync(profile, `# user before\n${legacy('/tmp/obsolete installation')}${legacy('/tmp/second')}`
-    + '# Outask AI command path\n# user-owned customised block\nexport OTHER=retained\n');
+  const block = path => `# Outask command path\ncase ":\${PATH-}:" in\n  *:'${path}':*) ;;\n  *) export PATH='${path}':"$PATH" ;;\nesac\n`;
+  writeFileSync(profile, `# user before\n${block('/tmp/obsolete installation')}${block('/tmp/second')}`
+    + '# Outask command path\n# user-owned customised block\nexport OTHER=retained\n');
   configurePath(f.bin, { env: f.env });
   const contents = readFileSync(profile, 'utf8');
   assert.doesNotMatch(contents, /obsolete installation|\/tmp\/second/);
   assert.match(contents, /# user before/);
   assert.match(contents, /# user-owned customised block\nexport OTHER=retained/);
-  assert.equal((contents.match(/^# Outask command path$/gm) || []).length, 1);
+  assert.equal((contents.match(/^# Outask command path$/gm) || []).length, 2);
   configurePath(f.bin, { env: f.env });
   assert.equal(readFileSync(profile, 'utf8'), contents);
 });

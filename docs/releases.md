@@ -26,12 +26,12 @@ Package `1.1.0` maps to tag `v1.1`, title `Outask v1.1` and
 `Outask-1.1-<target>.tar.gz`; nonzero patches stay complete. Prerelease suffixes
 remain and produce GitHub prereleases. Existing releases stay unchanged.
 
-Each new platform build also produces `OutaskAI-<version>-<target>.tar.gz`
-with an `OutaskAI/` extraction root for installed legacy updaters. Its application
-and installer bytes match the canonical archive's `Outask/` payload. These three
-compatibility assets are required alongside the three canonical assets;
-downloads and first-install examples use the canonical names. Recovery of an
-older approved manifest retains its original three legacy assets and exact notes.
+Each platform build produces one current Outask archive. Release title, asset,
+notes validation and recovery use the current naming contract only. Users
+switching from an unrecognised layout remove its command links with its own
+installer and install the current archive; project records remain unchanged.
+Before first starting the Windows coordination generation, finish writes and
+close all previous CLI/MCP/HTTP sessions. Never mix coordination generations.
 
 Before final publication, complete all planned work, review/QA/documentation and
 candidate closure. Declare publication/download acceptance as read-only post-merge
@@ -70,7 +70,7 @@ and installer help contain commands/defaults only for their destination platform
 ## Check before merge and publish after merge
 
 Release PR CI validates version/lockfile/notes and runs six native CI jobs. The
-shared `release-archives.yml` builds both formats per platform and accepts each
+shared `release-archives.yml` builds one archive per platform and accepts each
 with Node.js 22.23.3 and 24 before uploading Actions artifacts. Archive/download
 acceptance uses `node scripts/ci.mjs archive` / `downloaded`; Windows uses native
 PowerShell/system tar. Ordinary/new-release PR checks create no tags or releases.
@@ -78,7 +78,7 @@ PowerShell/system tar. Ordinary/new-release PR checks create no tags or releases
 After owner merge, `Release` verifies the owner, two-parent merge of the exact PR
 head and exact notes, then reruns merged-main CI and the shared native archive
 workflow at that merge. Only the publisher has `contents: write`: it creates the
-annotated main tag, stages all six verified archives in a draft with exact
+annotated main tag, stages all three verified archives in a draft with exact
 name/notes and publishes. Stable publication explicitly sets GitHub Latest and
 checks the latest-release API; prereleases explicitly leave Latest unchanged.
 It never creates source/task commits or pushes branches.

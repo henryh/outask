@@ -11,7 +11,7 @@ contain CLI/MCP; HTTP is available from a source checkout. See the
 ## Product identity and installation footprint
 
 Outask is the displayed product name; `outask` is the command and service
-identifier. `tasks` and `outaskai` are permanent equivalent commands without
+identifier. `tasks` is a permanent equivalent command without
 deprecation warnings. Task fields, operation names, routes, `tasks/` and the
 project metadata/recovery filenames retain their existing contracts.
 
@@ -19,31 +19,30 @@ The permanent default roots are `~/.local/share/outask` on Linux,
 `~/Library/Application Support/Outask` on macOS, and
 `%LOCALAPPDATA%\Programs\Outask` on Windows. Application files, default
 `config.json` and disposable `cache/` live there without version directories.
-Updates stage and roll back beside that root, then remove successful staging
-and backups. Confirmed old managed payloads are retired after success;
+Updates stage and back up only managed program files beside that root. The
+root, registry, cache and coordination inodes stay in place; successful updates
+remove staging and backups. Confirmed old managed payloads are retired after success;
 unrecognised sibling files are preserved. Conflicting registries stop migration.
 
-Necessary external integrations are POSIX links for all three commands in
+Necessary external integrations are POSIX links for both commands in
 `~/.local/bin`, existing managed shell PATH blocks (including `ZDOTDIR`), and
 Windows user PATH pointing to the root's `commands/` directory. Installation
 consolidates complete generated PATH blocks without changing other shell code.
-Known absolute legacy CLI/MCP, standalone validator and installer paths retain small forwarders to
-the canonical installation. The old application payload is removed. Confirmed
-legacy Windows PATH entries are retired when their directory has no unrelated
-commands; compatibility launchers remain usable by explicit path. Explicit `--bin-dir`, `--release-root`, `--config`,
-`TASK_TRACKER_CONFIG` and XDG paths remain supported external choices. Installed
-project Git hooks and client registrations are explicit integrations; installers
-do not scan projects or rewrite client configuration. Reinstall a managed hook
-to refresh its branding; modified hooks require manual integration.
+Managed obsolete payloads are identified by release metadata and package ownership
+inside the known application parents, without depending on a retired product
+spelling. Old program paths are removed. Refresh explicit client/hook references
+when changing layouts; remove an installed hook with its original command first.
+Explicit `--bin-dir`, `--release-root`, `--config`, `TASK_TRACKER_CONFIG` and XDG
+paths remain supported choices. Modified hooks require manual integration.
 
-Writer coordination is the deliberate exception: retain the fixed POSIX
-`/var/tmp/task-tracker-locks-<uid>` and Windows
-`<OS-user-home>/AppData/Local/OutaskAI/locks` namespaces so loaded old clients
-and every alias still share the same SQLite locks, independently of environment
-overrides. This release does not create a second `locks/` namespace or unlink
-live coordination files. Retirement requires all affected old and new sessions
-to finish writes and close, followed by one coordinated protocol migration of
-every writer before any writer restarts; merely moving the files is unsafe.
+Writer coordination uses the fixed POSIX `/var/tmp/task-tracker-locks-<uid>`
+namespace and Windows `<OS-user-home>/AppData/Local/Programs/Outask/locks`,
+independently of HOME/cache/config/temp overrides. This release changes the
+Windows coordination generation: finish active writes and close all previous
+CLI/MCP/HTTP sessions before starting the new writers. Run one generation only.
+Compatible updates within that generation preserve running sessions. Never
+unlink or relocate live coordination files. Retirement requires all affected
+writers to finish and close before coordinated migration and restart.
 Old disposable cache generations may remain dormant for loaded old readers;
 new processes rebuild under the Outask root or explicit XDG cache location.
 Remove dormant caches only after those readers/refresh workers close.
@@ -352,7 +351,7 @@ immediately when busy (`PROJECT_BUSY`). Canonical path aliases share a lock;
 Windows normalises case. Coordination ignores cache/temp/home environment
 settings. POSIX uses `/var/tmp/task-tracker-locks-<uid>` with private directory/
 file permissions; Windows uses the OS user profile under
-`AppData/Local/OutaskAI/locks` with inherited ACLs. Projects containing that lock
+`AppData/Local/Programs/Outask/locks` with inherited ACLs. Projects containing that lock
 directory are rejected for writes. Different projects have independent locks.
 
 The retained external SQLite coordination files contain no task data. Completion,

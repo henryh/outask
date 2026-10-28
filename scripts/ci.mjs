@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { archiveNames, archivePaths, hostTarget, root, tagName } from './release-config.mjs';
+import { archiveName, archivePath, hostTarget, root, tagName } from './release-config.mjs';
 
 function run(label, command, args, env = process.env) {
   if (process.platform === 'win32' && command === 'npm') {
@@ -58,7 +58,6 @@ function distribution() {
     const artifact = JSON.parse(output).artifacts[0];
     console.log(`${target} test build: PASS`);
     smoke(artifact.archive);
-    smoke(artifact.compatibilityArchive);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -75,10 +74,9 @@ function downloaded() {
   if (!repo) throw new Error('REPO is required for downloaded release acceptance');
   const temporary = mkdtempSync(join(tmpdir(), 'outask-downloaded-acceptance-'));
   try {
-    const names = archiveNames(hostTarget());
-    run('Published archive download', 'gh', ['release', 'download', tagName(), '--repo', repo,
-      ...names.flatMap(name => ['--pattern', name]), '--dir', temporary]);
-    for (const name of names) smoke(join(temporary, name));
+    const name = archiveName(hostTarget());
+    run('Published archive download', 'gh', ['release', 'download', tagName(), '--repo', repo, '--pattern', name, '--dir', temporary]);
+    smoke(join(temporary, name));
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -92,7 +90,7 @@ try {
   if (mode === undefined || mode === 'dependencies') dependencies();
   if (mode === undefined || mode === 'test') tests();
   if (mode === undefined || mode === 'distribution') distribution();
-  if (mode === 'archive') for (const archive of archivePaths(hostTarget())) smoke(archive);
+  if (mode === 'archive') smoke(archivePath(hostTarget()));
   if (mode === 'downloaded') downloaded();
 } catch (error) {
   console.error(error.message);

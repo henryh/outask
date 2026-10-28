@@ -21,7 +21,7 @@ Open a new terminal after installation; restart an editor with an old PATH.
 | macOS | `~/Library/Application Support/Outask` | `~/.local/bin/outask` |
 | Windows | `%LOCALAPPDATA%\Programs\Outask` | `%LOCALAPPDATA%\Programs\Outask\commands\outask.cmd` |
 
-`tasks` and `outaskai` are permanent aliases. See the [footprint and migration rules](../docs/contract.md#product-identity-and-installation-footprint).
+`tasks` is a permanent alias. See the [footprint and migration rules](../docs/contract.md#product-identity-and-installation-footprint).
 
 On macOS, put Node.js 22.23.3 or later on PATH using the
 [official installer](https://nodejs.org/en/download) or another provider.
@@ -33,7 +33,7 @@ Double-click `Install.command` or run `./Install.command`. If macOS blocks this
 unsigned launcher, use [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
 for a release you trust. Keep Gatekeeper enabled.
 
-From the installed Outask directory, update to GitHub Latest stable with `./install.sh update` on Linux, `./Install.command update` on macOS, `./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe. Requires network access and tar on PATH. An already-current installation reports no change; a failed update preserves the working installation.
+Before switching installation layouts, finish writes, close previous sessions and refresh explicit client/hook references. From the installed Outask directory, update to GitHub Latest stable with `./install.sh update` on Linux, `./Install.command update` on macOS, `./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe. Requires network access and tar on PATH. An already-current installation reports no change; a failed update preserves the working installation.
 
 Let existing MCP/HTTP sessions and active writes finish normally. Existing sessions may retain their loaded version; fresh launches use the update and `outask --version` reports `Outask v<version>`.
 Managed files are replaced; user files, tasks and configuration remain. Resolve
@@ -144,14 +144,12 @@ task records unchanged. Validation can complete a pending coordinated move.
 The tracker never stages or commits files. Correct invalid metadata and retry.
 
 ## Project locks and upgrades
-All cooperating writers must run as the same OS user on one host with local
-filesystems. Ordinary compatible upgrades preserve running sessions and writes.
-For a release requiring an incompatible coordination-protocol migration, let
-active writes finish and arrange for affected clients to close their old sessions
-normally before starting writers using the new protocol. Stop old presence-lock
-writers before removing a legacy `tasks/.task-tracker.json.lock`; its presence
-fails closed with `PROJECT_BUSY`.
-An absent legacy file does not establish that older writers have stopped.
+All cooperating writers use the same OS user, host and local filesystem.
+Before first using the Windows Outask coordination location, finish active writes
+and close all prior CLI/MCP/HTTP sessions. Start new writers afterward; do not mix
+generations. Compatible updates within one generation preserve running sessions.
+Stop older presence-lock writers before removing a `tasks/.task-tracker.json.lock`;
+its presence fails closed with `PROJECT_BUSY`. Absence does not prove they stopped.
 
 Retained SQLite coordination files do not mean a lock is held. Never remove or
 replace them while any tracker process may run. Optional cleanup requires all

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -35,11 +35,12 @@ test('default registry recognises legacy settings without rewriting and prefers 
   assert.equal(readConfig(legacy, env).settings.unknown.preserved, true);
 });
 
-test('all three CLI names share canonical help, continuations, reads, errors and exit codes', t => {
+test('both CLI names share canonical help, continuations, reads, errors and exit codes', t => {
+  assert.deepEqual(readdirSync(new URL('../bin/', import.meta.url)).sort(), ['outask', 'tasks']);
   const root = fixture(t, [task(1), task(2)]);
   for (const args of [['--version'], ['--help'], ['list', '--help'], ['list', '--limit', '1', '--no-cache'],
     ['get', '1', '--fields', 'all', '--format', 'json', '--no-cache'], ['get', '999', '--no-cache'], ['unknown']]) {
-    const outputs = ['outask', 'tasks', 'outaskai'].map(name => {
+    const outputs = ['outask', 'tasks'].map(name => {
       const result = spawnSync(process.execPath, [fileURLToPath(new URL(`../bin/${name}`, import.meta.url)), ...args], {
         cwd: root, encoding: 'utf8', timeout: 10000,
       });
@@ -47,6 +48,5 @@ test('all three CLI names share canonical help, continuations, reads, errors and
       return { status: result.status, stdout: result.stdout, stderr: result.stderr };
     });
     assert.deepEqual(outputs[1], outputs[0]);
-    assert.deepEqual(outputs[2], outputs[0]);
   }
 });

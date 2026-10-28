@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry, forwarderEntry } from './install-launcher.mjs';
+import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
 import { updateRelease } from './update-release.mjs';
 import { legacyLocations, legacyConfig, obsoleteInstalls, retireConfig, retirePayload } from './install-migration.mjs';
@@ -68,7 +68,7 @@ try {
     console.log(`Outask installer (${platform})
 Usage: ${target === 'windows-x64' ? './Install.cmd (PowerShell), Install.cmd (cmd.exe)' : `./${publicInstallers[target]}`} [install|update|uninstall] [--bin-dir <directory>] [--release-root <parent-directory>]
 Requires Node.js 22.23.3 or later on PATH. Open a new terminal after installation.
-Application: ${application}
+${target === 'windows-x64' ? 'Before first using this Windows writer generation, finish writes and close all previous CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.\n' : ''}Application: ${application}
 Command: ${command}
 Install from the extracted application directory. Update downloads GitHub Latest stable; tar and network access are required.
 Options change the command directory and application parent; reuse them for update/uninstall.
@@ -76,7 +76,7 @@ Uninstall removes the managed command link; application files, projects and conf
   } else {
     if (positionals.length > 1 || !['install', 'update', 'uninstall'].includes(positionals[0] ?? 'install')
       || values['bin-dir'] === '' || values['release-root'] === '') throw new Error('INVALID_INPUT: invalid action or empty directory');
-    let bin = canonical(resolve(values['bin-dir'] ?? defaults.bin));
+    const bin = canonical(resolve(values['bin-dir'] ?? defaults.bin));
     const legacyRoot = canonical(join(homedir(), '.local/share/task-tracker/releases'));
     const defaultRoot = defaults.releases;
     const requestedRoot = canonical(resolve(values['release-root'] ?? defaultRoot));
@@ -84,12 +84,6 @@ Uninstall removes the managed command link; application files, projects and conf
     // Old packaged updaters explicitly pass their former default directories.
     // Recognise those defaults while preserving genuinely custom locations.
     const releases = oldDefaults.includes(requestedRoot) ? canonical(defaultRoot) : requestedRoot;
-    const oldWindowsBin = windows ? join(process.env.LOCALAPPDATA || join(homedir(), 'AppData/Local'), 'OutaskAI/bin') : undefined;
-    if (windows && bin === canonical(oldWindowsBin) && positionals[0] !== 'uninstall') {
-      const launcher = join(bin, 'tasks.cmd');
-      const entry = inspect(launcher)?.isFile() ? launcherEntry(readFileSync(launcher, 'utf8')) : undefined;
-      if (entry && managed(resolve(entry, '../../..'))) bin = canonical(defaults.bin);
-    }
     if (!managed(root)) throw new Error('INVALID_RELEASE: invalid release metadata or application');
     const releaseTarget = JSON.parse(readFileSync(join(root, 'release.json'), 'utf8')).target;
     const payload = ['app', 'bin', publicInstallers[releaseTarget], 'release.json', 'README.md'];
@@ -103,15 +97,6 @@ Uninstall removes the managed command link; application files, projects and conf
     const targets = commandNames.map((name) => join(bin, windows ? `${name}.cmd` : name));
     const target = targets[0];
     function owned(path) {
-      try {
-        const actual = realpathSync(path);
-        const info = lstatSync(actual);
-        if (info.isFile() && info.size <= 16384) {
-          const entry = forwarderEntry(readFileSync(actual, 'utf8'));
-          const parent = entry && resolve(entry, '../../..');
-          if (entry && entry === join(parent, 'app/bin/tasks') && managed(parent) && releaseRoots.includes(dirname(parent))) return true;
-        }
-      } catch { /* A missing or unrelated entry still follows the normal ownership checks. */ }
       if (windows) {
         if (!inspect(path)?.isFile()) return false;
         const entry = launcherEntry(readFileSync(path, 'utf8'));
@@ -130,9 +115,7 @@ Uninstall removes the managed command link; application files, projects and conf
       const parent = linked.endsWith('/app/bin/tasks') ? resolve(linked, '../../..') : resolve(linked, '../..');
       if (releaseRoots.includes(dirname(parent)) && managed(parent)) {
         const metadata = JSON.parse(readFileSync(join(parent, 'release.json'), 'utf8'));
-        if (parent === destination || basename(parent) === 'OutaskAI' || basename(parent) === `task-tracker-${metadata.version}-${metadata.target}`) {
-          return linked === join(parent, 'app/bin/tasks') || linked === join(parent, 'bin/tasks');
-        }
+        return linked === join(parent, 'app/bin/tasks') || linked === join(parent, 'bin/tasks');
       }
       if (linked !== join(parent, 'app/bin/tasks') || inspect(join(parent, 'release.json'))) return false;
       try {
@@ -141,9 +124,6 @@ Uninstall removes the managed command link; application files, projects and conf
       } catch { return false; }
     }
     for (const target of targets) if (inspect(target) && !owned(target)) throw new Error(`COMMAND_EXISTS: ${target} is unrelated; resolve the collision before installing`);
-    const legacyBin = windows ? join(process.env.LOCALAPPDATA || join(homedir(), 'AppData/Local'), 'OutaskAI/bin') : undefined;
-    const legacyCommands = legacyBin && canonical(legacyBin) !== bin
-      ? commandNames.map((name) => join(legacyBin, `${name}.cmd`)).filter(owned) : [];
     if (positionals[0] === 'uninstall') {
       for (const target of targets) if (owned(target)) unlinkSync(target);
       console.log(`Removed managed command link at ${target}. Application copies, project data and configuration are preserved.`);
@@ -152,6 +132,7 @@ Uninstall removes the managed command link; application files, projects and conf
       if (!installed) throw new Error('NOT_INSTALLED: install first, or reuse your original --bin-dir and --release-root');
       await updateRelease({ destination: installed, bin, releases });
     } else {
+      if (windows) console.log('Windows coordination: before first using this writer generation, finish active writes and close all prior CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.');
       const obsolete = obsoleteInstalls(releaseRoots, destination, managed);
       accessSync(join(root, 'app/bin/tasks'), constants.X_OK);
       await import('../cli.mjs');
@@ -179,14 +160,6 @@ Uninstall removes the managed command link; application files, projects and conf
         for (const name of payload) {
           if (inspect(join(root, name))) cpSync(join(root, name), join(staged, name), copyOptions);
         }
-        if (inspect(destination)) {
-          for (const name of readdirSync(destination)) {
-            if (!managedPayload.includes(name)) cpSync(join(destination, name), join(staged, name), copyOptions);
-          }
-        }
-        if (migration && migration.target === join(destination, 'config.json') && !inspect(join(staged, 'config.json'))) {
-          cpSync(migration.source, join(staged, 'config.json'));
-        }
         const check = spawnSync(process.execPath, [join(staged, 'app/bin/tasks'), '--help'], { encoding: 'utf8', timeout: 60000 });
         if (check.error) throw check.error;
         if (check.status !== 0) {
@@ -211,11 +184,27 @@ Uninstall removes the managed command link; application files, projects and conf
           if (windows) writeFileSync(link, windowsLauncher(join(destination, 'app/bin/tasks')));
           else symlinkSync(join(destination, 'app/bin/tasks'), link);
         }
-        let installed = false;
+        const swapped = [];
+        mkdirSync(destination, { recursive: true });
+        mkdirSync(backup);
         try {
-          if (inspect(destination)) renameSync(destination, backup);
-          renameSync(staged, destination);
-          installed = true;
+          // The root and all persistent state retain their original inodes.
+          for (const name of managedPayload) {
+            const current = join(destination, name);
+            const replacement = join(staged, name);
+            if (inspect(current)?.isFile() && inspect(replacement)?.isFile()
+              && readFileSync(current).equals(readFileSync(replacement))) continue;
+            const item = { name, previous: false, installed: false };
+            swapped.push(item);
+            if (inspect(current)) {
+              renameSync(current, join(backup, name));
+              item.previous = true;
+            }
+            if (inspect(replacement)) {
+              renameSync(replacement, current);
+              item.installed = true;
+            }
+          }
           mkdirSync(bin, { recursive: true });
           for (const [index, target] of targets.entries()) {
             if (inspect(target)) cpSync(target, join(linkWork, `old-${index}`), copyOptions);
@@ -223,8 +212,15 @@ Uninstall removes the managed command link; application files, projects and conf
           }
           committed = true;
         } catch (error) {
-          if (installed) renameSync(destination, staged);
-          if (inspect(backup)) renameSync(backup, destination);
+          for (const item of swapped.reverse()) {
+            try {
+              if (item.installed) renameSync(join(destination, item.name), join(staged, item.name));
+              if (item.previous) renameSync(join(backup, item.name), join(destination, item.name));
+            } catch (restoreError) {
+              rollbackFailed = true;
+              console.error(`Application recovery files retained at ${work}: ${restoreError.message}`);
+            }
+          }
           for (const [index, target] of targets.entries()) {
             if (inspect(join(linkWork, `new-${index}`))) continue;
             try {
@@ -239,24 +235,14 @@ Uninstall removes the managed command link; application files, projects and conf
         }
       } finally {
         // Retain a backup if an OS error prevents rollback, rather than deleting it.
-        if (committed || !inspect(backup)) rmSync(work, { recursive: true, force: true });
-        else console.error(`Previous application retained at ${backup}`);
+        if (committed || !rollbackFailed) rmSync(work, { recursive: true, force: true });
+        else console.error(`Recovery files retained at ${work}`);
         if (linkWork && !rollbackFailed) rmSync(linkWork, { recursive: true, force: true });
       }
-      // Configuration outside the application root is an explicit XDG choice.
-      if (migration && !inspect(migration.target)) {
-        mkdirSync(dirname(migration.target), { recursive: true });
-        cpSync(migration.source, migration.target, { errorOnExist: true, force: false });
-      }
       retireConfig(migration);
-      for (const command of legacyCommands) writeFileSync(command, windowsLauncher(join(destination, 'app/bin/tasks')));
-      const retiredBins = [];
-      if (legacyCommands.length && readdirSync(legacyBin).every(name => legacyCommands.some(command => basename(command) === name))) {
-        retiredBins.push(legacyBin);
-      }
-      for (const previous of obsolete) retirePayload(previous, managedPayload, destination);
+      for (const previous of obsolete) retirePayload(previous, managedPayload);
       console.log(`Installed Outask at ${destination}. Commands: ${targets.join(', ')}`);
-      for (const message of configurePath(bin, { retiredBins })) console.log(message);
+      for (const message of configurePath(bin)) console.log(message);
     }
   }
 } catch (error) {

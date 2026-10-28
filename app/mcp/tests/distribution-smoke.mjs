@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { basename, delimiter, dirname, join, resolve } from 'node:path';
@@ -11,8 +11,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { projectLockPath } from '../../src/project-lock.mjs';
 import { distributionVersion } from '../../src/version.mjs';
 import { hostTarget } from '../../../scripts/release-config.mjs';
-import { isolateRegistry } from '../../tests/helpers/registry-isolation.mjs';
-import { legacyUpgrade } from './legacy-upgrade-smoke.mjs';
+import { isolateRegistry, isolateUserHome } from '../../tests/helpers/registry-isolation.mjs';
 
 const windows = process.platform === 'win32';
 const registryKey = `Software\\OutaskTest-${randomUUID()}`;
@@ -21,9 +20,10 @@ const target = hostTarget();
 const installerName = windows ? 'Install.cmd' : process.platform === 'darwin' ? 'Install.command' : 'install.sh';
 assert.equal(process.argv.length, 3, 'Pass the native host test archive path');
 const archive = resolve(process.argv[2]);
-const archiveDirectory = basename(archive).startsWith('OutaskAI-') ? 'OutaskAI' : 'Outask';
+const archiveDirectory = 'Outask';
 const temporary = realpathSync(mkdtempSync(join(tmpdir(), 'outask-installed-smoke-')));
 const home = join(temporary, 'home 東京 person');
+if (windows) isolateUserHome(home);
 const downloads = join(temporary, 'downloads');
 const project = join(temporary, 'project 東京 with spaces');
 const bin = windows ? join(home, 'AppData/Local/Programs/Outask/commands') : join(home, '.local/bin');
@@ -39,6 +39,7 @@ const env = {
 };
 if (windows) {
   env.OUTASK_TEST_REGISTRY_KEY = registryKey;
+  env.OUTASK_TEST_USER_HOME = home;
   env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} --import=${new URL('../../tests/helpers/registry-isolation.mjs', import.meta.url).href}`.trim();
 }
 delete env.TASK_TRACKER_CONFIG;
@@ -97,7 +98,6 @@ try {
   for (const directory of [home, downloads, tools, join(home, '.config/task-tracker'), join(project, 'tasks'), join(project, 'docs')]) {
     mkdirSync(directory, { recursive: true });
   }
-  lock = projectLockPath(project);
   if (windows) {
     registry("$k=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment'); try { $k.SetValue('Path','C:/Unrelated fixture;%USERPROFILE%/existing-tools',[Microsoft.Win32.RegistryValueKind]::ExpandString) } finally { $k.Dispose() }");
     registryBackup = JSON.parse(registry("$k=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment'); try { $present=$k.GetValueNames() -contains 'Path'; @{ present=$present; value=$k.GetValue('Path','',[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); kind=$(if($present){[int]$k.GetValueKind('Path')}else{2}) } | ConvertTo-Json -Compress } finally { $k.Dispose() }"));
@@ -180,13 +180,13 @@ try {
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), false,
     'The helper launcher must not mask the default command in later PATH checks');
 
-  await legacyUpgrade({ temporary, source, archive, metadata, env, target, project, invoke });
 
   if (!windows) {
     assert.equal(env.PATH.split(delimiter).includes(bin), false, 'First installation must not inherit the installed command directory');
     assert.equal(existsSync(join(home, process.platform === 'darwin' ? '.zprofile' : '.bashrc')), false, 'First installation must start with fresh shell startup files');
   }
   if (windows) documentedInstall(source, 'powershell'); else run(installer);
+  lock = projectLockPath(project);
   assert.equal(existsSync(oldConfig), true, 'The legacy registry filename must continue to resolve after migration');
   assert.equal(readFileSync(config, 'utf8'), configuration);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
@@ -211,7 +211,7 @@ try {
   }
   if (windows) documentedInstall(source, 'cmd'); else run(installer);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
-  for (const alias of ['outask', 'tasks', 'outaskai']) {
+  for (const alias of ['outask', 'tasks']) {
     const entry = join(bin, windows ? `${alias}.cmd` : alias);
     for (const args of [['--version'], ['--help'], ['list', '--no-cache', '--format', 'json'], ['get', '999999', '--no-cache']]) {
       const expected = invoke(command, args);
@@ -273,7 +273,7 @@ try {
   transport.stderr.on('data', (chunk) => { stderr += chunk; });
   await client.connect(transport);
   assert.equal(client.getServerVersion().name, 'outask');
-  for (const alias of ['outask', 'tasks', 'outaskai']) {
+  for (const alias of ['outask', 'tasks']) {
     const aliasClient = new Client({ name: 'outask-alias-acceptance', version: '1.0.0' });
     const aliasTransport = new StdioClientTransport({ command: windows ? powershell : alias,
       args: windows ? ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command',
@@ -330,6 +330,8 @@ try {
   assert.equal((await call('validate_project', {})).valid, true);
   if (windows) await checkWriters(call, join(releases, name, 'app'));
   const originalServerVersion = client.getServerVersion();
+  const persistentPaths = [application, config, ...(windows ? [lock] : []), join(application, 'cache')].filter(existsSync);
+  const persistentIds = persistentPaths.map(path => statSync(path).ino);
 
   assert.deepEqual(JSON.parse(read('tasks/active.json')), [original]);
   assert.deepEqual(JSON.parse(read('tasks/done.json')), [completed, mcpCompleted]);
@@ -388,6 +390,8 @@ try {
     assert.equal(run(command, ['--version']).trim(), `Outask v${updateVersion}`);
   }
   const updatedInstall = join(releases, process.platform === 'linux' ? 'outask' : 'Outask');
+  assert.deepEqual(persistentPaths.map(path => statSync(path).ino), persistentIds,
+    'Updates must retain root, registry, cache and coordination inodes');
   if (!windows) assert.equal(readlinkSync(command), join(updatedInstall, 'app/bin/tasks'));
   assert.equal(existsSync(join(updatedInstall, 'app/scripts/obsolete.mjs')), false);
   assert.equal(readFileSync(join(updatedInstall, 'user-note.txt'), 'utf8'), 'Retain local note');
@@ -425,7 +429,7 @@ try {
     writeFileSync(command, managedCommand);
   }
   run(join(updatedInstall, installerName), ['uninstall']);
-  for (const alias of ['outask', 'tasks', 'outaskai']) assert.equal(existsSync(join(bin, windows ? `${alias}.cmd` : alias)), false);
+  for (const alias of ['outask', 'tasks']) assert.equal(existsSync(join(bin, windows ? `${alias}.cmd` : alias)), false);
   assert.equal(existsSync(updatedInstall), true);
   for (const [path, content] of retained) assert.equal(read(path), content);
   assert.equal(readFileSync(config, 'utf8'), configuration);
@@ -435,7 +439,7 @@ try {
     ...(macosPrerequisites ? { macosPrerequisites } : {}),
     artifact: { version: metadata.version, target, format: archiveDirectory, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
-    checks: ['permanent-aliases-and-canonical-identity', 'published-legacy-updater-migration', 'single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
+    checks: ['permanent-aliases-and-canonical-identity', 'single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);

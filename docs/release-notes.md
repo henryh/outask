@@ -10,11 +10,12 @@ Outask keeps project tasks in local JSON files, with CLI and local MCP access.
 
 ## What's new
 
-- Use `outask` as the canonical command. `tasks` and `outaskai` are permanent equivalent commands, including MCP startup.
+- Use `outask` as the canonical command. `tasks` is a permanent equivalent command, including MCP startup.
 - CLI help, MCP service metadata and the source HTTP adapter identify the product as Outask.
-- Keep application files, default configuration and read caches in one stable platform Outask directory. Migrate recognised old installations and settings while preserving task data and unrelated files.
-- Consolidate generated shell PATH blocks and replace managed launchers for all three commands during installation and updates.
-- Preserve automatic updates from older versions with compatible `OutaskAI-*` archives alongside the new `Outask-*` downloads. Existing compatible MCP sessions can continue; writer coordination retains its shared legacy namespace.
+- Keep application files, default configuration and read caches in one stable platform Outask directory while preserving task data and unrelated files.
+- Consolidate generated shell PATH blocks and replace managed launchers for both commands during installation and updates.
+- Download one Outask archive for your platform. Existing command links from an unrecognised layout need removal with that installation's own installer before replacement.
+- Before starting this Windows writer generation, finish active writes and close all previous CLI/MCP/HTTP sessions; do not mix generations. Compatible updates within one generation preserve sessions.
 
 ## Install
 

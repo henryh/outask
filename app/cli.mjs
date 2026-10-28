@@ -62,7 +62,7 @@ Tips:
   Use outask <command> --help for options and examples.
 
 Installed version: outask --version (or -v).
-Permanent equivalent commands: tasks and outaskai.
+Permanent equivalent command: tasks.
 Repository and documentation: https://github.com/henryh/outask
 `;
 

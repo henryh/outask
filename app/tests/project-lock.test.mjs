@@ -97,12 +97,12 @@ test('damaged external coordination fails closed without altering task data', (t
 });
 
 test('a project containing the fixed coordination directory is rejected clearly', () => {
-  assert.throws(() => withProjectLock(project(process.platform === 'win32' ? join(userInfo().homedir, 'AppData/Local/OutaskAI') : '/var/tmp'), 'test', () => assert.fail('must not enter')),
+  assert.throws(() => withProjectLock(project(process.platform === 'win32' ? join(userInfo().homedir, 'AppData/Local/Programs/Outask') : '/var/tmp'), 'test', () => assert.fail('must not enter')),
     { code: 'WRITE_ERROR', message: 'project lock directory must be outside the project' });
 });
 
 test('Windows lock containment allows another drive and rejects actual project descendants', () => {
-  const directory = 'C:\\Users\\owner\\AppData\\Local\\OutaskAI\\locks';
+  const directory = 'C:\\Users\\owner\\AppData\\Local\\Programs\\Outask\\locks';
   assert.equal(lockInsideProject('D:\\work\\project', directory, win32), false);
   assert.equal(lockInsideProject('C:\\work\\project', directory, win32), false);
   assert.equal(lockInsideProject('C:\\Users\\owner', directory, win32), true);

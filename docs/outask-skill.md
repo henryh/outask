@@ -16,7 +16,7 @@ For a project that has adopted Outask, add this reference to its `AGENTS.md`
 or equivalent, adjusting the guide path to its readable maintained location:
 
 ```md
-For authorised multi-step work, follow `docs/outask-ai-skill.md`. Prefer the
+For authorised multi-step work, follow `docs/outask-skill.md`. Prefer the
 connected Outask MCP server; use the installed outask CLI when unavailable.
 Select this project explicitly, preserve IDs and fields, and treat status-only
 requests as reads.

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { fail } from '../src/errors.mjs';
 import { reportError } from './output.mjs';
-import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry, forwarderEntry } from './install-launcher.mjs';
+import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
 import { legacyLocations } from './install-migration.mjs';
 
@@ -30,18 +30,6 @@ function canonical(path) {
 }
 function owned(path, releaseRoots) {
   try {
-    const actual = realpathSync(path);
-    const info = lstatSync(actual);
-    if (info.isFile() && info.size <= 16384) {
-      const entry = forwarderEntry(readFileSync(actual, 'utf8'));
-      if (entry) {
-        if (entry === source) return true;
-        const release = resolve(entry, '../../..');
-        return releaseRoots.includes(dirname(release)) && entry === join(release, 'app/bin/tasks')
-          && ['linux-x64', 'macos-arm64', 'windows-x64'].includes(JSON.parse(readFileSync(join(release, 'release.json'), 'utf8')).target)
-          && packageNames.includes(JSON.parse(readFileSync(join(release, 'app/package.json'), 'utf8')).name);
-      }
-    }
     if (windows) {
       if (!inspect(path)?.isFile()) return false;
       const entry = launcherEntry(readFileSync(path, 'utf8'));
@@ -60,8 +48,7 @@ function owned(path, releaseRoots) {
     const release = dirname(dirname(dirname(entry)));
     if (!releaseRoots.includes(dirname(release))) return false;
     const metadata = JSON.parse(readFileSync(join(release, 'release.json'), 'utf8'));
-    return (basename(release) === basename(defaults.destination) || basename(release) === 'OutaskAI' || basename(release) === `task-tracker-${metadata.version}-${metadata.target}`)
-      && typeof metadata.version === 'string' && /^[\w.+-]+$/.test(metadata.version)
+    return typeof metadata.version === 'string' && /^[\w.+-]+$/.test(metadata.version)
       && ['linux-x64', 'macos-arm64'].includes(metadata.target)
       && packageNames.includes(JSON.parse(readFileSync(join(release, 'app/package.json'), 'utf8')).name);
   } catch { return false; }

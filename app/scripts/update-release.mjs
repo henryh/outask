@@ -20,9 +20,7 @@ export function latestAsset(release, target) {
     throw new Error('GitHub Latest did not return a stable published release');
   }
   const version = release.tag_name.slice(1);
-  const currentName = `Outask-${version}-${target}.tar.gz`;
-  const legacyName = `OutaskAI-${version}-${target}.tar.gz`;
-  const name = release.assets?.some((item) => item.name === currentName) ? currentName : legacyName;
+  const name = `Outask-${version}-${target}.tar.gz`;
   const url = `https://github.com/${repository}/releases/download/${release.tag_name}/${name}`;
   const asset = release.assets?.find((item) => item.name === name && item.state === 'uploaded');
   if (!asset || asset.browser_download_url !== url) throw new Error(`Latest release has no supported archive ${name}`);
@@ -63,7 +61,7 @@ export async function updateRelease({ destination, bin, releases, fetchRelease =
     }
     stage = 'extract latest archive';
     const names = run(['tar', '-tzf', archive]).trim().split(/\r?\n/);
-    const directory = asset.name.startsWith('OutaskAI-') ? 'OutaskAI' : 'Outask';
+    const directory = 'Outask';
     if (names.some((name) => !(name === directory || name.startsWith(`${directory}/`)) || name.includes('\\') || name.split('/').includes('..'))) {
       throw new Error(`Archive contains paths outside ${directory}`);
     }

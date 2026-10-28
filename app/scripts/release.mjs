@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, cpSync, chmodSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, cpSync, chmodSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -128,7 +128,7 @@ function cleanNpmEnv(userconfig) {
 function writeSupport(releaseRoot, version, target, nodeRange) {
   mkdirSync(join(releaseRoot, 'bin'), { recursive: true });
   // The installed link points directly to the app entry; this entry serves extracted archives.
-  for (const name of ['outask', 'tasks', 'outaskai']) {
+  for (const name of ['outask', 'tasks']) {
     writeFileSync(join(releaseRoot, 'bin', name), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
   }
   if (target === 'windows-x64') {
@@ -438,6 +438,7 @@ exit "$status"
     writeFileSync(join(releaseRoot, 'README.md'), `# Outask v${version} (Windows x64)
 
 Requires native Windows x64 and installed Node.js ${nodeRange} on PATH.
+Before first using this writer generation, finish active writes and close all previous CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.
 Extract the archive, open the extracted application directory in PowerShell or cmd.exe, then run:
 
 PowerShell: \`./Install.cmd\`
@@ -538,15 +539,8 @@ async function build(target, options) {
   const archive = join(options.outDir, `Outask-${version}-${target}.tar.gz`);
   rmSync(archive, { force: true });
   run('tar', ['-czf', archive, '-C', join(options.outDir, 'stage'), 'Outask']);
-  const compatibilityStage = join(options.outDir, 'stage', 'OutaskAI');
-  const compatibilityArchive = join(options.outDir, `OutaskAI-${version}-${target}.tar.gz`);
-  // Older installed updaters require both this asset name and extraction root.
-  // Reuse the verified payload so both formats contain exactly the same app.
-  rmSync(compatibilityStage, { recursive: true, force: true });
-  renameSync(stage, compatibilityStage);
-  run('tar', ['-czf', compatibilityArchive, '-C', join(options.outDir, 'stage'), 'OutaskAI']);
-  rmSync(compatibilityStage, { recursive: true, force: true });
-  return { target, archive, bytes: statSync(archive).size, compatibilityArchive, compatibilityBytes: statSync(compatibilityArchive).size };
+  rmSync(stage, { recursive: true, force: true });
+  return { target, archive, bytes: statSync(archive).size };
 }
 
 async function main() {

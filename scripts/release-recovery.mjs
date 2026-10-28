@@ -47,7 +47,7 @@ export function recoveryPlan(event, actors, read = api) {
   if (!source.merged || source.base.ref !== 'main'
     || source.head.repo?.full_name !== repo.full_name
     || source.merged_by?.login?.toLowerCase() !== repo.owner.login.toLowerCase()
-    || !/^Outask(?: AI)? v/.test(source.title)) {
+    || !source.title.startsWith('Outask v')) {
     throw new Error('Recovery source must be an owner-merged same-repository release PR');
   }
   if (!/^[a-f0-9]{40}$/.test(source.merge_commit_sha)) throw new Error('Invalid approved merge revision');

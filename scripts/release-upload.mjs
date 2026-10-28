@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fail } from '../app/src/errors.mjs';
 import { reportError } from '../app/scripts/output.mjs';
-import { archiveNames, distRoot, output, rejectMixedArchives, releaseTitle, releaseVersion, requireArchives, run, succeeds, tagName, targetList, targets, version } from './release-config.mjs';
+import { archiveName, distRoot, output, rejectMixedArchives, releaseTitle, releaseVersion, requireArchives, run, succeeds, tagName, targetList, targets, version } from './release-config.mjs';
 
 function originRepo() {
   const remote = output('git', ['remote', 'get-url', 'origin']);
@@ -48,8 +48,8 @@ try {
   const repo = repository();
   if (!repo) fail('INVALID_INPUT', 'REPO is required, for example: make release-upload REPO=owner/repo');
   const selected = targetList();
-  const selectedNames = selected.flatMap(target => archiveNames(target, releaseId));
-  const expectedNames = targets.flatMap(target => archiveNames(target, releaseId));
+  const selectedNames = selected.map(target => archiveName(target, releaseId));
+  const expectedNames = targets.map(target => archiveName(target, releaseId));
   const approved = releaseNotes(releaseId, packageId, repo, targets);
   if (!succeeds('git', ['rev-parse', '--verify', tag])) {
     fail('INVALID_INPUT', `Tag ${tag} is required. Inspect or retry the approved Release workflow; do not tag manually`);

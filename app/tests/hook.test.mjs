@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { nodeForwarder } from '../scripts/install-launcher.mjs';
 import { cleanupProjectLocks } from './helpers/cleanup-project-locks.mjs';
 
 const entry = fileURLToPath(new URL('../bin/tasks', import.meta.url));
@@ -30,27 +29,6 @@ function repo(t) {
   const cli = (...args) => execute(process.execPath, [entry, ...args], root, env);
   return { root, git, cli };
 }
-
-test('an unchanged legacy hook keeps working through a validator forwarder and can be refreshed or removed', t => {
-  const { root, cli } = repo(t);
-  ok(cli('create', '--title', 'Existing task'));
-  ok(cli('hook', '--install'));
-  const hook = join(root, '.git/hooks/pre-commit');
-  const original = readFileSync(hook, 'utf8');
-  const validator = fileURLToPath(new URL('../scripts/validate-task-stores.mjs', import.meta.url));
-  const previous = join(root, "legacy app's scripts/validate-task-stores.mjs");
-  mkdirSync(dirname(previous), { recursive: true });
-  writeFileSync(previous, nodeForwarder(validator), { mode: 0o755 });
-  const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
-  const legacy = original.replace(quote(validator), quote(previous)).replace('# outask:', '# task-tracker:');
-  writeFileSync(hook, legacy);
-  ok(execute(hook, [], root));
-  ok(cli('hook', '--install'));
-  assert.equal(readFileSync(hook, 'utf8'), original);
-  writeFileSync(hook, legacy);
-  ok(cli('hook', '--remove'));
-  assert.equal(existsSync(hook), false);
-});
 
 test('installed CLI onboarding prepares, guards blockers, restores, validates manual edits and opts into commits', (t) => {
   const { root, git } = repo(t);

@@ -1,9 +1,8 @@
-import { existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, realpathSync, renameSync, rmSync, rmdirSync, symlinkSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { configPath } from '../src/locations.mjs';
-import { commandNames, nodeForwarder, windowsLauncher } from './install-launcher.mjs';
 
 export function legacyLocations(env = process.env) {
   const home = process.platform === 'win32' ? env.USERPROFILE || homedir() : env.HOME || homedir();
@@ -34,32 +33,9 @@ export function legacyConfig(env = process.env) {
 
 // Delete only a confirmed managed payload. Unrecognised files stay in place;
 // their presence must never turn an old application directory into trash.
-export function retirePayload(path, payload, destination) {
-  const entrypoints = commandNames.flatMap(name => [`app/bin/${name}`, `bin/${name}`]).filter(name => existsSync(join(path, name)));
-  const scripts = join(path, 'app/scripts');
-  const standalone = existsSync(scripts) ? readdirSync(scripts).filter(name => name.endsWith('.mjs')
-    && existsSync(join(destination, 'app/scripts', name))
-    && (name === 'install-release.mjs' || readFileSync(join(scripts, name), 'utf8').includes('isMain(import.meta.url)'))) : [];
-  const target = JSON.parse(readFileSync(join(path, 'release.json'), 'utf8')).target;
-  const installer = { 'linux-x64': 'install.sh', 'macos-arm64': 'Install.command', 'windows-x64': 'Install.cmd' }[target];
-  const preserveInstaller = existsSync(join(path, installer));
+export function retirePayload(path, payload) {
   for (const name of payload) rmSync(join(path, name), { recursive: true, force: true });
-  // Previously documented absolute client paths remain supported, with only
-  // tiny forwarders left behind rather than another application/version copy.
-  for (const name of entrypoints) {
-    const entry = join(path, name);
-    mkdirSync(dirname(entry), { recursive: true });
-    writeFileSync(entry, nodeForwarder(join(destination, 'app/bin/tasks')), { mode: 0o755 });
-  }
-  for (const name of standalone) {
-    mkdirSync(join(path, 'app/scripts'), { recursive: true });
-    writeFileSync(join(path, 'app/scripts', name), nodeForwarder(join(destination, 'app/scripts', name)), { mode: 0o755 });
-  }
-  if (preserveInstaller) {
-    const contents = target === 'windows-x64' ? windowsLauncher(join(destination, 'app/scripts/install-release.mjs'), { checkRuntime: true })
-      : `#!/bin/sh\nexec '${join(destination, installer).replaceAll("'", "'\\''")}' "$@"\n`;
-    writeFileSync(join(path, installer), contents, { mode: 0o755 });
-  }
+  if (readdirSync(path).length === 0) rmdirSync(path);
 }
 
 export function obsoleteInstalls(roots, destination, managed) {
@@ -67,7 +43,6 @@ export function obsoleteInstalls(roots, destination, managed) {
   for (const root of new Set(roots)) {
     if (!existsSync(root) || !lstatSync(root).isDirectory()) continue;
     for (const name of readdirSync(root)) {
-      if (name !== 'OutaskAI' && !/^task-tracker-[\w.+-]+-(linux-x64|macos-arm64|windows-x64)$/.test(name)) continue;
       const path = join(root, name);
       if (path !== destination && !lstatSync(path).isSymbolicLink() && managed(path)) result.push(path);
     }
@@ -76,7 +51,18 @@ export function obsoleteInstalls(roots, destination, managed) {
 }
 
 export function retireConfig(migration) {
-  if (!migration || !existsSync(migration.target)) return;
+  if (!migration) return;
+  if (!existsSync(migration.target)) {
+    mkdirSync(dirname(migration.target), { recursive: true });
+    const staged = `${migration.target}.outask-${randomUUID()}`;
+    try {
+      cpSync(migration.source, staged, { errorOnExist: true, force: false });
+      // Publish complete bytes without overwriting a registry created meanwhile.
+      try { linkSync(staged, migration.target); } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
+    } finally { rmSync(staged, { force: true }); }
+  }
   if (!readFileSync(migration.source).equals(readFileSync(migration.target))) {
     throw new Error('CONFIG_CONFLICT: registry changed during installation; both files were retained for reconciliation');
   }
