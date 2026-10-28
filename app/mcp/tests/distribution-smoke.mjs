@@ -234,7 +234,8 @@ try {
     const freshEnv = { ...env, PATH: expandedPath + ';' + env.PATH };
     const discovered = invoke(join(process.env.SystemRoot, 'System32/where.exe'), ['tasks'], freshEnv);
     assert.equal(discovered.status, 0, discovered.stderr);
-    assert.equal(discovered.stdout.trim().split(/\r?\n/)[0].toLowerCase(), command.toLowerCase());
+    const selectedCommand = discovered.stdout.trim().split(/\r?\n/)[0];
+    assert.equal(realpathSync(selectedCommand).toLowerCase(), realpathSync(command).toLowerCase());
     assert.equal(invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/c', 'tasks --version'], freshEnv).stdout.trim(), `Outask v${metadata.version}`);
     assert.match(readFileSync(command, 'utf8'), /^[\x00-\x7f]*$/, 'The managed batch launcher must be independent of the console code page');
     // Save/restore the test console code page; the launcher itself must leave 437 intact.
