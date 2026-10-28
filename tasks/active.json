@@ -26,7 +26,7 @@
   {
     "id": 8,
     "title": "Publish SHA256SUMS for release archives",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "medium",
     "blockers": [],
     "scope": "Generate and publish a deterministic SHA256SUMS release asset containing SHA-256 checksums and exact filenames for the three accepted platform archives. Hash the final archives actually uploaded, without rebuilding them. Integrate the extra asset into release publication, retry/recovery validation and downloaded-archive acceptance, and provide concise Linux, macOS and Windows verification commands in the existing installation/release documentation. Preserve exact approved notes, existing published releases and Actions-owned publication.",
@@ -46,7 +46,7 @@
     "notes": [
       "Requested by the owner after the release-integrity discussion. This task adds checksums, not signing, notarization or artifact attestations. Priority defaults to medium; only the separate security-maintenance task was explicitly requested as low."
     ],
-    "updated_at": "2026-10-28T09:36:51.771Z"
+    "updated_at": "2026-10-28T21:59:26.850Z"
   },
   {
     "id": 9,
