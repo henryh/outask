@@ -178,7 +178,7 @@ try {
     '--bin-dir', helperBin, '--release-root', helperReleases], helperEnv);
   assert.equal(helperUninstall.status, 0, helperUninstall.stderr || helperUninstall.stdout);
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), false,
-    'The helper launcher must not mask the default command in later PATH checks');
+    `The helper launcher must not mask the default command in later PATH checks\n${helperUninstall.stdout}\n${helperUninstall.stderr}`);
 
 
   if (!windows) {

@@ -103,7 +103,7 @@ Uninstall removes the managed command link; application files, projects and conf
         if (!entry) return false;
         const parent = resolve(entry, '../../..');
         if (entry !== join(parent, 'app/bin/tasks')) return false;
-        if (managed(parent)) return releaseRoots.includes(dirname(parent));
+        if (managed(parent)) return releaseRoots.includes(canonical(dirname(parent)));
         if (inspect(join(parent, 'release.json'))) return false;
         try {
           return packageNames.includes(JSON.parse(readFileSync(join(parent, 'app/package.json'), 'utf8')).name)
