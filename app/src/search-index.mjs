@@ -1,9 +1,10 @@
+import { cacheRoot } from './locations.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import {
   chmodSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync,
 } from 'node:fs';
-import { homedir, userInfo } from 'node:os';
+import { userInfo } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fail } from './errors.mjs';
@@ -15,9 +16,6 @@ const indexVersion = 7;
 const staleLockMs = 30_000;
 const refreshes = new Map();
 
-function cacheRoot(env) {
-  return resolve(env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'task-tracker', 'search');
-}
 
 export function searchIndexPaths(projectPath, env = process.env) {
   const root = resolve(projectPath);

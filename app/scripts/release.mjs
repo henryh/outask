@@ -20,6 +20,7 @@ const runtimeScripts = [
   'get-tasks.mjs',
   'hook.mjs',
   'install-launcher.mjs',
+  'install-migration.mjs',
   'install-path.mjs',
   'install-release.mjs',
   'inspect-blockers.mjs',
@@ -127,7 +128,9 @@ function cleanNpmEnv(userconfig) {
 function writeSupport(releaseRoot, version, target, nodeRange) {
   mkdirSync(join(releaseRoot, 'bin'), { recursive: true });
   // The installed link points directly to the app entry; this entry serves extracted archives.
-  writeFileSync(join(releaseRoot, 'bin/tasks'), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
+  for (const name of ['outask', 'tasks']) {
+    writeFileSync(join(releaseRoot, 'bin', name), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
+  }
   if (target === 'windows-x64') {
     writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nexit /b %errorlevel%\r\n`);
   }
@@ -432,21 +435,22 @@ exit "$status"
   }
   chmodSync(join(releaseRoot, 'bin/tasks'), 0o755);
   if (target === 'windows-x64') {
-    writeFileSync(join(releaseRoot, 'README.md'), `# Outask AI v${version} (Windows x64)
+    writeFileSync(join(releaseRoot, 'README.md'), `# Outask v${version} (Windows x64)
 
 Requires native Windows x64 and installed Node.js ${nodeRange} on PATH.
-Extract the archive, open its OutaskAI directory in PowerShell or cmd.exe, then run:
+Before first using this writer generation, finish active writes and close all previous CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.
+Extract the archive, open the extracted application directory in PowerShell or cmd.exe, then run:
 
 PowerShell: \`./Install.cmd\`
 
 cmd.exe: \`Install.cmd\`
 
-Application: \`%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\`. Command: \`%USERPROFILE%\\AppData\\Local\\OutaskAI\\bin\\tasks.cmd\`.
+Application: \`%LOCALAPPDATA%\\Programs\\Outask\`. Command: \`%LOCALAPPDATA%\\Programs\\Outask\\commands\\outask.cmd\`.
 Open a new terminal, then run from a project directory:
 
 \`\`\`text
-tasks create --title "Write release notes"
-tasks list --format table
+outask create --title "Write release notes"
+outask list --format table
 \`\`\`
 
 ## MCP (optional)
@@ -454,7 +458,7 @@ tasks list --format table
 Configure your client to start Node directly:
 
 \`\`\`json
-${JSON.stringify({ command: 'node', args: ['C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\OutaskAI\\app\\bin\\tasks', 'mcp'] })}
+${JSON.stringify({ command: 'node', args: ['C:\\Users\\YOUR_USER\\AppData\\Local\\Programs\\Outask\\app\\bin\\outask', 'mcp'] })}
 \`\`\`
 
 Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
@@ -462,22 +466,22 @@ Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
 
 ## Update and remove
 
-Update to GitHub Latest stable: run \`./Install.cmd update\` (PowerShell) or \`Install.cmd update\` (cmd.exe) from the installed OutaskAI directory. Requires network access and tar on PATH.
-Uninstall (PowerShell): \`& "$env:USERPROFILE\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall\`
-Uninstall (cmd.exe): \`"%USERPROFILE%\\AppData\\Local\\Programs\\OutaskAI\\Install.cmd" uninstall\`
+Update to GitHub Latest stable: run \`./Install.cmd update\` (PowerShell) or \`Install.cmd update\` (cmd.exe) from the installed Outask directory. Requires network access and tar on PATH.
+Uninstall (PowerShell): \`& "$env:LOCALAPPDATA\\Programs\\Outask\\Install.cmd" uninstall\`
+Uninstall (cmd.exe): \`"%LOCALAPPDATA%\\Programs\\Outask\\Install.cmd" uninstall\`
 Uninstall removes the managed launcher; application files, projects and configuration remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.
 `);
     return;
   }
   const platform = target === 'macos-arm64' ? 'macOS Apple silicon' : 'Linux x64';
-  const application = target === 'macos-arm64' ? '~/Library/Application Support/OutaskAI' : '~/.local/share/task-tracker/releases/OutaskAI';
+  const application = target === 'macos-arm64' ? '~/Library/Application Support/Outask' : '~/.local/share/outask';
   const installer = target === 'macos-arm64' ? 'Install.command' : 'install.sh';
   const uninstall = `"${application.replace('~', '$HOME')}/${installer}" uninstall`;
-  writeFileSync(join(releaseRoot, 'README.md'), `# Outask AI v${version} (${platform})
+  writeFileSync(join(releaseRoot, 'README.md'), `# Outask v${version} (${platform})
 
 Requires ${platform} and installed Node.js ${nodeRange} on PATH.
-${target === 'macos-arm64' ? 'Extract the archive, open its OutaskAI directory, then double-click `Install.command` or run in a terminal:' : 'Extract the archive, open its OutaskAI directory in a terminal, then run:'}
+${target === 'macos-arm64' ? 'Extract the archive, open the extracted application directory, then double-click `Install.command` or run in a terminal:' : 'Extract the archive, open the extracted application directory in a terminal, then run:'}
 
 \`\`\`sh
 ./${installer}
@@ -488,14 +492,14 @@ ${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Appleâ€
 Open a new terminal, then run from a project directory:
 
 \`\`\`sh
-tasks create --title "Write release notes"
-tasks list --format table
+outask create --title "Write release notes"
+outask list --format table
 \`\`\`
 
 ## Connect Codex (optional)
 
 \`\`\`sh
-codex mcp add tasks -- tasks mcp
+codex mcp add outask -- outask mcp
 codex mcp list
 \`\`\`
 
@@ -504,7 +508,7 @@ Start a new Codex session; use \`/mcp\` to inspect the server.
 
 ## Update and remove
 
-Update to GitHub Latest stable: run \`./${installer} update\` from the installed OutaskAI directory. Requires network access and tar on PATH.
+Update to GitHub Latest stable: run \`./${installer} update\` from the installed Outask directory. Requires network access and tar on PATH.
 Uninstall: \`${uninstall}\`
 Uninstall removes the managed command link; application files, projects and configuration remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.
@@ -514,7 +518,7 @@ Use \`--bin-dir\` and \`--release-root\` for custom command and application-pare
 async function build(target, options) {
   const appPackage = JSON.parse(readFileSync(join(appRoot, 'package.json'), 'utf8'));
   const version = distributionVersion(appPackage.version);
-  const stage = join(options.outDir, 'stage', 'OutaskAI');
+  const stage = join(options.outDir, 'stage', 'Outask');
   rmSync(stage, { recursive: true, force: true });
   mkdirSync(stage, { recursive: true });
 
@@ -532,9 +536,9 @@ async function build(target, options) {
     if (existsSync(join(stage, forbidden))) fail('INVALID_RELEASE', `release includes ${forbidden}`);
   }
   assertClean(stage);
-  const archive = join(options.outDir, `OutaskAI-${version}-${target}.tar.gz`);
+  const archive = join(options.outDir, `Outask-${version}-${target}.tar.gz`);
   rmSync(archive, { force: true });
-  run('tar', ['-czf', archive, '-C', join(options.outDir, 'stage'), 'OutaskAI']);
+  run('tar', ['-czf', archive, '-C', join(options.outDir, 'stage'), 'Outask']);
   rmSync(stage, { recursive: true, force: true });
   return { target, archive, bytes: statSync(archive).size };
 }

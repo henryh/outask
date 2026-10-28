@@ -15,7 +15,7 @@ export function projectLockPath(root) {
   const canonical = realpathSync(root);
   // A fixed host path keeps CLI, MCP and HTTP environments in one lock namespace.
   const directory = windows
-    ? join(userInfo().homedir, 'AppData', 'Local', 'OutaskAI', 'locks')
+    ? join(userInfo().homedir, 'AppData', 'Local', 'Programs', 'Outask', 'locks')
     : join(realpathSync('/var/tmp'), `task-tracker-locks-${process.getuid()}`);
   if (lockInsideProject(canonical, directory)) {
     fail('WRITE_ERROR', 'project lock directory must be outside the project');

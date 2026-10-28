@@ -20,7 +20,7 @@ export function latestAsset(release, target) {
     throw new Error('GitHub Latest did not return a stable published release');
   }
   const version = release.tag_name.slice(1);
-  const name = `OutaskAI-${version}-${target}.tar.gz`;
+  const name = `Outask-${version}-${target}.tar.gz`;
   const url = `https://github.com/${repository}/releases/download/${release.tag_name}/${name}`;
   const asset = release.assets?.find((item) => item.name === name && item.state === 'uploaded');
   if (!asset || asset.browser_download_url !== url) throw new Error(`Latest release has no supported archive ${name}`);
@@ -39,14 +39,14 @@ export async function updateRelease({ destination, bin, releases, fetchRelease =
   let stage = 'resolve latest release';
   try {
     const request = async (url) => {
-      const response = await fetchRelease(url, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OutaskAI-installer' }, signal: AbortSignal.timeout(120000) });
+      const response = await fetchRelease(url, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'outask-installer' }, signal: AbortSignal.timeout(120000) });
       if (!response.ok) throw new Error(`HTTP ${response.status} from ${url}`);
       return response;
     };
     const asset = latestAsset(await (await request(latestReleaseUrl)).json(), target);
     const installed = JSON.parse(readFileSync(join(destination, 'release.json'), 'utf8'));
     if (installed.version === asset.version && installed.target === target) {
-      log(`Outask AI v${asset.version} is already current.`);
+      log(`Outask v${asset.version} is already current.`);
       return;
     }
     work = mkdtempSync(join(tmpdir(), 'outask-update-'));
@@ -61,18 +61,19 @@ export async function updateRelease({ destination, bin, releases, fetchRelease =
     }
     stage = 'extract latest archive';
     const names = run(['tar', '-tzf', archive]).trim().split(/\r?\n/);
-    if (names.some((name) => !/^OutaskAI(?:\/|$)/.test(name) || name.includes('\\') || name.split('/').includes('..'))) {
-      throw new Error('Archive contains paths outside OutaskAI');
+    const directory = 'Outask';
+    if (names.some((name) => !(name === directory || name.startsWith(`${directory}/`)) || name.includes('\\') || name.split('/').includes('..'))) {
+      throw new Error(`Archive contains paths outside ${directory}`);
     }
     run(['tar', '-xzf', archive, '-C', work]);
-    const source = join(work, 'OutaskAI');
+    const source = join(work, directory);
     const metadata = JSON.parse(readFileSync(join(source, 'release.json'), 'utf8'));
     if (metadata.version !== asset.version || metadata.target !== target) throw new Error('Archive metadata differs from GitHub Latest');
     stage = 'install latest release';
     // The installer stages and verifies its payload before replacing the working copy.
     const output = run([process.execPath, join(source, 'app/scripts/install-release.mjs'), 'install', '--bin-dir', bin, '--release-root', releases]);
     log(output.trim());
-    log(`Updated to Outask AI v${asset.version}.`);
+    log(`Updated to Outask v${asset.version}.`);
   } catch (error) {
     throw new Error(`UPDATE_FAILED: could not ${stage}: ${error.message}. Check network access, tar and directory permissions, then retry update.`);
   } finally {

@@ -24,9 +24,9 @@ test('managed Windows launchers preserve spaces, Unicode and literal percent sig
 });
 
 test('Windows PATH failures leave an immediately usable launcher and reopening guidance', () => {
-  const messages = configurePath('C:\\Users\\東京 person\\OutaskAI\\bin', { platform: 'win32', env: { PATH: '' } });
-  assert.ok(messages.some((message) => /Run immediately in PowerShell: & ".*tasks.cmd" --help/.test(message)));
-  assert.ok(messages.some((message) => /Run immediately in cmd.exe: ".*tasks.cmd" --help/.test(message)));
+  const messages = configurePath('C:\\Users\\東京 person\\Outask\\bin', { platform: 'win32', env: { PATH: '' } });
+  assert.ok(messages.some((message) => /Run immediately in PowerShell: & ".*outask.cmd" --help/.test(message)));
+  assert.ok(messages.some((message) => /Run immediately in cmd.exe: ".*outask.cmd" --help/.test(message)));
   assert.ok(messages.some((message) => /user PATH setup failed/.test(message)));
   assert.ok(messages.some((message) => /already-open terminal keeps its existing PATH/.test(message)));
 });
@@ -46,8 +46,8 @@ test('Windows Node bootstrap preserves CLI options and JSON arguments from a Uni
     return result.stdout;
   };
   const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
-  assert.equal(invoke('--version').trim(), `Outask AI v${distributionVersion(version)}`);
-  assert.match(invoke('--help'), /Usage: tasks/);
+  assert.equal(invoke('--version').trim(), `Outask v${distributionVersion(version)}`);
+  assert.match(invoke('--help'), /Usage: outask/);
   const task = JSON.parse(invoke('create', '--json', JSON.stringify({ title: '東京 task', extra: { preserved: true } })));
   assert.equal(task.title, '東京 task');
   assert.deepEqual(task.extra, { preserved: true });

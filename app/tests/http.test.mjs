@@ -15,7 +15,7 @@ import { databaseSync } from '../src/sqlite.mjs';
 import { searchTasks } from '../src/search.mjs';
 import { refreshSearchIndex } from '../src/search-index.mjs';
 import { getTask, getTasks, listTasks } from '../src/tasks.mjs';
-import { fixture, run, snapshot, task, writeStore } from './fixtures.mjs';
+import { beforeFixtureCleanup, fixture, run, snapshot, task, writeStore } from './fixtures.mjs';
 
 const token = 'test_read_token_'.repeat(3);
 const authorization = `Bearer ${token}`;
@@ -23,7 +23,7 @@ const authorization = `Bearer ${token}`;
 async function serve(t, root, origins = [], options = {}) {
   const server = createHttpServer(root, { token, origins, ...options });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }));
+  beforeFixtureCleanup(t, () => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }));
   const base = `http://127.0.0.1:${server.address().port}`;
   return async (path, method = 'GET', body, headers = {}) => {
     const { response, text } = await new Promise((resolve, reject) => {
@@ -56,6 +56,7 @@ test('HTTP reads an uninitialised project as empty without writing task records'
     for (let repeat = 0; repeat < 2; repeat++) {
       const page = await api(`/tasks?group=Active&fields=id,title,status&limit=50${suffix}`);
       assert.equal(page.status, 200);
+      assert.equal(page.headers.server, 'outask');
       assert.deepEqual(page.data.tasks, []);
       assert.equal(page.data.hasMore, false);
       assert.equal(page.data.nextOffset, null);
@@ -140,7 +141,7 @@ test('HTTP reports unavailable cache acceleration without failing task data', (t
   const observed = JSON.parse(result.stdout);
   assert.equal(observed.status, 200);
   assert.equal(observed.body.id, 1);
-  assert.match(observed.warning, /199 task-tracker "CACHE_UNAVAILABLE: SQLite cache acceleration is unavailable/);
+  assert.match(observed.warning, /199 outask "CACHE_UNAVAILABLE: SQLite cache acceleration is unavailable/);
 });
 
 test('HTTP indexed search and batch report an unusable cache root exactly once', (t) => {
@@ -163,7 +164,7 @@ test('HTTP indexed search and batch report an unusable cache root exactly once',
   });
   assert.equal(result.status, 0, result.stderr);
   const observed = JSON.parse(result.stdout);
-  const warning = '199 task-tracker "CACHE_UNAVAILABLE: SQLite cache acceleration is unavailable; authoritative JSON was used."';
+  const warning = '199 outask "CACHE_UNAVAILABLE: SQLite cache acceleration is unavailable; authoritative JSON was used."';
   assert.equal(observed.search.status, 200);
   assert.deepEqual(observed.search.body.tasks.map(({ id }) => id), [1]);
   assert.equal(observed.search.warning, warning);
@@ -417,7 +418,7 @@ async function startProcess(t, args, root, readToken = token) {
   async function stop() {
     if (child.exitCode === null && child.signalCode === null) { child.kill(); await once(child, 'exit'); }
   }
-  t.after(stop);
+  beforeFixtureCleanup(t, stop);
   let stderr = '';
   child.stderr.on('data', (chunk) => { stderr += chunk; });
   const [chunk] = await Promise.race([once(child.stdout, 'data'), once(child, 'exit').then(() => { throw new Error(stderr); })]);

@@ -58,7 +58,7 @@ export function main(args) {
     manual('Repository has linked worktrees; automatic hook installation is unavailable', true);
   }
   // Git may share this hook with a worktree created after installation.
-  const content = `#!/bin/sh\n# task-tracker: working-tree validation; index is not validated or staged.
+  const content = `#!/bin/sh\n# outask: working-tree validation; index is not validated or staged.
 root=$(git rev-parse --show-toplevel) || exit $?
 if [ "$root" != ${quote(project)} ]; then
   printf '%s\\n' 'HOOK_CONFLICT: This hook belongs to another working tree. Integrate validation for the invoking worktree manually.' >&2
@@ -66,7 +66,9 @@ if [ "$root" != ${quote(project)} ]; then
 fi
 exec ${command}\n`;
   const present = inspect(hook);
-  if (present && (!present.isFile() || readFileSync(hook, 'utf8') !== content)) manual(`Existing or modified hook at ${hook}`);
+  const previous = present?.isFile() ? readFileSync(hook, 'utf8') : undefined;
+  const managed = previous === content || previous === content.replace('# outask:', '# task-tracker:');
+  if (present && !managed) manual(`Existing or modified hook at ${hook}`);
   if (values.remove) {
     if (present) unlinkSync(hook);
     process.stdout.write(`${present ? 'Removed' : 'Already absent'}: ${hook}.\n`);
@@ -74,7 +76,10 @@ exec ${command}\n`;
     if (!present) {
       mkdirSync(dirname(hook), { recursive: true });
       writeFileSync(hook, content, { flag: 'wx', mode: 0o755 });
-    } else chmodSync(hook, 0o755);
+    } else {
+      if (readFileSync(hook, 'utf8') !== content) writeFileSync(hook, content);
+      chmodSync(hook, 0o755);
+    }
     process.stdout.write(`${present ? 'Already installed' : 'Installed'}: ${hook}. Checks working-tree files, not staged data; stage refreshed service metadata yourself.\n`);
   }
 }

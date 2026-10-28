@@ -10,7 +10,7 @@ function fixture() {
     pull_request: {number: 15, state: 'open', title: 'Publish approved release #14 from run #456', merged: false,
       user: {login: 'owner'}, base: {ref: 'main'}, head: {repo: {full_name: 'owner/project'}}},
   };
-  const source = {merged: true, merge_commit_sha: merge, title: 'Outask AI v0.16',
+  const source = {merged: true, merge_commit_sha: merge, title: 'Outask v0.16',
     merged_by: {login: 'owner'}, base: {ref: 'main'}, head: {sha: head, repo: {full_name: 'owner/project'}}};
   const run = {repository: {full_name: 'owner/project'}, path: '.github/workflows/release.yml',
     event: 'pull_request', head_sha: head, status: 'completed'};
@@ -35,7 +35,7 @@ function fixture() {
 
 test('ordinary accumulating and new-release PRs do not opt into recovery', () => {
   const f = fixture();
-  for (const title of ['Fix draft release metadata lookup', 'Outask AI v0.16']) {
+  for (const title of ['Fix draft release metadata lookup', 'Outask v0.16']) {
     f.event.pull_request.title = title;
     assert.equal(f.plan(), null);
     assert.equal(f.reads.length, 0);

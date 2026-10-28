@@ -9,7 +9,7 @@ import test from 'node:test';
 import { withProjectLock, projectLockPath, lockInsideProject } from '../src/project-lock.mjs';
 import { createTask } from '../src/create.mjs';
 import { validateProject } from '../src/validation.mjs';
-import { fixture, run, snapshot, task } from './fixtures.mjs';
+import { beforeFixtureCleanup, fixture, run, snapshot, task } from './fixtures.mjs';
 
 const module = new URL('../src/project-lock.mjs', import.meta.url).href;
 const cli = fileURLToPath(new URL('../bin/tasks', import.meta.url));
@@ -24,7 +24,7 @@ async function holder(t, root) {
     });
   `, root], { stdio: ['ignore', 'ignore', 'pipe', 'ipc'], env: { ...process.env, TMPDIR: root, XDG_CACHE_HOME: root, HOME: root } });
   const ended = once(child, 'exit');
-  t.after(async () => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); await ended; });
+  beforeFixtureCleanup(t, async () => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); await ended; });
   await Promise.race([once(child, 'message'), ended.then(() => { throw new Error('holder exited before acquiring lock'); })]);
   return { child, ended };
 }
@@ -97,12 +97,12 @@ test('damaged external coordination fails closed without altering task data', (t
 });
 
 test('a project containing the fixed coordination directory is rejected clearly', () => {
-  assert.throws(() => withProjectLock(project(process.platform === 'win32' ? join(userInfo().homedir, 'AppData/Local/OutaskAI') : '/var/tmp'), 'test', () => assert.fail('must not enter')),
+  assert.throws(() => withProjectLock(project(process.platform === 'win32' ? join(userInfo().homedir, 'AppData/Local/Programs/Outask') : '/var/tmp'), 'test', () => assert.fail('must not enter')),
     { code: 'WRITE_ERROR', message: 'project lock directory must be outside the project' });
 });
 
 test('Windows lock containment allows another drive and rejects actual project descendants', () => {
-  const directory = 'C:\\Users\\owner\\AppData\\Local\\OutaskAI\\locks';
+  const directory = 'C:\\Users\\owner\\AppData\\Local\\Programs\\Outask\\locks';
   assert.equal(lockInsideProject('D:\\work\\project', directory, win32), false);
   assert.equal(lockInsideProject('C:\\work\\project', directory, win32), false);
   assert.equal(lockInsideProject('C:\\Users\\owner', directory, win32), true);

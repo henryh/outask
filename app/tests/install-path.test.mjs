@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { configurePath } from '../scripts/install-path.mjs';
 
 function fixture(t, shell = '/bin/bash') {
-  const home = mkdtempSync(join(tmpdir(), "OutaskAI profile's "));
+  const home = mkdtempSync(join(tmpdir(), "Outask profile's "));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   return { home, bin: join(home, "custom bin's [literal]"), env: { HOME: home, SHELL: shell, PATH: '/usr/bin:/bin' } };
 }
@@ -78,4 +78,20 @@ test('profile errors and unsupported shells explain immediate use and manual rem
   assert.match(unsupported, /Automatic PATH setup is unavailable for fish/);
   assert.match(unsupported, /Run immediately:/);
   assert.match(unsupported, /export PATH=/);
+});
+
+test('reinstallation consolidates complete Outask PATH blocks while preserving user shell content', t => {
+  const f = fixture(t);
+  const profile = join(f.home, '.bashrc');
+  const block = path => `# Outask command path\ncase ":\${PATH-}:" in\n  *:'${path}':*) ;;\n  *) export PATH='${path}':"$PATH" ;;\nesac\n`;
+  writeFileSync(profile, `# user before\n${block('/tmp/obsolete installation')}${block('/tmp/second')}`
+    + '# Outask command path\n# user-owned customised block\nexport OTHER=retained\n');
+  configurePath(f.bin, { env: f.env });
+  const contents = readFileSync(profile, 'utf8');
+  assert.doesNotMatch(contents, /obsolete installation|\/tmp\/second/);
+  assert.match(contents, /# user before/);
+  assert.match(contents, /# user-owned customised block\nexport OTHER=retained/);
+  assert.equal((contents.match(/^# Outask command path$/gm) || []).length, 2);
+  configurePath(f.bin, { env: f.env });
+  assert.equal(readFileSync(profile, 'utf8'), contents);
 });

@@ -1,6 +1,6 @@
-# Outask AI
+# Outask
 
-Outask AI keeps project tasks in readable, repository-local JSON. Developers
+Outask keeps project tasks in readable, repository-local JSON. Developers
 and local AI agents use the same operations; each project owns its fields,
 workflow and planning decisions.
 

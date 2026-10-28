@@ -3,8 +3,8 @@
   "validated": {
     "files": {
       "tasks/task-schema.json": "24d4b7abea66adc76f9c0fef3ab1deaa32aed2723e4c46740f9d635aa8937dbf",
-      "tasks/active.json": "f052fa2565c8e7b6fb36d373444a68f17dd3b59f0f85feeea5f8da144d08b721",
-      "tasks/done.json": "cd3127e6ed5259c164c95c54b49e13ab4fbb67c0b733de91269d298bed9a512c"
+      "tasks/active.json": "d944023c8de8fc149565b58727a9a9f72e6e713e95aaf2e06b9cb05b388405da",
+      "tasks/done.json": "a3f270d1ded2224346d5c50c4a12a6a8a7a2cda57aa2527c73bf0abbcbf6c94a"
     },
     "counter": 20
   }

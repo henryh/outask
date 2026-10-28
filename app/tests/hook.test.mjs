@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { cleanupProjectLocks } from './helpers/cleanup-project-locks.mjs';
 
 const entry = fileURLToPath(new URL('../bin/tasks', import.meta.url));
 const installer = fileURLToPath(new URL('../scripts/install-cli.mjs', import.meta.url));
@@ -17,20 +18,23 @@ function execute(command, args, cwd, env = process.env) {
 function ok(result) { assert.equal(result.status, 0, result.stderr); return result.stdout; }
 function repo(t) {
   const root = mkdtempSync(join(tmpdir(), "task-hook-'"));
-  t.after(() => { rmSync(root, { recursive: true, force: true }); assert.equal(existsSync(root), false); });
-  const git = (...args) => execute('git', args, root);
+  t.after(() => { cleanupProjectLocks(root); rmSync(root, { recursive: true, force: true }); assert.equal(existsSync(root), false); });
+  const env = { ...process.env, HOME: root, SHELL: '/bin/bash', XDG_CONFIG_HOME: join(root, '.config'),
+    XDG_CACHE_HOME: join(root, '.cache'), TASK_TRACKER_CONFIG: undefined, ZDOTDIR: undefined };
+  const git = (...args) => execute('git', args, root, env);
   ok(git('init', '-q'));
   ok(git('config', 'user.name', 'Hook Test'));
   ok(git('config', 'user.email', 'hook@example.invalid'));
   ok(git('config', 'commit.gpgsign', 'false'));
-  const cli = (...args) => execute(process.execPath, [entry, ...args], root);
+  const cli = (...args) => execute(process.execPath, [entry, ...args], root, env);
   return { root, git, cli };
 }
 
 test('installed CLI onboarding prepares, guards blockers, restores, validates manual edits and opts into commits', (t) => {
   const { root, git } = repo(t);
   const bin = join(root, 'bin');
-  const env = { ...process.env, PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin` };
+  const env = { ...process.env, HOME: root, SHELL: '/bin/bash', ZDOTDIR: undefined, TASK_TRACKER_CONFIG: undefined,
+    XDG_CONFIG_HOME: join(root, '.config'), XDG_CACHE_HOME: join(root, '.cache'), PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin` };
   ok(execute(process.execPath, [installer, 'install', '--bin-dir', bin], root, env));
   const cli = (...args) => execute(join(bin, 'tasks'), args, root, env);
   const record = (...args) => JSON.parse(ok(cli(...args)));

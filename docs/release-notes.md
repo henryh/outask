@@ -1,24 +1,27 @@
 ## Downloads
 
-- [Linux x64](https://github.com/henryh/outask/releases/download/v1.4/OutaskAI-1.4-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.4/OutaskAI-1.4-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/henryh/outask/releases/download/v1.4/OutaskAI-1.4-windows-x64.tar.gz)
+- [Linux x64](https://github.com/henryh/outask/releases/download/v1.5/Outask-1.5-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.5/Outask-1.5-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/henryh/outask/releases/download/v1.5/Outask-1.5-windows-x64.tar.gz)
 
 ## Current version
 
-Outask AI keeps project tasks in local JSON files, with CLI and local MCP access.
+Outask keeps project tasks in local JSON files, with CLI and local MCP access.
 
 ## What's new
 
-- Update to the latest stable release with `./install.sh update` on Linux, `./Install.command update` on macOS or `Install.cmd update` on Windows.
-- Preserve project tasks, configuration and compatible running sessions through updates; report an already-current installation without reinstalling.
-- Mark stable publications as GitHub Latest explicitly; prereleases keep the existing stable selection.
+- Use `outask` as the canonical command. `tasks` is a permanent equivalent command, including MCP startup.
+- CLI help, MCP service metadata and the source HTTP adapter identify the product as Outask.
+- Keep application files, default configuration and read caches in one stable platform Outask directory while preserving task data and unrelated files.
+- Consolidate generated shell PATH blocks and replace managed launchers for both commands during installation and updates.
+- Download one Outask archive for your platform. Existing command links from an unrecognised layout need removal with that installation's own installer before replacement.
+- Before starting this Windows writer generation, finish active writes and close all previous CLI/MCP/HTTP sessions; do not mix generations. Compatible updates within one generation preserve sessions.
 
 ## Install
 
 Requires Node.js 22.23.3 or later on PATH.
 On macOS, use the [official Node.js installer](https://nodejs.org/en/download) or another provider; Homebrew is optional.
-Extract the archive. Open the directory OutaskAI in a terminal.
+Extract the archive. Open the directory Outask in a terminal.
 
 Linux:
 ```sh
@@ -40,12 +43,12 @@ Install.cmd   & rem cmd.exe
 
 Open a new terminal. From a project directory:
 ```sh
-tasks create --title "Write release notes"
-tasks list --format table
+outask create --title "Write release notes"
+outask list --format table
 ```
 
 ## Documentation
 
-- [Basic use](https://github.com/henryh/outask/blob/v1.4/README.md#basic-use)
-- [Full operator reference](https://github.com/henryh/outask/blob/v1.4/app/README.md)
-- [MCP setup](https://github.com/henryh/outask/blob/v1.4/app/mcp/README.md)
+- [Basic use](https://github.com/henryh/outask/blob/v1.5/README.md#basic-use)
+- [Full operator reference](https://github.com/henryh/outask/blob/v1.5/app/README.md)
+- [MCP setup](https://github.com/henryh/outask/blob/v1.5/app/mcp/README.md)

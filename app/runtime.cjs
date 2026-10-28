@@ -11,4 +11,4 @@ const supported = range.split(' || ').some(function (branch) {
     return match[1] === '>=' ? order >= 0 : order < 0;
   });
 });
-if (!supported) throw new Error('INCOMPATIBLE_RUNTIME: task-tracker requires Node.js ' + range + '; found ' + process.versions.node);
+if (!supported) throw new Error('INCOMPATIBLE_RUNTIME: Outask requires Node.js ' + range + '; found ' + process.versions.node);

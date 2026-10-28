@@ -1,7 +1,7 @@
 {
-  "name": "task-tracker-mcp",
+  "name": "outask-mcp",
   "version": "0.1.0",
-  "description": "Outask AI local stdio MCP adapter for repository-local task tracking",
+  "description": "Outask stdio MCP adapter for repository-local task tracking",
   "private": true,
   "author": "Henry <me@henrydev.me>",
   "license": "AGPL-3.0-only",

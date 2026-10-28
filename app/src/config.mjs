@@ -1,4 +1,6 @@
 import { homedir } from 'node:os';
+import { existsSync } from 'node:fs';
+import { configPath } from './locations.mjs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fail } from './errors.mjs';
 import { readBudget, readJson } from './input.mjs';
@@ -9,8 +11,9 @@ const object = (value) => value !== null && typeof value === 'object' && !Array.
 const absolute = (value) => typeof value === 'string' && isAbsolute(value) && !value.includes('\0');
 
 export function readConfig(config, env = process.env) {
-  const path = resolve(config ?? env.TASK_TRACKER_CONFIG
-    ?? join(env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'task-tracker', 'config.json'));
+  const current = configPath(env);
+  const legacy = join(env.XDG_CONFIG_HOME || join(env.HOME || homedir(), '.config'), 'task-tracker', 'config.json');
+  const path = resolve(config ?? env.TASK_TRACKER_CONFIG ?? (existsSync(current) || !existsSync(legacy) ? current : legacy));
   const settings = readJson(path, readBudget(), true) ?? {};
   if (!object(settings)) fail('INVALID_CONFIG', `${path}: program configuration must be an object`);
   if ((settings.projects_root !== undefined && !absolute(settings.projects_root))

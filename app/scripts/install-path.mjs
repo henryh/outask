@@ -1,9 +1,10 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 
 const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
+const managedBlocks = /^# Outask command path\ncase ":\$\{PATH-\}:" in\n  \*:(.+):\*\) ;;\n  \*\) export PATH=\1:"\$PATH" ;;\nesac\n/gm;
 
 // Both installers configure future terminals after the command is installed.
 // Profile errors must not turn a usable installation into a reported failure.
@@ -12,7 +13,7 @@ export function configurePath(bin, { env = process.env, platform = process.platf
   const home = env.HOME || homedir();
   const shell = basename(env.SHELL || '');
   const setting = `export PATH=${quote(bin)}:"$PATH"`;
-  const messages = [`Run immediately: ${quote(join(bin, 'tasks'))} --help`];
+  const messages = [`Run immediately: ${quote(join(bin, 'outask'))} --help`];
   let profiles;
   if (shell === 'zsh') {
     const directory = env.ZDOTDIR === undefined ? home : resolve(env.ZDOTDIR);
@@ -26,25 +27,41 @@ export function configurePath(bin, { env = process.env, platform = process.platf
     return messages;
   }
   // Literal quoting also protects shell pattern characters in custom paths.
-  const block = `# Outask AI command path\ncase ":\${PATH-}:" in\n  *:${quote(bin)}:*) ;;\n  *) ${setting} ;;\nesac\n`;
-  for (const profile of profiles) {
+  const block = `# Outask command path\ncase ":\${PATH-}:" in\n  *:${quote(bin)}:*) ;;\n  *) ${setting} ;;\nesac\n`;
+  // A shell change must not leave the application's old generated paths in
+  // another shell's existing startup files. Only complete managed blocks count.
+  const candidates = ['.bashrc', '.bash_profile', '.bash_login', '.profile', '.zprofile', '.zshrc'].map(name => join(home, name));
+  if (env.ZDOTDIR !== undefined) candidates.push(join(resolve(env.ZDOTDIR), '.zprofile'), join(resolve(env.ZDOTDIR), '.zshrc'));
+  for (const profile of candidates) {
     try {
-      const contents = existsSync(profile) ? readFileSync(profile, 'utf8') : '';
-      if (!contents.includes(block)) {
+      if (existsSync(profile)) {
+        const contents = readFileSync(profile, 'utf8');
+        if (contents.replace(managedBlocks, '') !== contents) profiles.push(profile);
+      }
+    } catch (error) { messages.push(`Cannot inspect legacy PATH blocks in ${profile}: ${error.message}`); }
+  }
+  for (const profile of new Set(profiles)) {
+    try {
+      const original = existsSync(profile) ? readFileSync(profile, 'utf8') : '';
+      // Match the complete generated block, including the identical quoted
+      // path in the test and assignment. Other user shell code is untouched.
+      const contents = original.replace(managedBlocks, '');
+      const updated = `${contents && !contents.endsWith('\n') ? `${contents}\n` : contents}${block}`;
+      if (original !== updated) {
         mkdirSync(dirname(profile), { recursive: true });
-        appendFileSync(profile, `${contents && !contents.endsWith('\n') ? '\n' : ''}${block}`, { mode: 0o600 });
+        writeFileSync(profile, updated, { mode: 0o600 });
       }
       messages.push(`PATH configured in ${profile}.`);
     } catch (error) {
-      messages.push(`Command installed at ${join(bin, 'tasks')}; PATH setup failed for ${profile}: ${error.message}. Add ${setting} to that startup file manually.`);
+      messages.push(`Command installed at ${join(bin, 'outask')}; PATH setup failed for ${profile}: ${error.message}. Add ${setting} to that startup file manually.`);
     }
   }
-  messages.push('Open a new terminal after PATH setup to use tasks by name. The current terminal PATH is unchanged.');
+  messages.push('Open a new terminal after PATH setup to use outask by name. The current terminal PATH is unchanged.');
   return messages;
 }
 
 function configureWindowsPath(bin, env) {
-  const launcher = join(bin, 'tasks.cmd');
+  const launcher = join(bin, 'outask.cmd');
   const messages = [`Run immediately in PowerShell: & "${launcher}" --help`, `Run immediately in cmd.exe: "${launcher}" --help`];
   // Read the raw registry value so expandable entries and its value kind survive.
   const script = `
@@ -56,13 +73,13 @@ try {
   if ($key.GetValueNames() -contains 'Path') { $kind = $key.GetValueKind('Path') }
   $bin = $env:OUTASK_INSTALL_BIN
   $normal = $bin.TrimEnd('\\').ToLowerInvariant()
-  $present = @($raw.Split(';') | Where-Object {
-    [Environment]::ExpandEnvironmentVariables($_.Trim().Trim('"')).TrimEnd('\\').ToLowerInvariant() -eq $normal
-  }).Count -gt 0
-  if (-not $present) {
-    $separator = if ($raw.Length -eq 0 -or $raw.EndsWith(';')) { '' } else { ';' }
-    $key.SetValue('Path', $raw + $separator + $bin, $kind)
-  }
+  $kept = @($raw.Split(';') | Where-Object {
+    $entry = [Environment]::ExpandEnvironmentVariables($_.Trim().Trim('"')).TrimEnd('\\').ToLowerInvariant()
+    $entry -ne $normal
+  }) -join ';'
+  $separator = if ($kept.Length -eq 0 -or $kept.EndsWith(';')) { '' } else { ';' }
+  $updated = $kept + $separator + $bin
+  if ($updated -ne $raw) { $key.SetValue('Path', $updated, $kind) }
 } finally { $key.Dispose() }
 Add-Type -TypeDefinition @'
 using System;
@@ -83,6 +100,6 @@ if ([OutaskEnvironment]::SendMessageTimeout([IntPtr]0xffff, 0x1a, [UIntPtr]::Zer
   if (result.error || result.status !== 0) {
     messages.push(`Command installed at ${launcher}; user PATH setup failed: ${result.error?.message || result.stderr?.trim() || result.status}. Add ${bin} to your user PATH manually.`);
   } else messages.push(`PATH configured in the current user's Windows environment: ${bin}.`);
-  messages.push('Open a new PowerShell or cmd.exe terminal to use tasks by name. An already-open terminal keeps its existing PATH; launch from the printed path immediately.');
+  messages.push('Open a new PowerShell or cmd.exe terminal to use outask by name. An already-open terminal keeps its existing PATH; launch from the printed path immediately.');
   return messages;
 }

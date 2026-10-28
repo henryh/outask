@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { basename, delimiter, dirname, join, resolve } from 'node:path';
@@ -11,24 +11,37 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { projectLockPath } from '../../src/project-lock.mjs';
 import { distributionVersion } from '../../src/version.mjs';
 import { hostTarget } from '../../../scripts/release-config.mjs';
+import { isolateRegistry, isolateUserHome } from '../../tests/helpers/registry-isolation.mjs';
 
 const windows = process.platform === 'win32';
+const registryKey = `Software\\OutaskTest-${randomUUID()}`;
+if (windows) isolateRegistry(registryKey);
 const target = hostTarget();
 const installerName = windows ? 'Install.cmd' : process.platform === 'darwin' ? 'Install.command' : 'install.sh';
 assert.equal(process.argv.length, 3, 'Pass the native host test archive path');
 const archive = resolve(process.argv[2]);
+const archiveDirectory = 'Outask';
 const temporary = realpathSync(mkdtempSync(join(tmpdir(), 'outask-installed-smoke-')));
 const home = join(temporary, 'home 東京 person');
+if (windows) isolateUserHome(home);
 const downloads = join(temporary, 'downloads');
 const project = join(temporary, 'project 東京 with spaces');
-const bin = windows ? join(home, 'AppData/Local/OutaskAI/bin') : join(home, '.local/bin');
-const releases = windows ? join(home, 'AppData/Local/Programs') : process.platform === 'darwin' ? join(home, 'Library/Application Support') : join(home, '.local/share/task-tracker/releases');
-const config = join(home, '.config/task-tracker/config.json');
+const bin = windows ? join(home, 'AppData/Local/Programs/Outask/commands') : join(home, '.local/bin');
+const releases = windows ? join(home, 'AppData/Local/Programs') : process.platform === 'darwin' ? join(home, 'Library/Application Support') : join(home, '.local/share');
+const application = join(releases, process.platform === 'linux' ? 'outask' : 'Outask');
+const config = join(application, 'config.json');
+const oldConfig = join(home, '.config/task-tracker/config.json');
 const tools = join(temporary, 'tools');
 const env = {
-  ...process.env, USERPROFILE: windows ? home : process.env.USERPROFILE, HOME: home, SHELL: process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash', ZDOTDIR: undefined, XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'),
-  PATH: windows ? process.env.PATH : `${tools}:/usr/bin:/bin`,
+  ...process.env, USERPROFILE: windows ? home : process.env.USERPROFILE, HOME: home, SHELL: process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash', ZDOTDIR: undefined, LOCALAPPDATA: join(home, 'AppData/Local'), XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined,
+  PATH: windows ? [dirname(process.execPath), join(process.env.SystemRoot, 'System32'), process.env.SystemRoot,
+    join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0')].join(';') : `${tools}:/usr/bin:/bin`,
 };
+if (windows) {
+  env.OUTASK_TEST_REGISTRY_KEY = registryKey;
+  env.OUTASK_TEST_USER_HOME = home;
+  env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} --import=${new URL('../../tests/helpers/registry-isolation.mjs', import.meta.url).href}`.trim();
+}
 delete env.TASK_TRACKER_CONFIG;
 
 function invoke(command, args = [], selectedEnv = env) {
@@ -85,8 +98,8 @@ try {
   for (const directory of [home, downloads, tools, join(home, '.config/task-tracker'), join(project, 'tasks'), join(project, 'docs')]) {
     mkdirSync(directory, { recursive: true });
   }
-  lock = projectLockPath(project);
   if (windows) {
+    registry("$k=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment'); try { $k.SetValue('Path','C:/Unrelated fixture;%USERPROFILE%/existing-tools',[Microsoft.Win32.RegistryValueKind]::ExpandString) } finally { $k.Dispose() }");
     registryBackup = JSON.parse(registry("$k=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment'); try { $present=$k.GetValueNames() -contains 'Path'; @{ present=$present; value=$k.GetValue('Path','',[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); kind=$(if($present){[int]$k.GetValueKind('Path')}else{2}) } | ConvertTo-Json -Compress } finally { $k.Dispose() }"));
   } else symlinkSync(process.execPath, join(tools, 'node'));
   const original = { id: 7, title: 'Existing task', status: 'pending', team: 'ops', custom: { keep: ['original'] } };
@@ -101,16 +114,16 @@ try {
   write('tasks/task-schema.json', schema);
   write('docs/notes.txt', 'User project document\n');
   const configuration = `${JSON.stringify({ projects: { example: project }, slow_query_ms: 0, custom: { keep: true } }, null, 2)}\n`;
-  writeFileSync(config, configuration);
+  writeFileSync(oldConfig, configuration);
 
   run('tar', ['-xzf', archive, '-C', downloads]);
-  const source = join(downloads, 'OutaskAI');
+  const source = join(downloads, archiveDirectory);
   const metadata = JSON.parse(readFileSync(join(source, 'release.json'), 'utf8'));
   const packageJson = JSON.parse(readFileSync(join(source, 'app/package.json'), 'utf8'));
   assert.equal(metadata.target, target, 'Archive target must match the native Node host');
   assert.equal(metadata.version, distributionVersion(packageJson.version));
-  assert.equal(basename(archive), `OutaskAI-${metadata.version}-${target}.tar.gz`);
-  const name = 'OutaskAI';
+  assert.equal(basename(archive), `${archiveDirectory}-${metadata.version}-${target}.tar.gz`);
+  const name = process.platform === 'linux' ? 'outask' : 'Outask';
   const architecture = windows ? registry('$env:PROCESSOR_ARCHITECTURE').trim() : run('uname', ['-m']).trim();
   assert.equal(architecture, windows ? 'AMD64' : process.platform === 'darwin' ? 'arm64' : 'x86_64', 'OS architecture must match native Node execution');
   const osVersion = process.platform === 'darwin' ? run('sw_vers', ['-productVersion']).trim() : release();
@@ -149,29 +162,35 @@ try {
   const helperBin = join(home, 'custom helper bin');
   const helperReleases = join(home, 'custom helper releases');
   const helperEnv = {
-    ...env, HOME: helperHome, BIN_DIR: helperBin, RELEASE_ROOT: helperReleases,
+    ...env, HOME: helperHome, USERPROFILE: helperHome, LOCALAPPDATA: join(helperHome, 'AppData/Local'), BIN_DIR: helperBin, RELEASE_ROOT: helperReleases,
     PATH: windows ? env.PATH : `${dirname(process.execPath)}:${env.PATH}`,
   };
   const localInstall = invoke(process.execPath, [localHelper], helperEnv);
   assert.equal(localInstall.status, 0, localInstall.stderr || localInstall.stdout);
-  assert.match(localInstall.stdout, /Installed OutaskAI/);
+  assert.match(localInstall.stdout, /Installed Outask/);
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), true);
-  assert.equal(existsSync(join(helperReleases, 'OutaskAI/app/bin/tasks')), true);
+  assert.equal(existsSync(join(helperReleases, name, 'app/bin/tasks')), true);
+  assert.equal(existsSync(join(helperReleases, name, installerName)), true,
+    'A custom-root installation must retain its platform installer');
   assert.equal(existsSync(bin), false, 'Explicit helper overrides must not write the default command directory');
   assert.equal(existsSync(releases), false, 'Explicit helper overrides must not write the default application directory');
   assert.deepEqual(JSON.parse(read('tasks/active.json')), [original]);
-  assert.equal(readFileSync(config, 'utf8'), configuration);
-  const helperUninstall = invoke(join(helperReleases, 'OutaskAI', installerName), ['uninstall',
+  assert.equal(readFileSync(oldConfig, 'utf8'), configuration);
+  const helperUninstall = invoke(join(helperReleases, name, installerName), ['uninstall',
     '--bin-dir', helperBin, '--release-root', helperReleases], helperEnv);
   assert.equal(helperUninstall.status, 0, helperUninstall.stderr || helperUninstall.stdout);
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), false,
-    'The helper launcher must not mask the default command in later PATH checks');
+    `The helper launcher must not mask the default command in later PATH checks\n${helperUninstall.stdout}\n${helperUninstall.stderr}`);
+
 
   if (!windows) {
     assert.equal(env.PATH.split(delimiter).includes(bin), false, 'First installation must not inherit the installed command directory');
     assert.equal(existsSync(join(home, process.platform === 'darwin' ? '.zprofile' : '.bashrc')), false, 'First installation must start with fresh shell startup files');
   }
   if (windows) documentedInstall(source, 'powershell'); else run(installer);
+  lock = projectLockPath(project);
+  assert.equal(existsSync(oldConfig), true, 'The legacy registry filename must continue to resolve after migration');
+  assert.equal(readFileSync(config, 'utf8'), configuration);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
   if (!windows) {
     // macOS login startup can prepend a system Node ahead of the matrix runtime.
@@ -184,7 +203,7 @@ try {
     assert.ok(output, `Fresh shell did not report its command environment:\n${shell.stdout}\n${shell.stderr}`);
     const inherited = JSON.parse(output.slice('OUTASK_FRESH_SHELL:'.length));
     assert.equal(inherited.command, command, 'A new shell must discover the installed tasks by name');
-    assert.equal(inherited.version, `Outask AI v${metadata.version}`);
+    assert.equal(inherited.version, `Outask v${metadata.version}`);
     assert.equal(inherited.home, home, 'Fresh shell must use the isolated installation HOME');
     assert.equal(inherited.node.execPath, process.execPath, 'Fresh shell must use the selected matrix Node');
     assert.equal(inherited.node.version, process.version);
@@ -194,6 +213,16 @@ try {
   }
   if (windows) documentedInstall(source, 'cmd'); else run(installer);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
+  for (const alias of ['outask', 'tasks']) {
+    const entry = join(bin, windows ? `${alias}.cmd` : alias);
+    for (const args of [['--version'], ['--help'], ['list', '--no-cache', '--format', 'json'], ['get', '999999', '--no-cache']]) {
+      const expected = invoke(command, args);
+      const actual = invoke(entry, args);
+      assert.equal(actual.status, expected.status, alias);
+      assert.equal(actual.stdout, expected.stdout, alias);
+      assert.equal(actual.stderr, expected.stderr, alias);
+    }
+  }
   if (windows) {
     const savedPath = registry("$k=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment'); try { $k.GetValue('Path','',[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames) } finally { $k.Dispose() }").trim();
     const kind = Number(registry("$k=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment'); try { [int]$k.GetValueKind('Path') } finally { $k.Dispose() }").trim());
@@ -202,20 +231,27 @@ try {
     assert.equal(entries.filter((p) => p.toLowerCase() === bin.toLowerCase()).length, 1);
     for (const entry of String(registryBackup.value).split(';').filter(Boolean)) assert.ok(entries.includes(entry));
     const expandedPath = registry("[Environment]::ExpandEnvironmentVariables([Environment]::GetEnvironmentVariable('Path','User'))").trim();
-    const freshEnv = { ...env, PATH: expandedPath + ';' + process.env.PATH };
-    assert.equal(invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/c', 'tasks --version'], freshEnv).stdout.trim(), `Outask AI v${metadata.version}`);
+    const freshEnv = { ...env, PATH: expandedPath + ';' + env.PATH };
+    const discovered = invoke(join(process.env.SystemRoot, 'System32/where.exe'), ['tasks'], freshEnv);
+    assert.equal(discovered.status, 0, discovered.stderr);
+    const selectedCommand = discovered.stdout.trim().split(/\r?\n/)[0];
+    const selectedIdentity = statSync(selectedCommand);
+    const expectedIdentity = statSync(command);
+    assert.deepEqual({ dev: selectedIdentity.dev, ino: selectedIdentity.ino },
+      { dev: expectedIdentity.dev, ino: expectedIdentity.ino });
+    assert.equal(invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/c', 'tasks --version'], freshEnv).stdout.trim(), `Outask v${metadata.version}`);
     assert.match(readFileSync(command, 'utf8'), /^[\x00-\x7f]*$/, 'The managed batch launcher must be independent of the console code page');
     // Save/restore the test console code page; the launcher itself must leave 437 intact.
     const legacyScript = `for /f "tokens=2 delims=:" %c in ('chcp') do set "OUTASK_OLD_CP=%c" & chcp 437 >nul & call "%OUTASK_COMMAND%" --version & set "OUTASK_EXIT=!errorlevel!" & chcp & chcp !OUTASK_OLD_CP! >nul & exit /b !OUTASK_EXIT!`;
     const legacy = invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/v:on', '/c', legacyScript], { ...freshEnv, OUTASK_COMMAND: command });
     assert.equal(legacy.status, 0, legacy.stderr || legacy.stdout);
-    assert.ok(legacy.stdout.split(/\r?\n/).some((line) => line.trim() === `Outask AI v${metadata.version}`));
+    assert.ok(legacy.stdout.split(/\r?\n/).some((line) => line.trim() === `Outask v${metadata.version}`));
     assert.match(legacy.stdout, /\b437\b/, 'Running a launcher in a Unicode install directory must preserve CP437');
-    assert.equal(invoke(powershell, ['-NoProfile', '-Command', 'tasks --version; exit $LASTEXITCODE'], freshEnv).stdout.trim(), `Outask AI v${metadata.version}`);
+    assert.equal(invoke(powershell, ['-NoProfile', '-Command', 'tasks --version; exit $LASTEXITCODE'], freshEnv).stdout.trim(), `Outask v${metadata.version}`);
   }
   rmSync(downloads, { recursive: true, force: true });
 
-  for (const option of ['--version', '-v']) assert.equal(run(command, [option]).trim(), `Outask AI v${metadata.version}`);
+  for (const option of ['--version', '-v']) assert.equal(run(command, [option]).trim(), `Outask v${metadata.version}`);
   const rejected = invoke(command, ['create', '--json', JSON.stringify({ title: 'Missing required field' })]);
   assert.notEqual(rejected.status, 0);
   assert.match(rejected.stderr, /INVALID_STORE/);
@@ -242,6 +278,24 @@ try {
   const transport = new StdioClientTransport({ command: windows ? process.execPath : 'tasks', args: windows ? [join(releases, name, 'app/bin/tasks'), 'mcp'] : ['mcp'], cwd: project, env: commandEnv, stderr: 'pipe' });
   transport.stderr.on('data', (chunk) => { stderr += chunk; });
   await client.connect(transport);
+  assert.equal(client.getServerVersion().name, 'outask');
+  for (const alias of ['outask', 'tasks']) {
+    const aliasClient = new Client({ name: 'outask-alias-acceptance', version: '1.0.0' });
+    const aliasTransport = new StdioClientTransport({ command: windows ? powershell : alias,
+      args: windows ? ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command',
+        '[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding; & $env:OUTASK_ALIAS mcp; exit $LASTEXITCODE'] : ['mcp'],
+      cwd: project, env: { ...commandEnv, OUTASK_ALIAS: join(bin, `${alias}.cmd`) }, stderr: 'pipe' });
+    try {
+      await aliasClient.connect(aliasTransport);
+      assert.equal(aliasClient.getServerVersion().name, 'outask', alias);
+      if (process.platform === 'linux') {
+        assert.equal(run('ps', ['-p', String(aliasTransport.pid), '-o', 'comm=']).trim(), 'outask', alias);
+      }
+      const result = await aliasClient.callTool({ name: 'get_task', arguments: { project_path: project, id: original.id, no_cache: true } });
+      assert.notEqual(result.isError, true, JSON.stringify(result));
+      assert.deepEqual(result.structuredContent, original);
+    } finally { await aliasClient.close(); }
+  }
   async function call(name, args, errorCode) {
     const result = await client.callTool({ name, arguments: args });
     if (errorCode) {
@@ -282,6 +336,8 @@ try {
   assert.equal((await call('validate_project', {})).valid, true);
   if (windows) await checkWriters(call, join(releases, name, 'app'));
   const originalServerVersion = client.getServerVersion();
+  const persistentPaths = [application, config, ...(windows ? [lock] : []), join(application, 'cache')].filter(existsSync);
+  const persistentIds = persistentPaths.map(path => statSync(path).ino);
 
   assert.deepEqual(JSON.parse(read('tasks/active.json')), [original]);
   assert.deepEqual(JSON.parse(read('tasks/done.json')), [completed, mcpCompleted]);
@@ -292,11 +348,11 @@ try {
   const retained = new Map(['tasks/active.json', 'tasks/done.json', 'tasks/archive.json', 'tasks/task-schema.json', 'docs/notes.txt']
     .map((path) => [path, read(path)]));
 
-  writeFileSync(join(releases, 'OutaskAI', 'app/scripts/obsolete.mjs'), 'old program');
-  writeFileSync(join(releases, 'OutaskAI', 'user-note.txt'), 'Retain local note');
+  writeFileSync(join(releases, name, 'app/scripts/obsolete.mjs'), 'old program');
+  writeFileSync(join(releases, name, 'user-note.txt'), 'Retain local note');
   const localDirectory = join('local 東京 notes', 'nested');
-  mkdirSync(join(releases, 'OutaskAI', localDirectory), { recursive: true });
-  writeFileSync(join(releases, 'OutaskAI', localDirectory, 'note.txt'), 'Retain nested local note');
+  mkdirSync(join(releases, name, localDirectory), { recursive: true });
+  writeFileSync(join(releases, name, localDirectory, 'note.txt'), 'Retain nested local note');
 
   // Serve a new native archive through a fixture of GitHub Latest, then run the packaged update action.
   mkdirSync(downloads);
@@ -308,27 +364,27 @@ try {
   // Distinguish newly loaded adapter bytes without changing its production metadata contract.
   const serverPath = join(source, 'app/mcp/server.mjs');
   writeFileSync(serverPath, readFileSync(serverPath, 'utf8').replace("version: '0.1.0'", `version: '${updateVersion}'`));
-  const latestArchive = join(temporary, `OutaskAI-${updateVersion}-${target}.tar.gz`);
-  run('tar', ['-czf', latestArchive, '-C', downloads, 'OutaskAI']);
+  const latestArchive = join(temporary, `${archiveDirectory}-${updateVersion}-${target}.tar.gz`);
+  run('tar', ['-czf', latestArchive, '-C', downloads, archiveDirectory]);
   const updateFixture = join(temporary, 'latest.json');
-  const writeLatest = (failure = false) => writeFileSync(updateFixture, JSON.stringify({ version: failure ? '99.0.2' : updateVersion, target, archive: latestArchive, failure }));
+  const writeLatest = (failure = false) => writeFileSync(updateFixture, JSON.stringify({ version: failure ? '99.0.2' : updateVersion, target, archive: latestArchive, brand: archiveDirectory, failure }));
   writeLatest();
   const updateEnv = { ...env, OUTASK_UPDATE_FIXTURE: updateFixture,
-    NODE_OPTIONS: `--import=${pathToFileURL(fileURLToPath(new URL('../../tests/helpers/latest-fetch.mjs', import.meta.url))).href}` };
-  const updateInstaller = join(releases, 'OutaskAI', installerName);
+    NODE_OPTIONS: `${env.NODE_OPTIONS || ''} --import=${pathToFileURL(fileURLToPath(new URL('../../tests/helpers/latest-fetch.mjs', import.meta.url))).href}`.trim() };
+  const updateInstaller = join(releases, name, installerName);
   const candidateEntry = join(source, 'app/bin/tasks');
   const validEntry = readFileSync(candidateEntry);
   writeFileSync(candidateEntry, "throw new Error('fixture startup failure');\n");
-  run('tar', ['-czf', latestArchive, '-C', downloads, 'OutaskAI']);
+  run('tar', ['-czf', latestArchive, '-C', downloads, archiveDirectory]);
   const rejectedInstall = invoke(updateInstaller, ['update'], updateEnv);
   assert.notEqual(rejectedInstall.status, 0);
   assert.match(rejectedInstall.stderr, /UPDATE_FAILED.*install latest release/);
-  assert.equal(run(command, ['--version']).trim(), `Outask AI v${metadata.version}`);
+  assert.equal(run(command, ['--version']).trim(), `Outask v${metadata.version}`);
   writeFileSync(candidateEntry, validEntry);
-  run('tar', ['-czf', latestArchive, '-C', downloads, 'OutaskAI']);
+  run('tar', ['-czf', latestArchive, '-C', downloads, archiveDirectory]);
   const updateResult = invoke(updateInstaller, ['update'], updateEnv);
   assert.equal(updateResult.status, 0, updateResult.stderr || updateResult.stdout);
-  assert.match(updateResult.stdout, /Updated to Outask AI v99.0.1/);
+  assert.match(updateResult.stdout, /Updated to Outask v99.0.1/);
   const current = invoke(updateInstaller, ['update'], updateEnv);
   assert.equal(current.status, 0, current.stderr);
   assert.match(current.stdout, /already current/);
@@ -337,15 +393,17 @@ try {
     const failedUpdate = invoke(updateInstaller, ['update'], updateEnv);
     assert.notEqual(failedUpdate.status, 0);
     assert.match(failedUpdate.stderr, /UPDATE_FAILED.*HTTP 503/);
-    assert.equal(run(command, ['--version']).trim(), `Outask AI v${updateVersion}`);
+    assert.equal(run(command, ['--version']).trim(), `Outask v${updateVersion}`);
   }
-  const updatedInstall = join(releases, 'OutaskAI');
+  const updatedInstall = join(releases, process.platform === 'linux' ? 'outask' : 'Outask');
+  assert.deepEqual(persistentPaths.map(path => statSync(path).ino), persistentIds,
+    'Updates must retain root, registry, cache and coordination inodes');
   if (!windows) assert.equal(readlinkSync(command), join(updatedInstall, 'app/bin/tasks'));
   assert.equal(existsSync(join(updatedInstall, 'app/scripts/obsolete.mjs')), false);
   assert.equal(readFileSync(join(updatedInstall, 'user-note.txt'), 'utf8'), 'Retain local note');
   assert.equal(readFileSync(join(updatedInstall, localDirectory, 'note.txt'), 'utf8'), 'Retain nested local note');
   rmSync(downloads, { recursive: true, force: true });
-  for (const option of ['--version', '-v']) assert.equal(run(command, [option]).trim(), `Outask AI v${updateVersion}`);
+  for (const option of ['--version', '-v']) assert.equal(run(command, [option]).trim(), `Outask v${updateVersion}`);
   assert.deepEqual(client.getServerVersion(), originalServerVersion);
   assert.deepEqual(await call('get_task', { id: original.id, fields: ['all'], no_cache: true }), original);
   const afterUpdate = await call('create_task', { project_path: freshProject, task: { title: 'Existing MCP writes after update' } });
@@ -377,7 +435,7 @@ try {
     writeFileSync(command, managedCommand);
   }
   run(join(updatedInstall, installerName), ['uninstall']);
-  assert.equal(existsSync(command), false);
+  for (const alias of ['outask', 'tasks']) assert.equal(existsSync(join(bin, windows ? `${alias}.cmd` : alias)), false);
   assert.equal(existsSync(updatedInstall), true);
   for (const [path, content] of retained) assert.equal(read(path), content);
   assert.equal(readFileSync(config, 'utf8'), configuration);
@@ -385,9 +443,9 @@ try {
     result: 'PASS', os: { platform: process.platform, version: osVersion, architecture },
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     ...(macosPrerequisites ? { macosPrerequisites } : {}),
-    artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
+    artifact: { version: metadata.version, target, format: archiveDirectory, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
-    checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
+    checks: ['permanent-aliases-and-canonical-identity', 'single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);
@@ -395,8 +453,7 @@ try {
 } finally {
   try { await client?.close(); } finally {
     if (windows && registryBackup) {
-      const restore = JSON.stringify(registryBackup).replaceAll("'", "''");
-      registry(`$b=ConvertFrom-Json '${restore}'; $k=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment'); try { if($b.present){$k.SetValue('Path',[string]$b.value,[Microsoft.Win32.RegistryValueKind]$b.kind)}else{$k.DeleteValue('Path',$false)} } finally { $k.Dispose() }`);
+      registry(`[Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('${registryKey}', $false)`);
     }
     for (const path of extraLocks) {
       rmSync(path, { force: true });

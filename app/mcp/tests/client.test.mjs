@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import { fixture, task, writeStore } from '../../tests/fixtures.mjs';
+import { beforeFixtureCleanup, fixture, task, writeStore } from '../../tests/fixtures.mjs';
 import { inputBytes, projectBytes, responseBytes } from '../../src/limits.mjs';
 import { projectLockPath } from '../../src/project-lock.mjs';
 import { refreshSearchIndex } from '../../src/search-index.mjs';
@@ -25,7 +25,12 @@ async function connect(t, root, command = executable, env) {
   let stderr = '';
   transport.stderr.on('data', (chunk) => { stderr += chunk; });
   await client.connect(transport);
-  t.after(async () => { await client.close(); assert.equal(stderr, ''); });
+  const child = transport._process;
+  assert.ok(child, 'stdio transport must retain its session child');
+  const exited = child.exitCode !== null || child.signalCode !== null
+    ? Promise.resolve()
+    : new Promise(resolve => child.once('exit', resolve));
+  beforeFixtureCleanup(t, async () => { await client.close(); await exited; assert.equal(stderr, ''); });
   const call = async (name, args = {}, code) => {
     const result = await client.callTool({ name, arguments: args });
     if (code) {

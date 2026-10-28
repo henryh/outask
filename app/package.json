@@ -1,7 +1,7 @@
 {
-  "name": "task-tracker-local",
-  "version": "1.4.0",
-  "description": "Outask AI local tasks CLI for repository-local JSON task tracking",
+  "name": "outask",
+  "version": "1.5.0",
+  "description": "Outask CLI for repository-local JSON task tracking",
   "private": true,
   "author": "Henry <me@henrydev.me>",
   "license": "AGPL-3.0-only",

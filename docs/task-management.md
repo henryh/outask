@@ -35,7 +35,7 @@ a mutation transport failure may already have persisted.
 If MCP is unavailable, use the [CLI](../app/README.md) with an explicit project path:
 
 ```sh
-tasks list --project-path /absolute/project --fields id,title,status --limit 10
-tasks get 1 --project-path /absolute/project
-tasks validate --project-path /absolute/project
+outask list --project-path /absolute/project --fields id,title,status --limit 10
+outask get 1 --project-path /absolute/project
+outask validate --project-path /absolute/project
 ```

@@ -23,7 +23,7 @@ export function tagName() {
 }
 
 export function releaseTitle(value = releaseVersion()) {
-  return `Outask AI v${distributionVersion(value)}`;
+  return `Outask v${distributionVersion(value)}`;
 }
 
 export function targetList(value = process.env.TARGETS) {
@@ -43,7 +43,7 @@ export function hostTarget() {
 }
 
 export function archiveName(target, value = releaseVersion()) {
-  return `OutaskAI-${distributionVersion(value)}-${target}.tar.gz`;
+  return `Outask-${distributionVersion(value)}-${target}.tar.gz`;
 }
 
 export function archivePath(target, value = releaseVersion()) {
@@ -61,7 +61,7 @@ export function requireArchives(selected = targetList(), value = releaseVersion(
 export function rejectMixedArchives(packageVersion = version()) {
   const releaseId = distributionVersion(packageVersion);
   if (releaseId === packageVersion) return;
-  const mixed = targets.map((target) => join(distRoot, `OutaskAI-${packageVersion}-${target}.tar.gz`)).filter(existsSync);
+  const mixed = targets.map(target => join(distRoot, `Outask-${packageVersion}-${target}.tar.gz`)).filter(existsSync);
   if (mixed.length) fail('INVALID_INPUT', `Full-SemVer zero-patch archives must not coexist with ${releaseId} archives: ${mixed.join(', ')}`);
 }
 

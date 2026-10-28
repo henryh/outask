@@ -117,7 +117,7 @@ test('write selection, custom transitions and external validation use CLI contra
   assert.equal(json(cli(root, ['update', root, id, '--status', 'finished', '--input', patch])).status, 'finished');
   for (const name of ['create', 'update', 'transition']) {
     const help = success(cli(root, [name, '--help']));
-    assert.match(help, new RegExp(`Usage: tasks ${name}`));
+    assert.match(help, new RegExp(`Usage: outask ${name}`));
     assert.match(help, /--project-path/);
     rejected(root, [name, ...(name === 'create' ? [] : [id]), '--project-path', root, '--project', 'selected'], 'INVALID_INPUT');
   }

@@ -1,6 +1,6 @@
-# Outask AI agent guidance
+# Outask agent guidance
 
-Use Outask AI for authorised project planning, task selection, delivery and
+Use Outask for authorised project planning, task selection, delivery and
 continuation. The tracker preserves task data; agents and project instructions
 own scope, priorities, acceptance, review and Git actions.
 
@@ -16,8 +16,8 @@ For a project that has adopted Outask, add this reference to its `AGENTS.md`
 or equivalent, adjusting the guide path to its readable maintained location:
 
 ```md
-For authorised multi-step work, follow `docs/outask-ai-skill.md`. Prefer the
-connected tasks MCP server; use the installed tasks CLI when unavailable.
+For authorised multi-step work, follow `docs/outask-skill.md`. Prefer the
+connected Outask MCP server; use the installed outask CLI when unavailable.
 Select this project explicitly, preserve IDs and fields, and treat status-only
 requests as reads.
 ```
@@ -27,7 +27,7 @@ and release requirements only where the target project declares them.
 
 ## Tool route
 
-Prefer connected `tasks` MCP tools. Select the project on every call using
+Prefer connected Outask MCP tools (existing `tasks` registrations remain supported). Select the project on every call using
 `project_path` or configured `project`. Start with a small Active list projected
 to `id,title,status`, then retrieve selected details. Use `get_tasks` for several
 known IDs; keep selectors and returned cursors consistent across pages.
@@ -36,11 +36,11 @@ If an MCP operation fails, report it and inspect its result before retrying or
 switching interfaces, especially for mutations. Use CLI when MCP is unavailable:
 
 ```bash
-tasks list --project-path /absolute/project --limit 10 --fields id,title,status
-tasks get 1 --project-path /absolute/project
-tasks deps 1 --project-path /absolute/project
-tasks schema --project-path /absolute/project
-tasks validate --project-path /absolute/project
+outask list --project-path /absolute/project --limit 10 --fields id,title,status
+outask get 1 --project-path /absolute/project
+outask deps 1 --project-path /absolute/project
+outask schema --project-path /absolute/project
+outask validate --project-path /absolute/project
 ```
 
 Inspect the effective schema before changing unfamiliar records. Preserve

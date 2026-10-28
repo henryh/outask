@@ -1,13 +1,13 @@
 export function approvedNotes(version) {
   return `## Downloads
 
-- [Linux x64](https://github.com/owner/project/releases/download/v${version}/OutaskAI-${version}-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/owner/project/releases/download/v${version}/OutaskAI-${version}-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/owner/project/releases/download/v${version}/OutaskAI-${version}-windows-x64.tar.gz)
+- [Linux x64](https://github.com/owner/project/releases/download/v${version}/Outask-${version}-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/owner/project/releases/download/v${version}/Outask-${version}-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/owner/project/releases/download/v${version}/Outask-${version}-windows-x64.tar.gz)
 
 ## Current version
 
-Outask AI ${version} keeps task work clear and local.
+Outask ${version} keeps task work clear and local.
 
 ## What's new
 
