@@ -8,8 +8,8 @@ const managedBlocks = /^# Outask command path\ncase ":\$\{PATH-\}:" in\n  \*:(.+
 
 // Both installers configure future terminals after the command is installed.
 // Profile errors must not turn a usable installation into a reported failure.
-export function configurePath(bin, { env = process.env, platform = process.platform, retiredBins = [] } = {}) {
-  if (platform === 'win32') return configureWindowsPath(bin, env, retiredBins);
+export function configurePath(bin, { env = process.env, platform = process.platform } = {}) {
+  if (platform === 'win32') return configureWindowsPath(bin, env);
   const home = env.HOME || homedir();
   const shell = basename(env.SHELL || '');
   const setting = `export PATH=${quote(bin)}:"$PATH"`;
@@ -60,7 +60,7 @@ export function configurePath(bin, { env = process.env, platform = process.platf
   return messages;
 }
 
-function configureWindowsPath(bin, env, retiredBins) {
+function configureWindowsPath(bin, env) {
   const launcher = join(bin, 'outask.cmd');
   const messages = [`Run immediately in PowerShell: & "${launcher}" --help`, `Run immediately in cmd.exe: "${launcher}" --help`];
   // Read the raw registry value so expandable entries and its value kind survive.
@@ -73,10 +73,9 @@ try {
   if ($key.GetValueNames() -contains 'Path') { $kind = $key.GetValueKind('Path') }
   $bin = $env:OUTASK_INSTALL_BIN
   $normal = $bin.TrimEnd('\\').ToLowerInvariant()
-  $retired = @(ConvertFrom-Json $env:OUTASK_RETIRED_BINS | ForEach-Object { $_.TrimEnd('\\').ToLowerInvariant() })
   $kept = @($raw.Split(';') | Where-Object {
     $entry = [Environment]::ExpandEnvironmentVariables($_.Trim().Trim('"')).TrimEnd('\\').ToLowerInvariant()
-    $entry -ne $normal -and $retired -notcontains $entry
+    $entry -ne $normal
   }) -join ';'
   $separator = if ($kept.Length -eq 0 -or $kept.EndsWith(';')) { '' } else { ';' }
   $updated = $kept + $separator + $bin
@@ -96,7 +95,7 @@ if ([OutaskEnvironment]::SendMessageTimeout([IntPtr]0xffff, 0x1a, [UIntPtr]::Zer
 }
 `;
   const result = spawnSync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script], {
-    env: { ...env, OUTASK_INSTALL_BIN: bin, OUTASK_RETIRED_BINS: JSON.stringify(retiredBins) }, encoding: 'utf8', windowsHide: true, timeout: 30000,
+    env: { ...env, OUTASK_INSTALL_BIN: bin }, encoding: 'utf8', windowsHide: true, timeout: 30000,
   });
   if (result.error || result.status !== 0) {
     messages.push(`Command installed at ${launcher}; user PATH setup failed: ${result.error?.message || result.stderr?.trim() || result.status}. Add ${bin} to your user PATH manually.`);
