@@ -36,7 +36,7 @@ function owned(path, releaseRoots) {
       if (entry === source) return true;
       if (!entry) return false;
       const release = resolve(entry, '../../..');
-      return releaseRoots.includes(canonical(dirname(release)))
+      return releaseRoots.includes(dirname(release))
         && entry === join(release, 'app/bin/tasks')
         && JSON.parse(readFileSync(join(release, 'release.json'), 'utf8')).target === 'windows-x64'
         && packageNames.includes(JSON.parse(readFileSync(join(release, 'app/package.json'), 'utf8')).name);

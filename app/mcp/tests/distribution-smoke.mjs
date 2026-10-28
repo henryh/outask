@@ -170,6 +170,8 @@ try {
   assert.match(localInstall.stdout, /Installed Outask/);
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), true);
   assert.equal(existsSync(join(helperReleases, name, 'app/bin/tasks')), true);
+  assert.equal(existsSync(join(helperReleases, name, installerName)), true,
+    'A custom-root installation must retain its platform installer');
   assert.equal(existsSync(bin), false, 'Explicit helper overrides must not write the default command directory');
   assert.equal(existsSync(releases), false, 'Explicit helper overrides must not write the default application directory');
   assert.deepEqual(JSON.parse(read('tasks/active.json')), [original]);
