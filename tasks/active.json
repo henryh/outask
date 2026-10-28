@@ -84,7 +84,7 @@
     "status": "pending",
     "priority": "medium",
     "blockers": [],
-    "scope": "Update the packaged Linux, macOS and Windows installer messages and completion behavior. Remove all suggestions to close the window using keyboard shortcuts, including 'If the window stays open, close it with Cmd+W.'. Always display the short command 'tasks' in Command; retain the platform-appropriate full executable path with correct quoting in Run immediately for use before a new terminal is opened. End successful installation with 'Installation complete. Open a new terminal to start working.'. Append 'Press any key to finish.' and wait for a key only in launch contexts where the installer window would otherwise close automatically; omit both the prompt and wait when the terminal remains open. Preserve the installed-location line and readable spacing. This task covers completion messages and pause behavior, not update functionality.",
+    "scope": "Update the packaged Linux, macOS and Windows installer messages and completion behavior. Remove all suggestions to close the window using keyboard shortcuts, including 'If the window stays open, close it with Cmd+W.'. Always display the canonical short command 'outask' in Command; retain the platform-appropriate full executable path with correct quoting in Run immediately for use before a new terminal is opened. End successful installation with 'Installation complete. Open a new terminal to start working.'. Append 'Press any key to finish.' and wait for a key only in launch contexts where the installer window would otherwise close automatically; omit both the prompt and wait when the terminal remains open. Preserve the installed-location line and readable spacing. This task covers completion messages and pause behavior, not update functionality.",
     "acceptance": [
       "Successful installation shows 'Installed Outask at <installation path>.', a blank line, 'Command: outask', 'Run immediately: <correctly quoted full executable path> --help', a blank line, and 'Installation complete. Open a new terminal to start working.'.",
       "macOS output uses the actual paths, for example: Installed Outask at /Users/user/Library/Application Support/Outask. followed by Command: outask and Run immediately: '/Users/user/.local/bin/outask' --help, with the agreed blank lines.",
@@ -93,7 +93,7 @@
       "Focused platform installer checks verify final output, short Command, executable-path quoting for paths containing spaces, and pause behavior in automatically closing windows versus persistent terminals; inspect captured successful installation output at the user boundary and run the applicable project gates."
     ],
     "values": "Goal: provide usable packaged CLI/MCP installation on supported Linux, macOS and Windows platforms (docs/product.md). Value: users immediately see the short CLI command and a usable immediate-run command, without unnecessary window-closing instructions or key waits. Observable result: the completed installer presents the agreed concise message and pauses only when needed to keep an automatically closing window readable. Verification: inspect successful installer output and exit/pause behavior for automatically closing launches and persistent terminal sessions on the supported platform routes.",
-    "updated_at": "2026-10-28T09:36:06.880Z"
+    "updated_at": "2026-10-28T10:31:37.738Z"
   },
   {
     "id": 11,
