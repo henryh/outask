@@ -43,8 +43,8 @@ export function fixture(context, active = Array.from({ length: 12 }, (_, index) 
     const failure = closed.find(result => result.status === 'rejected');
     if (failure) { state.failed = true; throw failure.reason; }
     cleanupProjectLocks(root);
-    // Windows may retain a terminated child's directory handles briefly.
-    rmSync(root, { recursive: true, force: true, maxRetries: process.platform === 'win32' ? 5 : 0, retryDelay: 100 });
+    // A terminated child may release its final directory entry just after close.
+    rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
   mkdirSync(join(root, 'tasks'));
   // General fixtures model prepared projects; first-use tests remove this file explicitly.
