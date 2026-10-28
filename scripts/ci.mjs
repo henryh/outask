@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { archiveName, archivePath, hostTarget, root, tagName } from './release-config.mjs';
+import { archiveNames, archivePaths, hostTarget, root, tagName } from './release-config.mjs';
 
 function run(label, command, args, env = process.env) {
   if (process.platform === 'win32' && command === 'npm') {
@@ -38,13 +38,13 @@ function tests() {
     LOCALAPPDATA: join(home, 'AppData/Local'), XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'), ZDOTDIR: undefined, TASK_TRACKER_CONFIG: undefined };
   mkdirSync(env.LOCALAPPDATA, { recursive: true });
   try {
-  for (const [label, directory] of [['Core', 'app/tests'], ['MCP', 'app/mcp/tests']]) {
-    const files = readdirSync(join(root, directory)).filter((name) => name.endsWith('.test.mjs')).sort()
-      .map((name) => join(directory, name));
-    const output = run(`${label} tests`, process.execPath, ['--test', '--test-reporter=tap', ...files], env);
-    const count = output.match(/^# tests (\d+)$/m)?.[1];
-    console.log(`${label} tests: PASS${count ? ` (${count} tests)` : ''}`);
-  }
+    for (const [label, directory] of [['Core', 'app/tests'], ['MCP', 'app/mcp/tests']]) {
+      const files = readdirSync(join(root, directory)).filter((name) => name.endsWith('.test.mjs')).sort()
+        .map((name) => join(directory, name));
+      const output = run(`${label} tests`, process.execPath, ['--test', '--test-reporter=tap', ...files], env);
+      const count = output.match(/^# tests (\d+)$/m)?.[1];
+      console.log(`${label} tests: PASS${count ? ` (${count} tests)` : ''}`);
+    }
   } finally { rmSync(home, { recursive: true, force: true }); }
 }
 
@@ -55,9 +55,10 @@ function distribution() {
     const output = run(`${target} test build`, process.execPath, [
       'app/scripts/release.mjs', '--target', target, '--out-dir', temporary,
     ]);
-    const archive = JSON.parse(output).artifacts[0].archive;
+    const artifact = JSON.parse(output).artifacts[0];
     console.log(`${target} test build: PASS`);
-    smoke(archive);
+    smoke(artifact.archive);
+    smoke(artifact.compatibilityArchive);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -74,9 +75,10 @@ function downloaded() {
   if (!repo) throw new Error('REPO is required for downloaded release acceptance');
   const temporary = mkdtempSync(join(tmpdir(), 'outask-downloaded-acceptance-'));
   try {
-    const name = archiveName(hostTarget());
-    run('Published archive download', 'gh', ['release', 'download', tagName(), '--repo', repo, '--pattern', name, '--dir', temporary]);
-    smoke(join(temporary, name));
+    const names = archiveNames(hostTarget());
+    run('Published archive download', 'gh', ['release', 'download', tagName(), '--repo', repo,
+      ...names.flatMap(name => ['--pattern', name]), '--dir', temporary]);
+    for (const name of names) smoke(join(temporary, name));
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -90,7 +92,7 @@ try {
   if (mode === undefined || mode === 'dependencies') dependencies();
   if (mode === undefined || mode === 'test') tests();
   if (mode === undefined || mode === 'distribution') distribution();
-  if (mode === 'archive') smoke(archivePath(hostTarget()));
+  if (mode === 'archive') for (const archive of archivePaths(hostTarget())) smoke(archive);
   if (mode === 'downloaded') downloaded();
 } catch (error) {
   console.error(error.message);

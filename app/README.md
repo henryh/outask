@@ -179,8 +179,8 @@ that line to undo manual integration. A hook never stages refreshed metadata.
 the platform Outask root's `config.json`. Explicit `XDG_CONFIG_HOME` selects
 `$XDG_CONFIG_HOME/outask/config.json`; explicit `XDG_CACHE_HOME` selects
 `$XDG_CACHE_HOME/outask/cache`. Otherwise disposable indexes live in `cache/`
-inside the Outask root. Existing legacy registries remain readable until the
-installer migrates them. Conflicting registries require reconciliation.
+inside the Outask root. Legacy filenames remain linked to the canonical registry
+after migration. Conflicting registries require reconciliation.
 It can map `projects` names to absolute paths, define an absolute `projects_root`
 and set `slow_query_ms`. Conflicting name locations require an explicit path.
 

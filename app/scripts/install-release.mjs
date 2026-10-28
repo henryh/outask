@@ -1,10 +1,10 @@
-import { accessSync, constants, cpSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, rmdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, constants, cpSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
+import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry, forwarderEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
 import { updateRelease } from './update-release.mjs';
 import { legacyLocations, legacyConfig, obsoleteInstalls, retireConfig, retirePayload } from './install-migration.mjs';
@@ -70,7 +70,7 @@ Usage: ${target === 'windows-x64' ? './Install.cmd (PowerShell), Install.cmd (cm
 Requires Node.js 22.23.3 or later on PATH. Open a new terminal after installation.
 Application: ${application}
 Command: ${command}
-Install from the extracted Outask directory. Update downloads GitHub Latest stable; tar and network access are required.
+Install from the extracted application directory. Update downloads GitHub Latest stable; tar and network access are required.
 Options change the command directory and application parent; reuse them for update/uninstall.
 Uninstall removes the managed command link; application files, projects and configuration remain.`);
   } else {
@@ -95,8 +95,7 @@ Uninstall removes the managed command link; application files, projects and conf
     const payload = ['app', 'bin', publicInstallers[releaseTarget], 'release.json', 'README.md'];
     const destination = join(releases, basename(defaults.destination));
     const releaseRoots = [releases, legacyRoot, ...legacyLocations().map(canonical)];
-    const obsolete = obsoleteInstalls(releaseRoots, destination, managed);
-    const migration = legacyConfig();
+    const migration = positionals[0] === 'uninstall' ? undefined : legacyConfig();
     if (positionals[0] !== 'uninstall' && migration && inspect(migration.target)
       && !readFileSync(migration.source).equals(readFileSync(migration.target))) {
       throw new Error(`CONFIG_CONFLICT: ${migration.source} and ${migration.target} differ; reconcile the registries before migrating`);
@@ -104,6 +103,15 @@ Uninstall removes the managed command link; application files, projects and conf
     const targets = commandNames.map((name) => join(bin, windows ? `${name}.cmd` : name));
     const target = targets[0];
     function owned(path) {
+      try {
+        const actual = realpathSync(path);
+        const info = lstatSync(actual);
+        if (info.isFile() && info.size <= 16384) {
+          const entry = forwarderEntry(readFileSync(actual, 'utf8'));
+          const parent = entry && resolve(entry, '../../..');
+          if (entry && entry === join(parent, 'app/bin/tasks') && managed(parent) && releaseRoots.includes(dirname(parent))) return true;
+        }
+      } catch { /* A missing or unrelated entry still follows the normal ownership checks. */ }
       if (windows) {
         if (!inspect(path)?.isFile()) return false;
         const entry = launcherEntry(readFileSync(path, 'utf8'));
@@ -144,6 +152,7 @@ Uninstall removes the managed command link; application files, projects and conf
       if (!installed) throw new Error('NOT_INSTALLED: install first, or reuse your original --bin-dir and --release-root');
       await updateRelease({ destination: installed, bin, releases });
     } else {
+      const obsolete = obsoleteInstalls(releaseRoots, destination, managed);
       accessSync(join(root, 'app/bin/tasks'), constants.X_OK);
       await import('../cli.mjs');
       for (const part of (process.env.PATH ?? '').split(delimiter)) {
@@ -240,13 +249,12 @@ Uninstall removes the managed command link; application files, projects and conf
         cpSync(migration.source, migration.target, { errorOnExist: true, force: false });
       }
       retireConfig(migration);
-      for (const command of legacyCommands) unlinkSync(command);
+      for (const command of legacyCommands) writeFileSync(command, windowsLauncher(join(destination, 'app/bin/tasks')));
       const retiredBins = [];
-      if (legacyCommands.length && readdirSync(legacyBin).length === 0) {
-        rmdirSync(legacyBin);
+      if (legacyCommands.length && readdirSync(legacyBin).every(name => legacyCommands.some(command => basename(command) === name))) {
         retiredBins.push(legacyBin);
       }
-      for (const previous of obsolete) retirePayload(previous, managedPayload);
+      for (const previous of obsolete) retirePayload(previous, managedPayload, destination);
       console.log(`Installed Outask at ${destination}. Commands: ${targets.join(', ')}`);
       for (const message of configurePath(bin, { retiredBins })) console.log(message);
     }

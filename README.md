@@ -1,7 +1,7 @@
 # Outask
 
-Keep project tasks with your code as readable JSON. Use `outask` yourself or
-connect a local agent through MCP.
+Track AI-assisted development with readable JSON tasks kept alongside your code.
+Use `outask` yourself or connect a local coding agent through MCP.
 
 `tasks` and `outaskai` are permanent command aliases for the same installation,
 including MCP. Existing client registrations continue to work.

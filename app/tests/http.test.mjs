@@ -15,7 +15,7 @@ import { databaseSync } from '../src/sqlite.mjs';
 import { searchTasks } from '../src/search.mjs';
 import { refreshSearchIndex } from '../src/search-index.mjs';
 import { getTask, getTasks, listTasks } from '../src/tasks.mjs';
-import { fixture, run, snapshot, task, writeStore } from './fixtures.mjs';
+import { beforeFixtureCleanup, fixture, run, snapshot, task, writeStore } from './fixtures.mjs';
 
 const token = 'test_read_token_'.repeat(3);
 const authorization = `Bearer ${token}`;
@@ -23,7 +23,7 @@ const authorization = `Bearer ${token}`;
 async function serve(t, root, origins = [], options = {}) {
   const server = createHttpServer(root, { token, origins, ...options });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }));
+  beforeFixtureCleanup(t, () => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }));
   const base = `http://127.0.0.1:${server.address().port}`;
   return async (path, method = 'GET', body, headers = {}) => {
     const { response, text } = await new Promise((resolve, reject) => {
@@ -418,7 +418,7 @@ async function startProcess(t, args, root, readToken = token) {
   async function stop() {
     if (child.exitCode === null && child.signalCode === null) { child.kill(); await once(child, 'exit'); }
   }
-  t.after(stop);
+  beforeFixtureCleanup(t, stop);
   let stderr = '';
   child.stderr.on('data', (chunk) => { stderr += chunk; });
   const [chunk] = await Promise.race([once(child.stdout, 'data'), once(child, 'exit').then(() => { throw new Error(stderr); })]);

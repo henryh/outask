@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const fixture = JSON.parse(readFileSync(process.env.OUTASK_UPDATE_FIXTURE, 'utf8'));
-const name = `Outask-${fixture.version}-${fixture.target}.tar.gz`;
+const name = `${fixture.brand || 'Outask'}-${fixture.version}-${fixture.target}.tar.gz`;
 const url = `https://github.com/henryh/outask/releases/download/v${fixture.version}/${name}`;
 globalThis.fetch = async (requested) => {
   if (fixture.failure === true || (fixture.failure === 'download' && requested === url)) return new Response('unavailable', { status: 503 });

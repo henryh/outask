@@ -4,7 +4,7 @@ import childProcess from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 
 export function isolateRegistry(key) {
-  if (!/^Software\\Outask\\Tests\\[a-f0-9-]+$/.test(key)) throw new Error('Invalid test registry key');
+  if (!/^Software\\OutaskTest-[a-f0-9-]+$/.test(key)) throw new Error('Invalid test registry key');
   const spawnSync = childProcess.spawnSync;
   childProcess.spawnSync = (command, args, options) => {
     if (/powershell(?:\.exe)?$/i.test(command)) {

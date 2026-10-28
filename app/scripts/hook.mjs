@@ -8,6 +8,7 @@ import { fail } from '../src/errors.mjs';
 import { parseProject, parseSchema, projectHelp } from './arguments.mjs';
 import { isMain } from './entry.mjs';
 import { reportError } from './output.mjs';
+import { forwarderEntry } from './install-launcher.mjs';
 
 export const options = {
   install: { type: 'boolean' }, remove: { type: 'boolean' }, 'schema-path': { type: 'string' }, help: { type: 'boolean', short: 'h' },
@@ -66,7 +67,22 @@ if [ "$root" != ${quote(project)} ]; then
 fi
 exec ${command}\n`;
   const present = inspect(hook);
-  if (present && (!present.isFile() || ![content, content.replace('# outask:', '# task-tracker:')].includes(readFileSync(hook, 'utf8')))) manual(`Existing or modified hook at ${hook}`);
+  const previous = present?.isFile() ? readFileSync(hook, 'utf8') : undefined;
+  let managed = previous === content || previous === content.replace('# outask:', '# task-tracker:');
+  if (!managed && previous) {
+    const header = content.slice(0, content.length - `exec ${command}\n`.length);
+    const prefix = [header, header.replace('# outask:', '# task-tracker:')].find(value => previous.startsWith(value + 'exec node '));
+    const suffix = ` ${quote(project)}${schemaOption}\n`;
+    if (prefix && previous.endsWith(suffix)) {
+      const token = previous.slice(prefix.length + 'exec node '.length, -suffix.length);
+      const oldValidator = token.slice(1, -1).replaceAll("'\\''", "'");
+      const info = inspect(oldValidator);
+      if (quote(oldValidator) === token && info?.isFile() && info.size <= 16384) {
+        managed = forwarderEntry(readFileSync(oldValidator, 'utf8')) === validator;
+      }
+    }
+  }
+  if (present && !managed) manual(`Existing or modified hook at ${hook}`);
   if (values.remove) {
     if (present) unlinkSync(hook);
     process.stdout.write(`${present ? 'Removed' : 'Already absent'}: ${hook}.\n`);

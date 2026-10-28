@@ -27,8 +27,10 @@ Necessary external integrations are POSIX links for all three commands in
 `~/.local/bin`, existing managed shell PATH blocks (including `ZDOTDIR`), and
 Windows user PATH pointing to the root's `commands/` directory. Installation
 consolidates complete generated PATH blocks without changing other shell code.
-Confirmed obsolete Windows launchers and their empty launcher directory's PATH
-entry are retired. Explicit `--bin-dir`, `--release-root`, `--config`,
+Known absolute legacy CLI/MCP, standalone validator and installer paths retain small forwarders to
+the canonical installation. The old application payload is removed. Confirmed
+legacy Windows PATH entries are retired when their directory has no unrelated
+commands; compatibility launchers remain usable by explicit path. Explicit `--bin-dir`, `--release-root`, `--config`,
 `TASK_TRACKER_CONFIG` and XDG paths remain supported external choices. Installed
 project Git hooks and client registrations are explicit integrations; installers
 do not scan projects or rewrite client configuration. Reinstall a managed hook
@@ -53,6 +55,7 @@ running process title through `ps`. OS executable-image names (for example
 remain controlled by the OS/client; metadata does not rename those labels.
 Lifecycle acceptance uses isolated user/config/cache/temp paths, and Windows
 registry operations use a test-owned key through a test-only Node preload.
+Test clients close before only their fixture coordination files are removed.
 
 Core entry points take a project path and return values without printing or
 exiting. Their options follow the shared rules below:
@@ -85,8 +88,12 @@ Global configuration precedence is explicit `--config`, `TASK_TRACKER_CONFIG`,
 then the platform Outask application root's `config.json`. An explicit
 `XDG_CONFIG_HOME` selects `$XDG_CONFIG_HOME/outask/config.json` instead.
 An existing legacy `task-tracker/config.json` remains readable when the new
-registry is absent; installation copies it byte-for-byte and retires it only
-after success. Conflicting old/new registries require reconciliation before
+registry is absent; installation copies it byte-for-byte into the canonical
+root and retains the legacy filename as a link for loaded old clients. POSIX
+uses a symlink; Windows uses a hard link, which is refreshed after each update.
+A Windows filesystem that cannot link the registry stops migration without
+deleting either settings copy; explicitly select an external registry when
+needed. Conflicting old/new registries require reconciliation before
 installation. Explicit config replaces the default;
 no registry is created automatically. `projects_root` and `projects` mappings
 use absolute paths. Names select immediate children or explicit mappings,

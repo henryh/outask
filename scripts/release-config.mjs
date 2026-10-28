@@ -56,8 +56,18 @@ export function archivePath(target, value = releaseVersion()) {
   return join(distRoot, archiveName(target, value));
 }
 
+export function archiveNames(target, value = releaseVersion()) {
+  const primary = archiveName(target, value);
+  return archiveBrand() === 'OutaskAI' ? [primary]
+    : [primary, `OutaskAI-${distributionVersion(value)}-${target}.tar.gz`];
+}
+
+export function archivePaths(target, value = releaseVersion()) {
+  return archiveNames(target, value).map(name => join(distRoot, name));
+}
+
 export function requireArchives(selected = targetList(), value = releaseVersion()) {
-  const paths = selected.map((target) => archivePath(target, value));
+  const paths = selected.flatMap((target) => archivePaths(target, value));
   for (const path of paths) {
     if (!existsSync(path)) fail('READ_ERROR', `Missing ${path}`);
   }
@@ -67,7 +77,8 @@ export function requireArchives(selected = targetList(), value = releaseVersion(
 export function rejectMixedArchives(packageVersion = version()) {
   const releaseId = distributionVersion(packageVersion);
   if (releaseId === packageVersion) return;
-  const mixed = targets.map((target) => join(distRoot, `${archiveBrand()}-${packageVersion}-${target}.tar.gz`)).filter(existsSync);
+  const mixed = targets.flatMap(target => archiveNames(target, releaseId)
+    .map(name => join(distRoot, name.replace(`-${releaseId}-`, `-${packageVersion}-`)))).filter(existsSync);
   if (mixed.length) fail('INVALID_INPUT', `Full-SemVer zero-patch archives must not coexist with ${releaseId} archives: ${mixed.join(', ')}`);
 }
 

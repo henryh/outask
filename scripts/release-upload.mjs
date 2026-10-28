@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fail } from '../app/src/errors.mjs';
 import { reportError } from '../app/scripts/output.mjs';
-import { archiveName, archivePath, output, rejectMixedArchives, releaseTitle, releaseVersion, requireArchives, run, succeeds, tagName, targetList, targets, version } from './release-config.mjs';
+import { archiveNames, distRoot, output, rejectMixedArchives, releaseTitle, releaseVersion, requireArchives, run, succeeds, tagName, targetList, targets, version } from './release-config.mjs';
 
 function originRepo() {
   const remote = output('git', ['remote', 'get-url', 'origin']);
@@ -29,11 +29,10 @@ function readRelease(repo, tag) {
   return JSON.parse(run('gh', ['api', apiUrl], { stdio: ['ignore', 'pipe', 'pipe'] }).stdout);
 }
 
-function verifyAssets(release, required, releaseId) {
-  for (const target of required) {
-    const name = archiveName(target, releaseId);
+function verifyAssets(release, required) {
+  for (const name of required) {
     const asset = release.assets.find((asset) => asset.name === name);
-    const local = readFileSync(archivePath(target, releaseId));
+    const local = readFileSync(join(distRoot, name));
     const digest = `sha256:${createHash('sha256').update(local).digest('hex')}`;
     if (!asset || asset.size !== local.length || asset.digest !== digest || asset.state !== 'uploaded') {
       fail('INVALID_INPUT', `Existing asset ${name} is missing or differs from the verified archive; refusing replacement`);
@@ -49,6 +48,8 @@ try {
   const repo = repository();
   if (!repo) fail('INVALID_INPUT', 'REPO is required, for example: make release-upload REPO=owner/repo');
   const selected = targetList();
+  const selectedNames = selected.flatMap(target => archiveNames(target, releaseId));
+  const expectedNames = targets.flatMap(target => archiveNames(target, releaseId));
   const approved = releaseNotes(releaseId, packageId, repo, targets);
   if (!succeeds('git', ['rev-parse', '--verify', tag])) {
     fail('INVALID_INPUT', `Tag ${tag} is required. Inspect or retry the approved Release workflow; do not tag manually`);
@@ -76,33 +77,32 @@ try {
     if (release.body !== approved.notes || release.name !== releaseTitle(releaseId)) {
       fail('INVALID_INPUT', 'Existing release title/description differs from the approved release; refusing to rewrite it');
     }
-    const expectedNames = targets.map((target) => archiveName(target, releaseId));
     if (release.assets.some((asset) => !expectedNames.includes(asset.name))) {
       fail('INVALID_INPUT', 'Existing release contains unexpected assets; refusing to change it');
     }
-    verifyAssets(release, selected.filter((target) => release.assets.some((asset) => asset.name === archiveName(target, releaseId))), releaseId);
+    verifyAssets(release, selectedNames.filter(name => release.assets.some(asset => asset.name === name)));
   } else {
     run('gh', ['release', 'create', tag, '--repo', repo, '--verify-tag', '--draft', ...(packageId.includes('-') ? ['--prerelease'] : []), '--title', releaseTitle(releaseId), '--notes-file', approvedNotesPath]);
     release = { draft: true, assets: [] };
   }
-  const missing = selected.filter((target) => !release.assets.some((asset) => asset.name === archiveName(target, releaseId)));
+  const missing = selectedNames.filter(name => !release.assets.some(asset => asset.name === name));
   if (!release.draft) {
     requireArchives(targets, releaseId);
-    verifyAssets(release, targets, releaseId);
+    verifyAssets(release, expectedNames);
   } else {
-    if (missing.length) run('gh', ['release', 'upload', tag, '--repo', repo, ...missing.map((target) => archivePath(target, releaseId))]);
+    if (missing.length) run('gh', ['release', 'upload', tag, '--repo', repo, ...missing.map(name => join(distRoot, name))]);
     const final = readRelease(repo, tag);
-    if (!targets.every((target) => final.assets.some((asset) => asset.name === archiveName(target, releaseId) && asset.state === 'uploaded'))) {
-      fail('INVALID_INPUT', 'Draft retained: all three uploaded platform archives are required before publication');
+    if (!expectedNames.every(name => final.assets.some((asset) => asset.name === name && asset.state === 'uploaded'))) {
+      fail('INVALID_INPUT', 'Draft retained: all required uploaded platform archives are required before publication');
     }
     if (final.body !== approved.notes || final.name !== releaseTitle(releaseId)) {
       fail('INVALID_INPUT', 'Draft description changed during upload; refusing publication');
     }
-    if (final.assets.some((asset) => !targets.some((target) => asset.name === archiveName(target, releaseId)))) {
+    if (final.assets.some((asset) => !expectedNames.includes(asset.name))) {
       fail('INVALID_INPUT', 'Draft contains unexpected assets; refusing publication');
     }
     requireArchives(targets, releaseId);
-    verifyAssets(final, targets, releaseId);
+    verifyAssets(final, expectedNames);
     run('gh', ['release', 'edit', tag, '--repo', repo, '--draft=false', packageId.includes('-') ? '--latest=false' : '--latest']);
   }
   if (!packageId.includes('-')) {

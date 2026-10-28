@@ -10,18 +10,18 @@ import { distributionVersion } from '../src/version.mjs';
 import { approvedNotes } from './helpers/release-fixture.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-function fixture(t, packageVersion = '0.16.0') {
+function fixture(t, packageVersion = '0.16.0', legacy = false) {
   const root = mkdtempSync(join(tmpdir(), 'outask-upload-test-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const dir of ['app/scripts', 'app/src', 'scripts', 'dist', 'tools']) mkdirSync(join(root, dir), { recursive: true });
   for (const name of ['scripts/release-upload.mjs', 'scripts/release-notes.mjs', 'scripts/release-config.mjs', 'app/scripts/output.mjs', 'app/src/errors.mjs', 'app/src/limits.mjs', 'app/src/fields.mjs', 'app/src/response.mjs', 'app/src/version.mjs']) cpSync(join(repo, name), join(root, name));
-  writeFileSync(join(root, 'app/package.json'), JSON.stringify({version: packageVersion}));
+  writeFileSync(join(root, 'app/package.json'), JSON.stringify({name: legacy ? 'task-tracker-local' : 'outask', version: packageVersion}));
   const version = distributionVersion(packageVersion);
-  const assets = ['linux-x64', 'macos-arm64', 'windows-x64'].map((target) => {
-    const name = `Outask-${version}-${target}.tar.gz`;
+  const assets = ['linux-x64', 'macos-arm64', 'windows-x64'].flatMap(target => (legacy ? ['OutaskAI'] : ['Outask', 'OutaskAI']).map(brand => {
+    const name = `${brand}-${version}-${target}.tar.gz`;
     writeFileSync(join(root, 'dist', name), 'verified archive');
     return { name, size: 16, state: 'uploaded', digest: `sha256:${createHash('sha256').update('verified archive').digest('hex')}` };
-  });
+  }));
   const notes = join(root, 'notes.md'), state = join(root, 'state.json'), log = join(root, 'calls.jsonl');
   writeFileSync(join(root, 'tools/git'), `#!${process.execPath}
 const args = process.argv.slice(2);
@@ -74,7 +74,7 @@ fs.writeFileSync(process.env.RELEASE_STATE, JSON.stringify(state));
 const mutations = (result) => result.calls.filter(args => ['create', 'upload', 'edit', 'delete-asset'].includes(args[1]));
 
 test('recovery preserves the title, assets and exact notes of an already-published legacy release', t => {
-  const f = fixture(t, '1.4.0');
+  const f = fixture(t, '1.4.0', true);
   writeFileSync(join(f.root, 'app/package.json'), JSON.stringify({ name: 'task-tracker-local', version: '1.4.0' }));
   const assets = f.assets.map(asset => {
     const name = asset.name.replace('Outask-', 'OutaskAI-');
@@ -101,7 +101,7 @@ test('publication stages all verified archives in a draft with the exact approve
   assert.equal(result.release.body, approvedNotes(f.version));
   assert.equal(result.release.name, 'Outask v0.16');
   assert.equal(result.release.draft, false);
-  assert.equal(result.release.assets.length, 3);
+  assert.equal(result.release.assets.length, 6);
   assert.equal(readFileSync(f.notes, 'utf8'), 'changed after validation\n');
 });
 
@@ -114,7 +114,7 @@ test('failed publication leaves a draft and retry uploads only missing assets', 
   const result = f.invoke({ existing: f.existing([f.assets[0]]) });
   assert.equal(result.status, 0, result.stderr);
   const upload = result.calls.find(args => args[1] === 'upload');
-  assert.equal(upload.filter(arg => arg.endsWith('.tar.gz')).length, 2);
+  assert.equal(upload.filter(arg => arg.endsWith('.tar.gz')).length, 5);
   assert.ok(!upload.includes('--clobber'));
 });
 
@@ -137,12 +137,12 @@ test('retry of a published release is read-only and mismatches never replace con
   }
 });
 
-test('partial platform uploads retain the draft until all three archives are present', t => {
+test('partial platform uploads retain the draft until all six archives are present', t => {
   const f = fixture(t);
   const result = f.invoke({TARGETS: 'linux-x64'});
   assert.notEqual(result.status, 0);
   assert.equal(result.release.draft, true);
-  assert.equal(result.release.assets.length, 1);
+  assert.equal(result.release.assets.length, 2);
   assert.ok(!result.calls.some(args => args[1] === 'edit'));
 });
 
@@ -209,7 +209,7 @@ test('mixed full-SemVer zero-patch archives fail before remote mutations', t => 
 test('partial-target invocation cannot publish or confirm unverified unselected assets', t => {
   const f = fixture(t);
   for (const draft of [true, false]) {
-    for (const assets of [f.assets.slice(0, 1), [f.assets[0], f.assets[1], {...f.assets[2], digest: 'sha256:wrong'}]]) {
+    for (const assets of [f.assets.slice(0, 2), [...f.assets.slice(0, 3), {...f.assets[3], digest: 'sha256:wrong'}, ...f.assets.slice(4)]]) {
       const result = f.invoke({TARGETS: 'linux-x64', existing: f.existing(assets, draft)});
       assert.notEqual(result.status, 0);
       assert.equal(mutations(result).length, 0);

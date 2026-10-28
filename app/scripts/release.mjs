@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, cpSync, chmodSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, cpSync, chmodSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -438,7 +438,7 @@ exit "$status"
     writeFileSync(join(releaseRoot, 'README.md'), `# Outask v${version} (Windows x64)
 
 Requires native Windows x64 and installed Node.js ${nodeRange} on PATH.
-Extract the archive, open its Outask directory in PowerShell or cmd.exe, then run:
+Extract the archive, open the extracted application directory in PowerShell or cmd.exe, then run:
 
 PowerShell: \`./Install.cmd\`
 
@@ -480,7 +480,7 @@ Use \`--bin-dir\` and \`--release-root\` for custom command and application-pare
   writeFileSync(join(releaseRoot, 'README.md'), `# Outask v${version} (${platform})
 
 Requires ${platform} and installed Node.js ${nodeRange} on PATH.
-${target === 'macos-arm64' ? 'Extract the archive, open its Outask directory, then double-click `Install.command` or run in a terminal:' : 'Extract the archive, open its Outask directory in a terminal, then run:'}
+${target === 'macos-arm64' ? 'Extract the archive, open the extracted application directory, then double-click `Install.command` or run in a terminal:' : 'Extract the archive, open the extracted application directory in a terminal, then run:'}
 
 \`\`\`sh
 ./${installer}
@@ -538,8 +538,15 @@ async function build(target, options) {
   const archive = join(options.outDir, `Outask-${version}-${target}.tar.gz`);
   rmSync(archive, { force: true });
   run('tar', ['-czf', archive, '-C', join(options.outDir, 'stage'), 'Outask']);
-  rmSync(stage, { recursive: true, force: true });
-  return { target, archive, bytes: statSync(archive).size };
+  const compatibilityStage = join(options.outDir, 'stage', 'OutaskAI');
+  const compatibilityArchive = join(options.outDir, `OutaskAI-${version}-${target}.tar.gz`);
+  // Older installed updaters require both this asset name and extraction root.
+  // Reuse the verified payload so both formats contain exactly the same app.
+  rmSync(compatibilityStage, { recursive: true, force: true });
+  renameSync(stage, compatibilityStage);
+  run('tar', ['-czf', compatibilityArchive, '-C', join(options.outDir, 'stage'), 'OutaskAI']);
+  rmSync(compatibilityStage, { recursive: true, force: true });
+  return { target, archive, bytes: statSync(archive).size, compatibilityArchive, compatibilityBytes: statSync(compatibilityArchive).size };
 }
 
 async function main() {

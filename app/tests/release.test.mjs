@@ -6,6 +6,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { distributionVersion } from '../src/version.mjs';
+import { createHash } from 'node:crypto';
+import { cleanupProjectLocks } from './helpers/cleanup-project-locks.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const version = JSON.parse(readFileSync(join(repo, 'app/package.json'))).version;
@@ -80,7 +82,7 @@ before(() => {
   archives = process.env.TASK_TRACKER_RELEASE_DIR || join(root, 'dist');
   if (!process.env.TASK_TRACKER_RELEASE_DIR) ok(run(process.execPath, [join(repo, 'app/scripts/release.mjs'), '--out-dir', archives, '--target', 'linux-x64', '--target', 'macos-arm64', '--target', 'windows-x64']));
 });
-after(() => rmSync(root, { recursive: true, force: true }));
+after(() => { cleanupProjectLocks(root); rmSync(root, { recursive: true, force: true }); });
 function fixture(t, target = 'linux-x64') {
   const home = realpathSync(mkdtempSync(join(root, 'home ')));
   const downloads = join(home, 'Downloads');
@@ -93,7 +95,9 @@ function fixture(t, target = 'linux-x64') {
   const tools = join(home, 'tools');
   mkdirSync(tools);
   symlinkSync(process.execPath, join(tools, 'node'));
-  const env = { ...process.env, HOME: home, SHELL: '/bin/bash', NVM_DIR: undefined, ZDOTDIR: undefined, PATH: `${bin}:${tools}:/usr/bin:/bin` };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, 'AppData/Local'),
+    XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, TASK_TRACKER_CONFIG: undefined,
+    SHELL: '/bin/bash', NVM_DIR: undefined, ZDOTDIR: undefined, PATH: `${bin}:${tools}:/usr/bin:/bin` };
   const install = (...args) => target === 'windows-x64'
     ? run(process.execPath, [internalInstaller(source), ...args], { env })
     : run(join(source, installerEntries[target]), args, { env });
@@ -135,6 +139,32 @@ test('archives contain app resources without runtimes, HTTP, plugins, developmen
     assert.ok(!entries.some((path) => /\/(?:runtime|tasks|tests|references|\.git|plugin[^/]*)(?:\/|$)|\/http.mjs$|SHA256SUMS/.test(path.replace(/\/app\/bin\/tasks$/, '/entry').replace(/\/bin\/tasks$/, '/entry'))));
   }
   assert.equal(existsSync(join(archives, 'SHA256SUMS')), false);
+});
+
+test('canonical and legacy archive formats contain identical application and installer bytes', () => {
+  const entries = directory => {
+    const result = new Map();
+    const visit = (path, prefix = '') => {
+      for (const entry of readdirSync(path, { withFileTypes: true })) {
+        const name = prefix + entry.name;
+        const child = join(path, entry.name);
+        if (entry.isDirectory()) visit(child, `${name}/`);
+        else result.set(name, entry.isSymbolicLink() ? `link:${readlinkSync(child)}`
+          : createHash('sha256').update(readFileSync(child)).digest('hex'));
+      }
+    };
+    visit(directory);
+    return result;
+  };
+  for (const target of ['linux-x64', 'macos-arm64', 'windows-x64']) {
+    const extracted = join(root, `format-parity-${target}`);
+    mkdirSync(extracted);
+    for (const brand of ['Outask', 'OutaskAI']) ok(run('tar', ['-xzf', join(archives, `${brand}-${releaseVersion}-${target}.tar.gz`), '-C', extracted]));
+    const canonical = entries(join(extracted, 'Outask'));
+    const compatibility = entries(join(extracted, 'OutaskAI'));
+    assert.equal(compatibility.size, canonical.size, target);
+    for (const [path, digest] of canonical) assert.equal(compatibility.get(path), digest, `${target}: ${path}`);
+  }
 });
 
 test('each archive README and installer help describe only their destination platform', (t) => {
@@ -279,7 +309,9 @@ test('managed upgrades replace the previous root installers and preserve user da
     const oldInstallers = ['install.mjs', 'install-path.mjs', 'install-launcher.mjs', 'install.sh',
       ...(target === 'macos-arm64' ? ['Install.command'] : target === 'windows-x64' ? ['install.cmd'] : [])];
     for (const name of oldInstallers) writeFileSync(join(f.installed, name), `Previous managed ${name}\n`);
-    for (const helper of ['install-release.mjs', 'install-path.mjs', 'install-launcher.mjs']) {
+    // The current hook fixture imports install-launcher; keep that runtime
+    // dependency while reconstructing the former root-installer layout.
+    for (const helper of ['install-release.mjs', 'install-path.mjs']) {
       rmSync(join(f.installed, 'app/scripts', helper), { force: true });
     }
     writeFileSync(join(f.installed, 'release.json'), JSON.stringify({ version: '0.0.1', target }));
@@ -409,7 +441,8 @@ test('legacy versioned installations retire managed payloads while retaining unr
   ok(f.install());
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
   assert.equal(readFileSync(join(legacy, 'user-note.txt'), 'utf8'), 'legacy user content');
-  assert.equal(existsSync(join(legacy, 'app')), false);
+  assert.equal(existsSync(join(legacy, 'app/package.json')), false);
+  assert.equal(ok(run(join(legacy, 'app/bin/tasks'), ['--version'], { env: f.env })).trim(), `Outask v${releaseVersion}`);
 });
 
 test('a legacy packaged updater migrates its default root, registry and command into one Outask installation', t => {
@@ -435,8 +468,8 @@ test('a legacy packaged updater migrates its default root, registry and command 
     assert.equal(ok(run(join(f.bin, name), ['--version'], { env })).trim(), `Outask v${releaseVersion}`);
   }
   assert.equal(readFileSync(join(f.installed, 'config.json'), 'utf8'), settings);
-  assert.equal(existsSync(oldConfig), false);
-  assert.equal(existsSync(join(previous, 'app')), false);
+  assert.equal(existsSync(oldConfig), true);
+  assert.equal(existsSync(join(previous, 'app/package.json')), false);
   assert.equal(readFileSync(join(previous, 'user-owned.txt'), 'utf8'), 'preserve');
   assert.equal(readdirSync(f.releases).some(name => name.startsWith('.outask-')), false);
 });
@@ -459,6 +492,22 @@ test('installation preserves default state created by source commands and refuse
   ok(run(process.execPath, [internalInstaller(f.source)], { env }));
   assert.equal(readFileSync(current, 'utf8'), '{"projects":{}}\n');
   assert.ok(existsSync(join(f.installed, 'cache')));
+});
+
+test('command uninstall preserves a user-selected symlinked legacy registry without attempting migration', t => {
+  const f = fixture(t);
+  ok(f.install());
+  const external = join(f.home, 'external-registry.json');
+  writeFileSync(external, '{"unknown":"preserve"}\n');
+  const legacy = join(f.home, '.config/task-tracker/config.json');
+  mkdirSync(dirname(legacy), { recursive: true });
+  symlinkSync(external, legacy);
+  ok(run(process.execPath, [internalInstaller(f.installed), 'uninstall'], {
+    env: { ...f.env, XDG_CONFIG_HOME: undefined, TASK_TRACKER_CONFIG: undefined },
+  }));
+  for (const name of ['outask', 'tasks', 'outaskai']) assert.equal(existsSync(join(f.bin, name)), false);
+  assert.equal(readlinkSync(legacy), external);
+  assert.equal(readFileSync(external, 'utf8'), '{"unknown":"preserve"}\n');
 });
 
 test('custom root is the installation parent and ownership requires the selected root', (t) => {
@@ -862,7 +911,7 @@ test('macOS directory selection recognises its stable destination and previous d
   ok(run(process.execPath, ['--input-type=module', '-e', module, internalInstaller(f.source)], { env: f.env }));
   const installed = join(f.home, 'Library/Application Support/Outask');
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(installed, 'app/bin/tasks'));
-  assert.equal(existsSync(legacy), false);
+  assert.equal(existsSync(join(legacy, 'app/package.json')), false);
   ok(run(process.execPath, ['--input-type=module', '-e', module, join(repo, 'app/scripts/install-cli.mjs'),
     'install', '--bin-dir', f.bin], { env: f.env }));
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(repo, 'app/bin/tasks'));
@@ -951,7 +1000,7 @@ test('installer migrates existing checkout and previous release command links', 
   symlinkSync(join(old, 'bin/tasks'), join(f.bin, 'tasks'));
   ok(f.install());
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
-  assert.equal(existsSync(join(old, 'bin/tasks')), false);
+  assert.equal(ok(run(join(old, 'bin/tasks'), ['--version'], { env: f.env })).trim(), `Outask v${releaseVersion}`);
 });
 
 test('Windows archive installer checks Node before delegating to the managed installer', () => {

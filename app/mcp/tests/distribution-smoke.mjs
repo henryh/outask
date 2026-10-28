@@ -12,14 +12,16 @@ import { projectLockPath } from '../../src/project-lock.mjs';
 import { distributionVersion } from '../../src/version.mjs';
 import { hostTarget } from '../../../scripts/release-config.mjs';
 import { isolateRegistry } from '../../tests/helpers/registry-isolation.mjs';
+import { legacyUpgrade } from './legacy-upgrade-smoke.mjs';
 
 const windows = process.platform === 'win32';
-const registryKey = `Software\\Outask\\Tests\\${randomUUID()}`;
+const registryKey = `Software\\OutaskTest-${randomUUID()}`;
 if (windows) isolateRegistry(registryKey);
 const target = hostTarget();
 const installerName = windows ? 'Install.cmd' : process.platform === 'darwin' ? 'Install.command' : 'install.sh';
 assert.equal(process.argv.length, 3, 'Pass the native host test archive path');
 const archive = resolve(process.argv[2]);
+const archiveDirectory = basename(archive).startsWith('OutaskAI-') ? 'OutaskAI' : 'Outask';
 const temporary = realpathSync(mkdtempSync(join(tmpdir(), 'outask-installed-smoke-')));
 const home = join(temporary, 'home 東京 person');
 const downloads = join(temporary, 'downloads');
@@ -97,6 +99,7 @@ try {
   }
   lock = projectLockPath(project);
   if (windows) {
+    registry("$k=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment'); try { $k.SetValue('Path','C:/Unrelated fixture;%USERPROFILE%/existing-tools',[Microsoft.Win32.RegistryValueKind]::ExpandString) } finally { $k.Dispose() }");
     registryBackup = JSON.parse(registry("$k=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment'); try { $present=$k.GetValueNames() -contains 'Path'; @{ present=$present; value=$k.GetValue('Path','',[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); kind=$(if($present){[int]$k.GetValueKind('Path')}else{2}) } | ConvertTo-Json -Compress } finally { $k.Dispose() }"));
   } else symlinkSync(process.execPath, join(tools, 'node'));
   const original = { id: 7, title: 'Existing task', status: 'pending', team: 'ops', custom: { keep: ['original'] } };
@@ -114,12 +117,12 @@ try {
   writeFileSync(oldConfig, configuration);
 
   run('tar', ['-xzf', archive, '-C', downloads]);
-  const source = join(downloads, 'Outask');
+  const source = join(downloads, archiveDirectory);
   const metadata = JSON.parse(readFileSync(join(source, 'release.json'), 'utf8'));
   const packageJson = JSON.parse(readFileSync(join(source, 'app/package.json'), 'utf8'));
   assert.equal(metadata.target, target, 'Archive target must match the native Node host');
   assert.equal(metadata.version, distributionVersion(packageJson.version));
-  assert.equal(basename(archive), `Outask-${metadata.version}-${target}.tar.gz`);
+  assert.equal(basename(archive), `${archiveDirectory}-${metadata.version}-${target}.tar.gz`);
   const name = process.platform === 'linux' ? 'outask' : 'Outask';
   const architecture = windows ? registry('$env:PROCESSOR_ARCHITECTURE').trim() : run('uname', ['-m']).trim();
   assert.equal(architecture, windows ? 'AMD64' : process.platform === 'darwin' ? 'arm64' : 'x86_64', 'OS architecture must match native Node execution');
@@ -177,12 +180,14 @@ try {
   assert.equal(existsSync(join(helperBin, windows ? 'tasks.cmd' : 'tasks')), false,
     'The helper launcher must not mask the default command in later PATH checks');
 
+  await legacyUpgrade({ temporary, source, archive, metadata, env, target, project, invoke });
+
   if (!windows) {
     assert.equal(env.PATH.split(delimiter).includes(bin), false, 'First installation must not inherit the installed command directory');
     assert.equal(existsSync(join(home, process.platform === 'darwin' ? '.zprofile' : '.bashrc')), false, 'First installation must start with fresh shell startup files');
   }
   if (windows) documentedInstall(source, 'powershell'); else run(installer);
-  assert.equal(existsSync(oldConfig), false, 'The legacy default registry must migrate after successful installation');
+  assert.equal(existsSync(oldConfig), true, 'The legacy registry filename must continue to resolve after migration');
   assert.equal(readFileSync(config, 'utf8'), configuration);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
   if (!windows) {
@@ -225,6 +230,9 @@ try {
     for (const entry of String(registryBackup.value).split(';').filter(Boolean)) assert.ok(entries.includes(entry));
     const expandedPath = registry("[Environment]::ExpandEnvironmentVariables([Environment]::GetEnvironmentVariable('Path','User'))").trim();
     const freshEnv = { ...env, PATH: expandedPath + ';' + env.PATH };
+    const discovered = invoke(join(process.env.SystemRoot, 'System32/where.exe'), ['tasks'], freshEnv);
+    assert.equal(discovered.status, 0, discovered.stderr);
+    assert.equal(discovered.stdout.trim().split(/\r?\n/)[0].toLowerCase(), command.toLowerCase());
     assert.equal(invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/c', 'tasks --version'], freshEnv).stdout.trim(), `Outask v${metadata.version}`);
     assert.match(readFileSync(command, 'utf8'), /^[\x00-\x7f]*$/, 'The managed batch launcher must be independent of the console code page');
     // Save/restore the test console code page; the launcher itself must leave 437 intact.
@@ -348,10 +356,10 @@ try {
   // Distinguish newly loaded adapter bytes without changing its production metadata contract.
   const serverPath = join(source, 'app/mcp/server.mjs');
   writeFileSync(serverPath, readFileSync(serverPath, 'utf8').replace("version: '0.1.0'", `version: '${updateVersion}'`));
-  const latestArchive = join(temporary, `Outask-${updateVersion}-${target}.tar.gz`);
-  run('tar', ['-czf', latestArchive, '-C', downloads, 'Outask']);
+  const latestArchive = join(temporary, `${archiveDirectory}-${updateVersion}-${target}.tar.gz`);
+  run('tar', ['-czf', latestArchive, '-C', downloads, archiveDirectory]);
   const updateFixture = join(temporary, 'latest.json');
-  const writeLatest = (failure = false) => writeFileSync(updateFixture, JSON.stringify({ version: failure ? '99.0.2' : updateVersion, target, archive: latestArchive, failure }));
+  const writeLatest = (failure = false) => writeFileSync(updateFixture, JSON.stringify({ version: failure ? '99.0.2' : updateVersion, target, archive: latestArchive, brand: archiveDirectory, failure }));
   writeLatest();
   const updateEnv = { ...env, OUTASK_UPDATE_FIXTURE: updateFixture,
     NODE_OPTIONS: `${env.NODE_OPTIONS || ''} --import=${pathToFileURL(fileURLToPath(new URL('../../tests/helpers/latest-fetch.mjs', import.meta.url))).href}`.trim() };
@@ -359,13 +367,13 @@ try {
   const candidateEntry = join(source, 'app/bin/tasks');
   const validEntry = readFileSync(candidateEntry);
   writeFileSync(candidateEntry, "throw new Error('fixture startup failure');\n");
-  run('tar', ['-czf', latestArchive, '-C', downloads, 'Outask']);
+  run('tar', ['-czf', latestArchive, '-C', downloads, archiveDirectory]);
   const rejectedInstall = invoke(updateInstaller, ['update'], updateEnv);
   assert.notEqual(rejectedInstall.status, 0);
   assert.match(rejectedInstall.stderr, /UPDATE_FAILED.*install latest release/);
   assert.equal(run(command, ['--version']).trim(), `Outask v${metadata.version}`);
   writeFileSync(candidateEntry, validEntry);
-  run('tar', ['-czf', latestArchive, '-C', downloads, 'Outask']);
+  run('tar', ['-czf', latestArchive, '-C', downloads, archiveDirectory]);
   const updateResult = invoke(updateInstaller, ['update'], updateEnv);
   assert.equal(updateResult.status, 0, updateResult.stderr || updateResult.stdout);
   assert.match(updateResult.stdout, /Updated to Outask v99.0.1/);
@@ -417,7 +425,7 @@ try {
     writeFileSync(command, managedCommand);
   }
   run(join(updatedInstall, installerName), ['uninstall']);
-  assert.equal(existsSync(command), false);
+  for (const alias of ['outask', 'tasks', 'outaskai']) assert.equal(existsSync(join(bin, windows ? `${alias}.cmd` : alias)), false);
   assert.equal(existsSync(updatedInstall), true);
   for (const [path, content] of retained) assert.equal(read(path), content);
   assert.equal(readFileSync(config, 'utf8'), configuration);
@@ -425,9 +433,9 @@ try {
     result: 'PASS', os: { platform: process.platform, version: osVersion, architecture },
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     ...(macosPrerequisites ? { macosPrerequisites } : {}),
-    artifact: { version: metadata.version, target, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
+    artifact: { version: metadata.version, target, format: archiveDirectory, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
-    checks: ['single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
+    checks: ['permanent-aliases-and-canonical-identity', 'published-legacy-updater-migration', 'single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);
