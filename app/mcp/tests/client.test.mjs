@@ -25,7 +25,12 @@ async function connect(t, root, command = executable, env) {
   let stderr = '';
   transport.stderr.on('data', (chunk) => { stderr += chunk; });
   await client.connect(transport);
-  beforeFixtureCleanup(t, async () => { await client.close(); assert.equal(stderr, ''); });
+  const child = transport._process;
+  assert.ok(child, 'stdio transport must retain its session child');
+  const exited = child.exitCode !== null || child.signalCode !== null
+    ? Promise.resolve()
+    : new Promise(resolve => child.once('exit', resolve));
+  beforeFixtureCleanup(t, async () => { await client.close(); await exited; assert.equal(stderr, ''); });
   const call = async (name, args = {}, code) => {
     const result = await client.callTool({ name, arguments: args });
     if (code) {
