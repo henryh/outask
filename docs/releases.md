@@ -107,6 +107,14 @@ coordination-file cleanup or an incompatible coordination-protocol migration.
 Report any remaining fresh-launch version/path mismatch; publication alone does not
 confirm the owner's PC is current.
 
+## npm publication
+
+Build the npm tarball through the same payload preparation as archives with `node app/scripts/release.mjs --npm`. Native CI accepts the packed package with `node scripts/ci.mjs npm`; the release archive workflow retains the accepted tarball as the `npm-package` Actions artifact. The four GitHub release assets remain the three platform archives and `SHA256SUMS`.
+
+Follow the [owner npm walkthrough](npm-publication.md) for account setup, name/ownership checks and first publication. The owner publishes the first accepted tarball personally after the approved merge. Until it exists, npm publication/download checks explicitly report that this channel awaits owner publication; this is not evidence of completed npm acceptance. Resolve the first-release absence of an older public version with the owner before publication. Record actual registry verification in the owning task.
+
+Subsequent Release runs publish the accepted artifact with OIDC trusted publishing after the approved revision's gates. Configure `OUTASK_NPM_OWNER` with the confirmed npm maintainer and the exact workflow trust in npm; never store npm credentials in task records. Existing versions must match accepted bytes, and prereleases must not replace `latest`. Verify the public package read-only with `node scripts/ci.mjs npm-downloaded`. Required archive publication and download checks still apply.
+
 ## Verify a download
 
 Download your platform's archive and `SHA256SUMS` from the same release into one directory. Before extracting, open that directory in a terminal and run the matching command below (these examples use v1.5.1). A matching file reports `OK`; altered bytes or a missing checksum fail. SHA-256 checksums verify file integrity; they are not a signature of origin.

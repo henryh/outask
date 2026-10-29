@@ -53,7 +53,8 @@ pre-commit hook is independent.
    execution. Describe the problem, resulting behaviour and brief verification.
    Changed candidates and subsequent pushes require renewed agreement.
 5. Wait for all required jobs on the final commit: six native PR CI jobs plus,
-   for release candidates, three native archive jobs. Each platform is checked
+   for release candidates, three native archive jobs and six native npm artifact
+   acceptance jobs. Each platform is checked
    with Node.js 22.23.3 and 24. Failed gates stop readiness. If rework is needed,
    return the task to review/remove `completed_at`, fix it, repeat affected gates,
    close/validate/commit again and obtain agreement for the new push. If main
@@ -118,3 +119,5 @@ CLI/MCP, packaged GitHub Latest update/current/failure paths and uninstall,
 including live-session and user-data preservation. Native update acceptance
 substitutes GitHub network responses with a local newer archive; installation
 and runtime checks use the actual packaged updater.
+
+Native jobs also accept npm global installation, updating, aliases, fresh CLI/MCP and removal with user-data preservation. Release jobs accept the same `npm-package` tarball on all three platforms with both Node versions. `node scripts/ci.mjs npm` builds and accepts a temporary package locally. Its update check uses a controlled local registry; public-registry verification uses `node scripts/ci.mjs npm-downloaded` and explicitly reports `WAITING` before the owner's first publication. See the [npm publication walkthrough](npm-publication.md).

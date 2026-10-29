@@ -2,7 +2,7 @@
 
 Install with the [CLI quick start](../../README.md#install-the-cli).
 Requires Node.js 22.23.3 or later and a trusted local stdio client. Release
-archives include the adapter and its dependencies.
+archives and the [npm package](../../docs/npm.md) include the adapter and its dependencies.
 
 ## Codex on Linux/macOS
 
@@ -54,6 +54,8 @@ Replace `YOUR_USER` or use your custom installation path. Node must be on the
 client's PATH; an absolute `node.exe` path also works. JSON doubles backslashes.
 Restart a client opened before installation if it needs the new PATH.
 
+For an npm installation, run `npm root -g` and use `<returned directory>\outask\bin\outask` as the Node entry instead. Keep `mcp` as its argument and escape backslashes in JSON.
+
 ## Other stdio clients on Linux/macOS
 
 Adapt the outer settings container to your client:
@@ -75,7 +77,7 @@ Remove the entry and stop its process to disconnect the adapter.
 
 ## Compatible updates
 
-Run the new archive's installer while existing sessions remain connected. Let
+Run `npm update -g outask` for an npm installation, or the new archive's installer for an archive installation, while existing sessions remain connected. Let
 active writes finish; do not kill MCP processes or force an immediate reconnect.
 Existing sessions may use their old loaded version until the launching client
 restarts them in its normal lifecycle. Verify `outask --version` and a fresh MCP

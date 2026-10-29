@@ -12,14 +12,13 @@ Keep the checkout; remove its command with `node app/scripts/install-cli.mjs uni
 
 ## Installation and updates
 
-Open a new terminal after installation; restart an editor with an old PATH.
+For npm installations, use `npm install -g outask`, `npm update -g outask` and `npm uninstall -g outask`. See the [npm guide](../docs/npm.md) for PATH, switching channels and preserved user data. The paths and installer commands below describe archive installations; see the [footprint and migration rules](../docs/contract.md#product-identity-and-installation-footprint). Open a new terminal after installation and restart an editor with an old PATH.
+
 | Platform | Installed application | Command |
 | --- | --- | --- |
 | Linux | `~/.local/share/outask` | `~/.local/bin/outask` |
 | macOS | `~/Library/Application Support/Outask` | `~/.local/bin/outask` |
 | Windows | `%LOCALAPPDATA%\Programs\Outask` | `%LOCALAPPDATA%\Programs\Outask\commands\outask.cmd` |
-
-`tasks` is a permanent alias. See the [footprint and migration rules](../docs/contract.md#product-identity-and-installation-footprint).
 
 On macOS, put Node.js 22.23.3 or later on PATH using the
 [official installer](https://nodejs.org/en/download) or another provider.
