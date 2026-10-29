@@ -239,5 +239,35 @@
     ],
     "updated_at": "2026-10-29T17:15:24.864Z",
     "completed_at": "2026-10-29T17:15:22.863Z"
+  },
+  {
+    "id": 21,
+    "title": "Simplify release notes and decouple checksum publication",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Apply the owner's approved future-release authoring rules in docs/releases.md and align release validation, publication/download checksum selection and focused tests. Use the README opening sentence as an unheaded description, show only direct platform archives in Downloads, keep What's new concise and user-visible, remove incidental installation advice from future notes, and require a reader-focused pre-release review. Enforce checksum assets independently of prose links while retaining exact historical approval/recovery contracts. Preserve the published v1.5.1 release and its committed exact notes, existing releases, product/runtime versions and owner-owned publication. This is internal release-workflow maintenance (NO_RELEASE); do not publish a new application release.",
+    "acceptance": [
+      "Future-release rules prescribe an unheaded README opening sentence, platform-only archive links, concise user-visible changes since the latest published tag, minimal installation instructions and a final reader-focused review that retains necessary upgrade actions.",
+      "The actual candidate/notes validator accepts a concise agreed-format example without Current version or a SHA256SUMS link; reject malformed/missing download links and invalid installation contracts with focused evidence.",
+      "New checksum-bearing releases generate, publish, retry/recover and verify SHA256SUMS independently of description links; required checksums cannot be silently disabled by shortening notes.",
+      "Historical approved notes and installer commands, including published v1.5.1, validate unchanged for recovery and retain their original asset contract; no published release or approved stored notes are rewritten.",
+      "Independent feature review, focused QA and required local CI pass; record NO_RELEASE with its internal workflow reason, close the candidate on its task branch and obtain separate exact remote-delivery approval."
+    ],
+    "values": {
+      "goal": "Distribute usable and verifiable Outask CLI/MCP archives with clear release information.",
+      "value": "Release authors can validate a short reader-focused description without redundant sections or checksum links while retaining enforced archive-integrity checks.",
+      "observable_result": "An agreed concise release description passes the real pre-release validator, and removing its checksum link cannot disable required checksum generation or downloaded-archive verification.",
+      "verification": "Run the real notes/candidate preflight on a concise example and focused publication/recovery/download checks with absent prose checksum links, missing assets and historical approved notes."
+    },
+    "notes": [
+      "Owner requested future instructions/pre-release validation improvements after v1.5.1 publication, then explicitly authorised applying the proposal. Published release1.5.1 and its exact approved notes remain unchanged. Prior PC update approval is deferred by the subsequent instruction-only discussion; do not install during this task.",
+      "NO_RELEASE: internal contributor release-authoring and integrity workflow maintenance; CLI/MCP runtime behavior and package version stay unchanged.",
+      "Candidate acceptance at2fb9143: independent feature review PASS with no blocking findings. Documentation gate PASS: owning release rules now require unheaded README opening sentence, platform-only Downloads, short user-visible changes, minimal setup advice and final human review; the validator deliberately checks structural/installation contracts rather than attempting automated prose-quality judgment. Checksums now share an immutable first-releasev1.5.1 requirement across publisher/download acceptance, independent of notes links; explicit historical recovery preserves original approved format and commands. Published docs/release-notes.md and app package/lock remain byte-identical to tagv1.5.1; immutable recovery fixture matches those notes exactly.",
+      "Local QA PASS on Linux x64 Node24.21.0: full makeci exit0 with locked installs/audits, core334, MCP14, Linux build and installed CLI/MCP lifecycle smoke. Final focused coverage43 passing cases (notes/gate15, upload18, unchanged recovery/checksum10); includes LF/CRLF raw-byte preservation, README sentence wraps/extra sentence, harmless Downloads spacing, invalid links/installers, future1.6/RC checksum publication without prose link, missing/mismatched assets, originalv1.5.1four-asset recovery and legacy three-asset recovery. Root actual concise-notes preflight and unchanged published-note recovery PASS; removed checksumsEnabled consumer scan and diff-check PASS; READMEs remain70/199lines. Value gate PASS: the real preflight accepts the agreed short description now without disabling integrity gates. Temporary native-OS gaps remain covered by required hosted six-job PR CI after separate push agreement.",
+      "NO_RELEASE: internal release-authoring/preflight/publication-integrity maintenance; no application behavior/version change and no new public release or rewrite ofv1.5.1. Final origin/main integrated unchanged. Branch-local done is candidate acceptance only. Commit closure/service metadata before requesting exact push/draft-PR/CI/ready agreement; no task21 remote actions currently authorised. Hosted native Linux/macOS/Windows checks on Node22.23.3/24 must pass before Ready; only owner merges via Create a merge commit. Prior PC installation remains deferred."
+    ],
+    "updated_at": "2026-10-29T18:19:56.159Z",
+    "completed_at": "2026-10-29T18:19:54.017Z"
   }
 ]

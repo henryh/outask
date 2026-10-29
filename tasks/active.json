@@ -294,31 +294,5 @@
       "verification": "Owner completes guided publication; install, upgrade and remove via Homebrew on macOS Apple silicon and exercise CLI/MCP."
     },
     "updated_at": "2026-10-28T09:36:51.949Z"
-  },
-  {
-    "id": 21,
-    "title": "Simplify release notes and decouple checksum publication",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Apply the owner's approved future-release authoring rules in docs/releases.md and align release validation, publication/download checksum selection and focused tests. Use the README opening sentence as an unheaded description, show only direct platform archives in Downloads, keep What's new concise and user-visible, remove incidental installation advice from future notes, and require a reader-focused pre-release review. Enforce checksum assets independently of prose links while retaining exact historical approval/recovery contracts. Preserve the published v1.5.1 release and its committed exact notes, existing releases, product/runtime versions and owner-owned publication. This is internal release-workflow maintenance (NO_RELEASE); do not publish a new application release.",
-    "acceptance": [
-      "Future-release rules prescribe an unheaded README opening sentence, platform-only archive links, concise user-visible changes since the latest published tag, minimal installation instructions and a final reader-focused review that retains necessary upgrade actions.",
-      "The actual candidate/notes validator accepts a concise agreed-format example without Current version or a SHA256SUMS link; reject malformed/missing download links and invalid installation contracts with focused evidence.",
-      "New checksum-bearing releases generate, publish, retry/recover and verify SHA256SUMS independently of description links; required checksums cannot be silently disabled by shortening notes.",
-      "Historical approved notes and installer commands, including published v1.5.1, validate unchanged for recovery and retain their original asset contract; no published release or approved stored notes are rewritten.",
-      "Independent feature review, focused QA and required local CI pass; record NO_RELEASE with its internal workflow reason, close the candidate on its task branch and obtain separate exact remote-delivery approval."
-    ],
-    "values": {
-      "goal": "Distribute usable and verifiable Outask CLI/MCP archives with clear release information.",
-      "value": "Release authors can validate a short reader-focused description without redundant sections or checksum links while retaining enforced archive-integrity checks.",
-      "observable_result": "An agreed concise release description passes the real pre-release validator, and removing its checksum link cannot disable required checksum generation or downloaded-archive verification.",
-      "verification": "Run the real notes/candidate preflight on a concise example and focused publication/recovery/download checks with absent prose checksum links, missing assets and historical approved notes."
-    },
-    "notes": [
-      "Owner requested future instructions/pre-release validation improvements after v1.5.1 publication, then explicitly authorised applying the proposal. Published release1.5.1 and its exact approved notes remain unchanged. Prior PC update approval is deferred by the subsequent instruction-only discussion; do not install during this task.",
-      "NO_RELEASE: internal contributor release-authoring and integrity workflow maintenance; CLI/MCP runtime behavior and package version stay unchanged."
-    ],
-    "updated_at": "2026-10-29T18:11:39.586Z"
   }
 ]
