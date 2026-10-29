@@ -294,30 +294,5 @@
       "verification": "Owner completes guided publication; install, upgrade and remove via Homebrew on macOS Apple silicon and exercise CLI/MCP."
     },
     "updated_at": "2026-10-28T09:36:51.949Z"
-  },
-  {
-    "id": 22,
-    "title": "Keep upgrade procedures out of release descriptions",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Apply the owner's correction to release-authoring instructions: keep upgrade/migration/session-management procedures in the installation/update guide rather than release descriptions. Remove the quoted migration/session paragraph from the published v1.5.1 body as explicitly authorised, preserving all other text, release identity and assets. Clarify the existing app/README.md update section about removing old command links with its original installer without contradicting live-session preservation for compatible updates. Documentation-only internal NO_RELEASE; no runtime/version changes, no new release or edits to original committed v1.5.1 approved notes.",
-    "acceptance": [
-      "Published v1.5.1 description no longer contains the quoted upgrade/layout/session paragraph; all other body text and four asset IDs, sizes, digests and timestamps remain unchanged.",
-      "Release rules consistently place upgrade/migration/session procedures in the update guide and do not retain exceptions that encourage inserting those procedures into release descriptions.",
-      "Existing general update guide includes original-installer link removal for layout migrations and preserves the distinction between migration session shutdown and compatible updates keeping sessions alive; README stays below200lines.",
-      "Independent documentation review, focused semantic checks and required verification pass; close and validate candidate on its task branch before separate exact remote-delivery approval."
-    ],
-    "values": {
-      "goal": "Make release information clear and keep operational upgrade guidance in its owning guide.",
-      "value": "Release readers see a direct download/install description, while upgraders can find layout and session procedures in one appropriate place.",
-      "observable_result": "The public v1.5.1 page lacks the unwanted paragraph, and the release rules and update guide give one consistent location for upgrade procedures.",
-      "verification": "Compare the release body and immutable asset metadata before/after; review both owning documents for placement and compatible-update session semantics."
-    },
-    "notes": [
-      "Owner explicitly requested removing the quoted paragraph from v1.5.1 and correcting instructions after task21 merge. Direct release-body edit completed and verified before source-doc changes; this is the owner's explicit editorial exception, not permission to change tags or assets.",
-      "NO_RELEASE: documentation-only authoring/guide correction; runtime, package versions and committed original release notes remain unchanged. Prior PC installation remains deferred."
-    ],
-    "updated_at": "2026-10-29T18:49:28.397Z"
   }
 ]
