@@ -108,7 +108,7 @@ confirm the owner's PC is current.
 
 ## Verify a download
 
-Download your platform's archive and `SHA256SUMS` from the same release into one directory. Before extracting, open that directory in a terminal and run the matching command below (these examples use v1.5). A matching file reports `OK`; altered bytes or a missing checksum fail. SHA-256 checksums verify file integrity; they are not a signature of origin.
+Download your platform's archive and `SHA256SUMS` from the same release into one directory. Before extracting, open that directory in a terminal and run the matching command below (these examples use v1.5.1). A matching file reports `OK`; altered bytes or a missing checksum fail. SHA-256 checksums verify file integrity; they are not a signature of origin.
 
 Linux:
 
@@ -125,7 +125,7 @@ shasum -a 256 --ignore-missing --strict -c SHA256SUMS
 Windows PowerShell:
 
 ```powershell
-$archive = 'Outask-1.5-windows-x64.tar.gz'
+$archive = 'Outask-1.5.1-windows-x64.tar.gz'
 $entries = @(Get-Content .\SHA256SUMS -ErrorAction Stop | Where-Object { $_ -cmatch ('^[0-9a-f]{64}  ' + [regex]::Escape($archive) + '$') })
 if ($entries.Count -ne 1) { throw 'Missing or duplicate checksum entry' }
 $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive -ErrorAction Stop).Hash.ToLowerInvariant()

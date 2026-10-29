@@ -21,10 +21,10 @@ for (const platform of platforms) {
   test(`documented ${platform.name} checksum command accepts matching bytes and rejects corruption or missing entries`, { skip: !native }, t => {
     const directory = mkdtempSync(join(tmpdir(), 'outask-checksum-docs-'));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
-    const archive = `Outask-1.5-${platform.target}.tar.gz`;
+    const archive = `Outask-1.5.1-${platform.target}.tar.gz`;
     const bytes = Buffer.from('downloaded archive\r\n\0\xff', 'latin1');
     const checksum = createHash('sha256').update(bytes).digest('hex');
-    const entries = platforms.map(p => `${checksum}  Outask-1.5-${p.target}.tar.gz\n`);
+    const entries = platforms.map(p => `${checksum}  Outask-1.5.1-${p.target}.tar.gz\n`);
     const path = join(directory, 'verify.ps1');
     if (platform.name === 'Windows') writeFileSync(path, platform.command);
     const invoke = () => spawnSync(platform.shell, platform.name === 'Windows'
