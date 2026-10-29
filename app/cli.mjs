@@ -97,7 +97,7 @@ export async function main(args) {
       try { adapter = await import('./mcp/server.mjs'); }
       catch (error) {
         if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
-        fail('ADAPTER_NOT_INSTALLED', 'install the optional MCP dependencies with npm ci --prefix <checkout>/app/mcp --omit=dev; see app/mcp/README.md');
+        fail('ADAPTER_NOT_INSTALLED', 'install the application dependencies with npm ci --prefix <checkout>/app --omit=dev; for an installed package, reinstall through its original distribution channel; see app/mcp/README.md');
       }
       await adapter.main();
       return;

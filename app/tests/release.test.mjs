@@ -224,7 +224,7 @@ test('release builds install both dependency trees through a symlinked output di
   assert.equal(archive, join(linked, `Outask-${releaseVersion}-linux-x64.tar.gz`));
   const entries = ok(run('tar', ['-tzf', archive])).split('\n');
   assert.ok(entries.some((path) => path.endsWith('/app/node_modules/jsonc-parser/package.json')));
-  assert.ok(entries.some((path) => path.endsWith('/app/mcp/node_modules/@modelcontextprotocol/server/package.json')));
+  assert.ok(entries.some((path) => path.endsWith('/app/node_modules/@modelcontextprotocol/server/package.json')));
 });
 
 test('download install, repeat, update and uninstall preserve project data and survive download removal', (t) => {
@@ -909,7 +909,7 @@ test('development installer recognises a release in an explicit custom release r
 
 test('CLI install does not require optional MCP dependencies and reports PATH action', (t) => {
   const f = fixture(t);
-  rmSync(join(f.source, 'app/mcp/node_modules'), { recursive: true });
+  rmSync(join(f.source, 'app/node_modules/@modelcontextprotocol'), { recursive: true });
   const env = { ...f.env, PATH: `${f.tools}:/usr/bin:/bin` };
   const result = run(join(f.source, 'install.sh'), [], { env });
   const output = ok(result);

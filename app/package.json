@@ -1,6 +1,6 @@
 {
   "name": "outask",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Outask CLI for repository-local JSON task tracking",
   "private": true,
   "author": "Henry <me@henrydev.me>",
@@ -13,6 +13,21 @@
     "node": ">=22.23.3"
   },
   "dependencies": {
-    "jsonc-parser": "3.3.1"
+    "jsonc-parser": "3.3.1",
+    "@modelcontextprotocol/server": "2.3.0",
+    "zod": "^4.6.6"
+  },
+  "bin": {
+    "outask": "bin/outask",
+    "tasks": "bin/tasks"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/henryh/outask.git",
+    "directory": "app"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }
