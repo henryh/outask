@@ -246,7 +246,7 @@
   {
     "id": 19,
     "title": "Add npm global installation, updates and removal with guided owner publication",
-    "status": "in_progress",
+    "status": "review",
     "priority": "high",
     "blockers": [
       7,
@@ -267,7 +267,10 @@
       "result": "An owner-published npm package with documented, verified global lifecycle commands.",
       "verification": "Owner completes the guided publication and a clean user environment installs/updates/removes the registry package with working CLI/MCP."
     },
-    "updated_at": "2026-10-29T19:11:45.759Z"
+    "updated_at": "2026-10-29T19:24:04.546Z",
+    "notes": [
+      "Candidate v1.6.0 on task-19-npm-distribution: implementation 70a8389, documentation b4585db. Shared archive/npm payload, native npm lifecycle and owner-approved OIDC publication implemented. Linux Node24.21 make ci EXIT0: locked installs/audits, 339 core tests, 14 MCP tests, installed archive and actual packed npm install/update/uninstall/data-preservation acceptance. Independent review and full Linux Node22.23.3 QA in progress. Public npm lookup returns E404; npm-downloaded explicitly reports WAITING. Owner package/account confirmation and first publication remain pending; no older public npm version exists, so that acceptance gap requires owner resolution before publication. No push/PR/publication authorised."
+    ]
   },
   {
     "id": 20,
