@@ -52,16 +52,16 @@ ownership needs a separately defined release approver.
 Start with the opening sentence of `README.md`, unchanged and without a heading. Do not add a `Current version` heading or repeat the release title. Then use these five `##` headings once each in order:
 
 1. `Downloads`: only direct archive links for Linux x64, macOS Apple silicon and Windows x64. Auxiliary files such as `SHA256SUMS` remain available under GitHub Assets; do not duplicate their links in the description.
-2. `What's new`: a few short bullets describing changes a user can notice or act on since the latest published release. Explain the result for the user; keep internal implementation, CI, tests and publication mechanics in the PR. Retain necessary upgrade actions.
+2. `What's new`: a few short bullets describing changes a user can notice or act on since the latest published release. Explain the result for the user; keep internal implementation, CI, tests and publication mechanics in the PR. Link to the installation/update guide for upgrade or migration requirements instead of repeating procedures in the description.
 3. `Install`: Node.js 22.23.3 or later on PATH; extract and open the Outask
    directory in a terminal. Show `./install.sh` for Linux, `./Install.command`
    for macOS and one Windows block with `./Install.cmd  # PowerShell` and
    `Install.cmd   & rem cmd.exe`.
-   Do not include extraction commands, `cd` or platform placeholders. Keep Node-provider choices and incidental platform setup advice in the installation guide, unless this release requires the user to change those actions. Do not carry one-off advice into later releases.
+   Do not include extraction commands, `cd` or platform placeholders. Keep upgrade, migration and session-management procedures, Node-provider choices and incidental platform setup advice in the installation/update guide. Do not repeat them in release descriptions.
 4. `Run`: create and list from a project directory; open a new terminal after install.
 5. `Documentation`: Basic use, Full operator reference and MCP setup links.
 
-Before requesting release approval, read the final rendered description as a download page: can a reader choose an archive, install Outask and understand what changed? Remove repetition, unexplained internal terms and details that do not help those actions. Review the actual final text, not just its headings; automated format and archive checks do not establish clarity.
+Before requesting release approval, read the final rendered description as a download page: can a reader choose an archive, install Outask and understand what changed? Remove repetition, unexplained internal terms and details that do not help those actions. Check that upgrade procedures are linked rather than duplicated. Review the actual final text, not just its headings; automated format and archive checks do not establish clarity.
 
 Use the actual repository, approved compact tag and archive names. CD validates
 and publishes the committed file without rewriting it. Recovery preserves the
