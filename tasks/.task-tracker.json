@@ -1,11 +1,11 @@
 {
-  "counter": 20,
+  "counter": 21,
   "validated": {
     "files": {
       "tasks/task-schema.json": "24d4b7abea66adc76f9c0fef3ab1deaa32aed2723e4c46740f9d635aa8937dbf",
-      "tasks/active.json": "912bd6846fcfcf449b2799974164b1360ef35bccff93110e25f0b4cd05a397ce",
+      "tasks/active.json": "46668be02778695d22bff063f4a15f59fecd0c7fceb5ac910649196df6978dfe",
       "tasks/done.json": "8c1eca0ab6af29d779fccc5bf9659092497d3e7a4b8b8655797a2de564116db2"
     },
-    "counter": 20
+    "counter": 21
   }
 }
