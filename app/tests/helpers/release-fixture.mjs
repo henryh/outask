@@ -54,3 +54,9 @@ tasks list --format table
 - [MCP setup](https://github.com/owner/project/blob/v${version}/app/mcp/README.md)
 `;
 }
+
+export const openingSentence = 'Outask is a lightweight task tracker for personal projects and your AI harness.';
+
+export function conciseNotes(version) {
+  return `${openingSentence}\n\n${approvedNotes(version).replace(/## Current version\n[\s\S]*?(?=## What's new)/, '')}`;
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { checksumsEnabled, releaseNotes } from './release-notes.mjs';
-import { archiveChecksums, checksumName } from './release-checksums.mjs';
+import { releaseNotes } from './release-notes.mjs';
+import { archiveChecksums, checksumName, checksumsRequired } from './release-checksums.mjs';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -64,8 +64,8 @@ try {
   const selected = targetList();
   const selectedNames = selected.map(target => archiveName(target, releaseId));
   const expectedNames = targets.map(target => archiveName(target, releaseId));
-  const approved = releaseNotes(releaseId, packageId, repo, targets);
-  const withChecksums = checksumsEnabled(approved.notes, releaseId, repo);
+  const approved = releaseNotes(releaseId, packageId, repo, targets, process.env.RELEASE_NOTES_FILE, { recovery: true });
+  const withChecksums = checksumsRequired(packageId);
   if (withChecksums) {
     selectedNames.push(checksumName);
     expectedNames.push(checksumName);

@@ -7,14 +7,14 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { distributionVersion } from '../src/version.mjs';
-import { approvedNotes } from './helpers/release-fixture.mjs';
+import { approvedNotes, conciseNotes } from './helpers/release-fixture.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 function fixture(t, packageVersion = '0.16.0') {
   const root = mkdtempSync(join(tmpdir(), 'outask-upload-test-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const dir of ['app/scripts', 'app/src', 'scripts', 'dist', 'tools']) mkdirSync(join(root, dir), { recursive: true });
-  for (const name of ['scripts/release-upload.mjs', 'scripts/release-checksums.mjs', 'scripts/release-notes.mjs', 'scripts/release-config.mjs', 'app/scripts/output.mjs', 'app/src/errors.mjs', 'app/src/limits.mjs', 'app/src/fields.mjs', 'app/src/response.mjs', 'app/src/version.mjs']) cpSync(join(repo, name), join(root, name));
+  for (const name of ['README.md', 'scripts/release-upload.mjs', 'scripts/release-checksums.mjs', 'scripts/release-notes.mjs', 'scripts/release-config.mjs', 'app/scripts/output.mjs', 'app/src/errors.mjs', 'app/src/limits.mjs', 'app/src/fields.mjs', 'app/src/response.mjs', 'app/src/version.mjs']) cpSync(join(repo, name), join(root, name));
   writeFileSync(join(root, 'app/package.json'), JSON.stringify({name: 'outask', version: packageVersion}));
   const version = distributionVersion(packageVersion);
   const assets = ['linux-x64', 'macos-arm64', 'windows-x64'].map(target => {
@@ -75,7 +75,7 @@ fs.writeFileSync(process.env.RELEASE_STATE, JSON.stringify(state));
 const mutations = (result) => result.calls.filter(args => ['create', 'upload', 'edit', 'delete-asset'].includes(args[1]));
 
 test('checksum publication hashes the accepted archive bytes and retries only missing assets', t => {
-  const f = fixture(t), notesText = approvedNotes(f.version, { checksums: true });
+  const f = fixture(t, '1.6.0'), notesText = conciseNotes(f.version);
   const partial = f.invoke({ notesText, TARGETS: 'linux-x64' });
   assert.notEqual(partial.status, 0);
   assert.equal(partial.release.draft, true);
@@ -94,16 +94,16 @@ test('checksum publication hashes the accepted archive bytes and retries only mi
 });
 
 test('checksum publication requires every local archive even for a partial upload', t => {
-  const f = fixture(t);
+  const f = fixture(t, '1.6.0');
   rmSync(join(f.root, 'dist', f.assets[2].name));
-  const result = f.invoke({ notesText: approvedNotes(f.version, { checksums: true }), TARGETS: 'linux-x64' });
+  const result = f.invoke({ notesText: conciseNotes(f.version), TARGETS: 'linux-x64' });
   assert.notEqual(result.status, 0);
   assert.deepEqual(mutations(result), []);
 });
 
 test('archives changed during upload cannot publish a stale checksum manifest', t => {
-  const f = fixture(t);
-  const result = f.invoke({ notesText: approvedNotes(f.version, { checksums: true }), MUTATE_ARCHIVE: '1' });
+  const f = fixture(t, '1.6.0');
+  const result = f.invoke({ notesText: conciseNotes(f.version), MUTATE_ARCHIVE: '1' });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Local SHA256SUMS differs/);
   assert.equal(result.release.draft, true);
@@ -111,7 +111,7 @@ test('archives changed during upload cannot publish a stale checksum manifest', 
 });
 
 test('checksum retries reject inconsistent checksum, archive and duplicate assets before mutations', t => {
-  const f = fixture(t), notesText = approvedNotes(f.version, { checksums: true });
+  const f = fixture(t, '1.6.0'), notesText = conciseNotes(f.version);
   const published = f.invoke({ notesText });
   assert.equal(published.status, 0, published.stderr);
   const assets = published.release.assets;
@@ -320,4 +320,27 @@ test('publication fails verification when GitHub Latest does not resolve the pub
   assert.ok(verified.calls.some(args => args[0] === 'api' && args[1] === 'repos/owner/project/releases/latest'));
   assert.equal(mutations(verified).length, 0);
   assert.deepEqual(verified.release, result.release);
+});
+
+test('published v1.5.1 historical notes retain the mandatory fourth checksum asset', t => {
+  const f = fixture(t, '1.5.1'), notesText = approvedNotes(f.version, { checksums: true });
+  const first = f.invoke({ notesText });
+  assert.equal(first.status, 0, first.stderr);
+  assert.equal(first.release.body, notesText);
+  assert.equal(first.release.assets.length, 4);
+  const retry = f.invoke({ notesText, existing: first.release });
+  assert.equal(retry.status, 0, retry.stderr);
+  assert.deepEqual(mutations(retry), []);
+  const absent = f.invoke({ notesText, existing: { ...first.release, assets: first.release.assets.filter(asset => asset.name !== 'SHA256SUMS') } });
+  assert.notEqual(absent.status, 0);
+  assert.deepEqual(mutations(absent), []);
+});
+
+test('future prereleases publish mandatory checksums without a description link or changing Latest', t => {
+  const f = fixture(t, '1.6.0-rc.1');
+  const result = f.invoke({ notesText: conciseNotes(f.version) });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.release.assets.length, 4);
+  assert.ok(result.calls.find(args => args[1] === 'edit').includes('--latest=false'));
+  assert.ok(!result.calls.some(args => args[1]?.endsWith('/releases/latest')));
 });

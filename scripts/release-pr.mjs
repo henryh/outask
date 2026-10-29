@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { checksumsEnabled, releaseNotes } from './release-notes.mjs';
+import { releaseNotes } from './release-notes.mjs';
 import { releaseTitle, run, targets } from './release-config.mjs';
 import { distributionVersion } from '../app/src/version.mjs';
 import { reportError } from '../app/scripts/output.mjs';
@@ -47,10 +47,7 @@ export function candidate(base, repo, title, { recovery = false } = {}) {
   if (!releaseFiles.every((path) => changed.includes(path))) throw new Error(`Release PR must include changes to ${releaseFiles.join(', ')}`);
   const version = distributionVersion(pkg.version);
   if (title !== releaseTitle(version)) throw new Error(`Release PR title must be ${releaseTitle(version)}`);
-  const { notes } = releaseNotes(version, pkg.version, repo, targets, notesPath);
-  if (!recovery && !checksumsEnabled(notes, version, repo)) {
-    throw new Error('New release notes Downloads must link the release SHA256SUMS asset');
-  }
+  releaseNotes(version, pkg.version, repo, targets, notesPath, { recovery });
   return { version, tag: `v${version}`, prerelease: pkg.version.includes('-') };
 }
 

@@ -4,8 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { archiveName, archivePath, hostTarget, releaseVersion, root, tagName } from './release-config.mjs';
-import { checksumName, verifyArchive } from './release-checksums.mjs';
-import { checksumsEnabled } from './release-notes.mjs';
+import { checksumName, checksumsRequired, verifyArchive } from './release-checksums.mjs';
 
 function run(label, command, args, env = process.env) {
   if (process.platform === 'win32' && command === 'npm') {
@@ -78,9 +77,7 @@ function downloaded() {
   try {
     const name = archiveName(hostTarget());
     run('Published archive download', 'gh', ['release', 'download', tagName(), '--repo', repo, '--pattern', name, '--dir', temporary]);
-    // Recovery uses the original approved notes, including releases before checksums.
-    const notes = readFileSync(join(root, 'docs/release-notes.md'), 'utf8');
-    if (checksumsEnabled(notes, releaseVersion(), repo)) {
+    if (checksumsRequired(releaseVersion())) {
       run('Published checksums download', 'gh', ['release', 'download', tagName(), '--repo', repo, '--pattern', checksumName, '--dir', temporary]);
       verifyArchive(readFileSync(join(temporary, name)), name, readFileSync(join(temporary, checksumName), 'utf8'), releaseVersion());
       console.log('Published archive SHA256: PASS');
