@@ -246,7 +246,7 @@
   {
     "id": 19,
     "title": "Add npm global installation, updates and removal with guided owner publication",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "high",
     "blockers": [
       7,
@@ -267,7 +267,7 @@
       "result": "An owner-published npm package with documented, verified global lifecycle commands.",
       "verification": "Owner completes the guided publication and a clean user environment installs/updates/removes the registry package with working CLI/MCP."
     },
-    "updated_at": "2026-10-28T09:36:51.907Z"
+    "updated_at": "2026-10-29T19:11:45.759Z"
   },
   {
     "id": 20,
