@@ -40,7 +40,7 @@ export function publicationPlan(metadata, { name, version, integrity, owner }) {
 }
 
 async function publish() {
-  if (!process.env.GITHUB_EVENT_PATH) throw new Error('npm publication requires the approved owner-merged Release workflow; follow docs/npm-publication.md for first publication');
+  if (!process.env.GITHUB_EVENT_PATH) throw new Error('npm publication requires the approved owner-merged Release workflow; see docs/releases.md#npm-publication');
   const approved = gate(JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')));
   if (!approved) throw new Error('This merge is not an approved release PR');
   verifyTag(approved.tag);
@@ -48,7 +48,7 @@ async function publish() {
   const integrity = artifactIntegrity();
   const plan = publicationPlan(metadata, { name: packageName, version: version(), integrity, owner: process.env.OUTASK_NPM_OWNER?.trim() });
   if (plan.action === 'bootstrap') {
-    console.log(`npm publication: WAITING for owner first publication of ${packageName}@${version()}. Download this approved run's npm-package artifact and follow docs/npm-publication.md.`);
+    console.log(`npm publication: WAITING (${packageName} has no registry entry; see docs/releases.md#npm-publication).`);
     return;
   }
   if (plan.action === 'existing') {

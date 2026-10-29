@@ -80,7 +80,7 @@ async function npmDownloaded() {
   const { packageMetadata, packageName, artifactIntegrity } = await import('./npm-release.mjs');
   const metadata = await packageMetadata();
   if (!metadata) {
-    console.log('npm download acceptance: WAITING for owner first publication; see docs/npm-publication.md');
+    console.log('npm download acceptance: WAITING (package has no registry entry; see docs/releases.md#npm-publication)');
     return;
   }
   const expected = metadata.versions?.[JSON.parse(readFileSync(join(root, 'app/package.json'))).version];
