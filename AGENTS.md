@@ -22,6 +22,9 @@ Write English, command-first documentation. Keep READMEs under 200 lines and
 archive instructions specific to their target platform. Record current decisions
 in their owning document and acceptance evidence in the task; avoid duplicate reports.
 
+Keep `docs/` limited to Outask user and contributor documentation. Keep personal
+walkthroughs, one-off operator instructions and unrelated general guidance outside version control.
+
 For installed CLI commands and MCP setup on Linux/macOS, use `outask` from PATH
 and `outask mcp`, including during post-release updates. Check PATH and restart
 the client before proposing absolute executable paths; use those only for a

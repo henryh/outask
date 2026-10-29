@@ -268,5 +268,38 @@
       "verification": "Owner completes guided publication; install, upgrade and remove via Homebrew on macOS Apple silicon and exercise CLI/MCP."
     },
     "updated_at": "2026-10-28T09:36:51.949Z"
+  },
+  {
+    "id": 19,
+    "title": "Add npm global installation, updates and removal with guided owner publication",
+    "status": "review",
+    "priority": "high",
+    "blockers": [
+      7,
+      11
+    ],
+    "scope": "Distribute Outask through the npm registry with global install, update and uninstall commands. Prepare the package, executable entries, release/publication integration and concise operator/user instructions. Guide the owner step by step through account setup, package-name or namespace selection, ownership verification, authentication and first publication so the owner can perform the complete registration/publication process personally. Never require credentials to be copied into task records or chat. Use the existing application/runtime and command contracts; coordinate with the canonical-command task without duplicating its rename scope. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
+    "acceptance": [
+      "Prepare an npm-distributable package containing the runtime files and command entries required for CLI/MCP; verify actual packed contents and supported-platform behavior.",
+      "Document the confirmed package name and exact npm install -g, update -g and uninstall -g commands, runtime requirements and how to launch MCP through the installed command.",
+      "Provide and follow a step-by-step owner walkthrough for npm registration, name/namespace availability, ownership, authentication and initial publication. The owner can complete these actions personally with agent guidance; record the actual publication outcome without secrets.",
+      "From the public registry, verify global installation, sample CLI create/list, version, a fresh MCP connection and uninstalling after owner first publication. For the initial npm release, verify updating through the controlled local npm registry instead of an older public version, as explicitly accepted by the owner because no older public version exists. Preserve project/skill data, and document the scope of npm removal and any application cleanup required by the current contract.",
+      "Align subsequent releases with the project's approved publication process, add focused package/lifecycle checks and update owning documentation. Treat real registry download checks as read-only after the approved publication boundary.",
+      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance.",
+      "Keep public docs limited to Outask user/contributor guidance: remove one-off personal publication instructions, owner-PC update instructions and unrelated general workflow advice; preserve useful release tooling contracts and repair live references. Keep personal first-publication steps only in an untracked local handoff."
+    ],
+    "values": {
+      "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
+      "value": "Users install, update and remove the CLI/MCP through npm; the owner can independently register and publish the package.",
+      "result": "An owner-published npm package with documented, verified global lifecycle commands.",
+      "verification": "Owner completes the guided publication and a clean user environment installs/updates/removes the registry package with working CLI/MCP."
+    },
+    "updated_at": "2026-10-29T19:58:07.656Z",
+    "notes": [
+      "Candidate v1.6.0 (distribution v1.6) on task-19-npm-distribution: implementation 70a8389, documentation b4585db, correction 68c327a. Shared archive/npm payload, bundled CLI/MCP, native npm lifecycle and owner-approved OIDC publication implemented. Independent feature review PASS at 68c327a; historical archive recovery is preserved. Final origin/main integration found no new changes; exact release notes validated and local doc targets/README lengths checked.",
+      "Local QA PASS on Linux x64 with Node24.21.0 and official Node22.23.3: full CI locked installs/audits; 339 core tests total including 3 expected platform-only skips (macOS checksum, Windows checksum, Windows cross-volume coordination); 14 MCP tests; actual installed archive and packed npm lifecycle. Correction focused checks on both Nodes: 10 recovery/checksum tests (0 skips), native npm global install/update/uninstall, live older MCP reads/writes through update and uninstall, distinct fresh updated MCP, aliases and project/config/skill preservation. Both runtimes accepted identical npm bytes SHA256 ce756919e570ddcc6706c209a06fbf40ff8023e9de506e03db6b32ff6e7739a8.",
+      "Owner confirmed package outask/account henrydevme and initial controlled-local-registry update acceptance. Owner now explicitly holds npm publication until the GitHub release and downloaded archives are confirmed successful. Public installation/CLI/MCP/uninstall remain mandatory read-only post-publication checks. Personal first-publication and local owner-installation instructions are preserved only in an untracked Git-local handoff; they are not public developer documentation. The first registry entry is not created automatically and no npm publication has occurred.",
+      "Public-doc correction on task19/PR12: remove personal npm walkthrough, owner-PC follow-up and unrelated generic agent work-loop guidance; preserve Outask user guidance and technical release/CI contracts. Diagnostic references repaired in e2a0534; 13 focused publisher/recovery/checksum tests PASS (0 skips). Original PR run40943872088 at bd2f0ac succeeded: six native PR CI jobs, three archive jobs, six same-artifact npm acceptance jobs, npm-package build and release-candidate gate; two recovery-only jobs skipped as inapplicable. New correction review/QA pending; PR stays draft and changed candidate requires renewed push agreement."
+    ]
   }
 ]

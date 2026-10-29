@@ -26,26 +26,7 @@ Package `1.1.0` maps to tag `v1.1`, title `Outask v1.1` and
 `Outask-1.1-<target>.tar.gz`; nonzero patches stay complete. Prerelease suffixes
 remain and produce GitHub prereleases. Existing releases stay unchanged.
 
-Each platform build produces one current Outask archive. Release title, asset,
-notes validation and recovery use the current naming contract only. Users
-switching from an unrecognised layout remove its command links with its own
-installer and install the current archive; project records remain unchanged.
-Before first starting the Windows coordination generation, finish writes and
-close all previous CLI/MCP/HTTP sessions. Never mix coordination generations.
-
-Before final publication, complete all planned work, review/QA/documentation and
-candidate closure. Declare publication/download acceptance as read-only post-merge
-checks; resolve other unavailable acceptance with the owner. A preliminary draft
-PR for hosted Actions requires explicit owner permission. Fix unexpected failures
-in the same task/PR before readiness; no planned follow-up implementation or closure.
-
-Fetch/merge current `origin/main` locally and verify before any PR. Present exact
-commits, push/draft-PR actions, CI/ready transition, version/scope and notes in one
-approval request. Changed candidates/subsequent pushes need renewed agreement.
-Only the owner merges the whole approved revision using **Create a merge commit**.
-Forks, other mergers, wrong revisions, squash/rebase or changed notes are rejected.
-Publication currently supports personally owned repositories; organisation
-ownership needs a separately defined release approver.
+Each platform build produces one Outask archive. Release names, assets, notes validation and recovery use the same naming contract. Release publication accepts only the repository owner's merge commit of the approved PR head; squash/rebase merges and changed notes are rejected. The current approver lookup supports personally owned repositories; organisation ownership requires an explicit approver implementation. Follow [task delivery](contributing.md#task-delivery) for candidate review, approval and integration.
 
 ## Exact notes
 
@@ -60,8 +41,6 @@ Start with the opening sentence of `README.md`, unchanged and without a heading.
    Do not include extraction commands, `cd` or platform placeholders. Keep upgrade, migration and session-management procedures, Node-provider choices and incidental platform setup advice in the installation/update guide. Do not repeat them in release descriptions.
 4. `Run`: create and list from a project directory; open a new terminal after install.
 5. `Documentation`: Basic use, Full operator reference and MCP setup links.
-
-Before requesting release approval, read the final rendered description as a download page: can a reader choose an archive, install Outask and understand what changed? Remove repetition, unexplained internal terms and details that do not help those actions. Check that upgrade procedures are linked rather than duplicated. Review the actual final text, not just its headings; automated format and archive checks do not establish clarity.
 
 Use the actual repository, approved compact tag and archive names. CD validates
 and publishes the committed file without rewriting it. Recovery preserves the
@@ -87,33 +66,14 @@ Failed required checks stop tagging/publication.
 
 Six downloaded-archive jobs verify the published assets on the three platforms
 with both Node versions. Treat these as read-only delivery verification; failures
-do not authorise replacing published contents. After all destination/task/release
-checks pass, synchronise the clean checkout under [contributor delivery](contributing.md#task-delivery).
-No additional publication approval or release/closure PR is needed.
-
-After every successful release and its required downloaded-archive checks,
-explicitly offer to update the owner's PC to that exact published version so
-the owner uses the current public distribution and can observe installation and
-runtime problems firsthand. Include the installed and published versions in the
-offer. After the owner agrees, use the published archive for the PC's platform
-and its installer. Preserve existing MCP/HTTP sessions and let active writes
-finish during compatible updates; do not kill processes or force an immediate
-reconnect. Those sessions may keep their old loaded version until the launching
-client restarts them normally. Verify `outask --version` reports
-`Outask v<released-version>` and a fresh MCP connection uses the released
-installation with a successful task read. Follow the
-[project lock rules](../app/README.md#project-locks-and-upgrades) separately for
-coordination-file cleanup or an incompatible coordination-protocol migration.
-Report any remaining fresh-launch version/path mismatch; publication alone does not
-confirm the owner's PC is current.
-
+do not authorise replacing published contents.
 ## npm publication
 
 Build the npm tarball through the same payload preparation as archives with `node app/scripts/release.mjs --npm`. Native CI accepts the packed package with `node scripts/ci.mjs npm`; the release archive workflow retains the accepted tarball as the `npm-package` Actions artifact. The four GitHub release assets remain the three platform archives and `SHA256SUMS`.
 
-Follow the [owner npm walkthrough](npm-publication.md) for account setup, name/ownership checks and first publication. The owner publishes the first accepted tarball personally after the approved merge. Until it exists, npm publication/download checks explicitly report that this channel awaits owner publication; this is not evidence of completed npm acceptance. Resolve the first-release absence of an older public version with the owner before publication. Record actual registry verification in the owning task.
+The npm publisher requires `OUTASK_NPM_OWNER` to identify a package maintainer and OIDC trust for `.github/workflows/release.yml`. It publishes only the accepted artifact from the approved revision. Existing versions must match accepted bytes, and prereleases must not replace `latest`. An absent package reports `WAITING`; the workflow does not create its initial registry entry automatically. This is not completed public-registry acceptance.
 
-Subsequent Release runs publish the accepted artifact with OIDC trusted publishing after the approved revision's gates. Configure `OUTASK_NPM_OWNER` with the confirmed npm maintainer and the exact workflow trust in npm; never store npm credentials in task records. Existing versions must match accepted bytes, and prereleases must not replace `latest`. Verify the public package read-only with `node scripts/ci.mjs npm-downloaded`. Required archive publication and download checks still apply.
+Verify the public package read-only with `node scripts/ci.mjs npm-downloaded`. Packed lifecycle checks exercise updates through a controlled local registry; public download checks require an existing published version. Required archive publication and download checks still apply.
 
 ## Verify a download
 
@@ -142,27 +102,13 @@ if ($actual -cne $entries[0].Substring(0, 64)) { throw 'Checksum mismatch' }
 Write-Output "Checksum OK: $archive"
 ```
 
-## Retry and private rehearsal
+## Release recovery
 
-For a publisher code fix, the owner explicitly requests real Actions recovery in
-the same corrective draft PR using title
-`Publish approved release #<merged-release-PR> from run #<Release-run-ID>`.
-It recovers that approved version; merging the corrective PR creates no new release.
+Recovery is selected by a corrective draft PR titled `Publish approved release #<merged-release-PR> from run #<Release-run-ID>`. It recovers the approved version; merging the corrective PR creates no new release.
 
-The request PR and its trigger/rerun must belong to the owner in the same personally
-owned repository. Actions verifies the original owner-merged PR, matching Release
-run/revision, approval, six merged-main checks and three native archive builds.
-The corrective PR must first pass its six regular CI jobs. Recovery checks out
-the original approved merge and uses corrected publisher code with that run's
-archives; it does not rebuild archives or create/move tags. Expired artifacts or
-mismatched digests/notes stop recovery. Keep the PR draft until publication and all
-six downloaded checks pass, then finish acceptance and green CI on final closure.
+The recovery gate validates the repository owner, original owner-merged PR, matching Release run/revision, approved notes, six merged-main checks and three native archive builds. The corrective PR must pass its six regular CI jobs. Recovery checks out the original approved merge and uses corrected publisher code with that run's archives; it does not rebuild archives or create/move tags. Expired artifacts or mismatched digests/notes stop recovery.
 
-Use **Re-run failed jobs** to retain successful native-build artifacts. Rebuilding
-may change bytes that cannot replace an existing draft asset. If artifacts expire,
-stop and resolve the incomplete draft with the owner. Inspect drafts through the
-release API URL returned by `gh release view`, which identifies the release by ID;
-the release-by-tag API cannot retrieve drafts.
+Recovery requires the retained native-build artifacts: rebuilding can change bytes that must not replace an existing draft asset. Draft releases are inspected through the release-by-ID API; the release-by-tag API does not retrieve drafts.
 
 The publisher generates `SHA256SUMS` from the three final accepted archives, in Linux/macOS/Windows order, with lowercase SHA-256, two spaces and the exact filename per line. It uploads this fourth asset without rebuilding archives. All local archives are required for checksum generation, including partial `TARGETS` uploads. Publication requires all four matching uploaded assets. Download acceptance verifies the checksum file and the selected archive before installation. The checksum requirement is independent of links or wording in the release description: v1.5.1 introduced this asset contract, and subsequent releases retain it. Historical recovery preserves the original approved notes and asset contract; earlier releases are not retrofitted. Follow the [platform verification commands](#verify-a-download) before installing a manual download. Checksums verify integrity, not a signature of origin.
 
@@ -172,7 +118,3 @@ local size/SHA256/state. Upload only missing assets without `--clobber`. Publica
 or read-only success requires all required matching local/remote archives, including
 when `TARGETS` selects fewer. An identical published release is a read-only success;
 never rewrite/delete mismatched published contents.
-
-An agreed private test version still requires real owner merge/tag/run/release
-and six downloaded checks. It authorises neither a stable release nor task-store
-migration/reset. Local gate/upload tests do not prove GitHub publication.
