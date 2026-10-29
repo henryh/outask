@@ -31,7 +31,7 @@ Double-click `Install.command` or run `./Install.command`. If macOS blocks this
 unsigned launcher, use [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
 for a release you trust. Keep Gatekeeper enabled.
 
-Before switching installation layouts, finish writes, close previous sessions and refresh explicit client/hook references. From the installed Outask directory, update to GitHub Latest stable with `./install.sh update` on Linux, `./Install.command update` on macOS, `./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe. Requires network access and tar on PATH. An already-current installation reports no change; a failed update preserves the working installation.
+Before switching installation layouts, finish writes, close previous sessions, remove old command links with that installation's original installer and refresh explicit client/hook references. From the installed Outask directory, update to GitHub Latest stable with `./install.sh update` on Linux, `./Install.command update` on macOS, `./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe. Requires network access and tar on PATH. An already-current installation reports no change; a failed update preserves the working installation.
 
 Let existing MCP/HTTP sessions and active writes finish normally. Existing sessions may retain their loaded version; fresh launches use the update and `outask --version` reports `Outask v<version>`.
 Managed files are replaced; user files, tasks and configuration remain. Resolve
