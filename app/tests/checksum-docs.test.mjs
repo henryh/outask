@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const guide = readFileSync(new URL('../../docs/releases.md', import.meta.url), 'utf8');
+const guide = readFileSync(new URL('../../docs/releases.md', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const section = guide.split('## Verify a download\n')[1].split('\n## ')[0];
 const commands = [...section.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map(match => match[1]);
 const platforms = [
