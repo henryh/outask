@@ -24,36 +24,6 @@
     "updated_at": "2026-10-28T09:36:51.755Z"
   },
   {
-    "id": 8,
-    "title": "Publish SHA256SUMS for release archives",
-    "status": "review",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Generate and publish a deterministic SHA256SUMS release asset containing SHA-256 checksums and exact filenames for the three accepted platform archives. Hash the final archives actually uploaded, without rebuilding them. Integrate the extra asset into release publication, retry/recovery validation and downloaded-archive acceptance, and provide concise Linux, macOS and Windows verification commands in the existing installation/release documentation. Preserve exact approved notes, existing published releases and Actions-owned publication.",
-    "acceptance": [
-      "Each new release publishes SHA256SUMS with exactly one standard checksum entry for each of its Linux x64, macOS arm64 and Windows x64 archives, using their final uploaded bytes and filenames.",
-      "Publication and recovery accept an identical existing checksum asset, upload only missing assets and reject mismatches; partial uploads cannot publish an incomplete or inconsistent release. Existing releases are not rewritten.",
-      "Native downloaded-release acceptance verifies each downloaded platform archive against the downloaded SHA256SUMS; a changed archive or invalid/missing checksum entry fails clearly.",
-      "Users can follow documented platform-specific verification commands successfully for a matching archive and observe a failure for altered bytes. Explain that checksums verify file integrity and are not a signature of origin.",
-      "Focused release-generation, publication and recovery checks plus required CI pass; actual publication/download results are verified read-only after an approved owner merge."
-    ],
-    "values": {
-      "goal": "Distribute usable and verifiable Outask CLI/MCP archives.",
-      "value": "Users can check that their downloaded archive matches the bytes published for its release before installing.",
-      "observable_result": "A downloadable checksum asset and working verification instructions for all three supported platforms.",
-      "verification": "Compare SHA256SUMS with the actual published/downloaded archives and exercise matching and tampered-file verification scenarios."
-    },
-    "notes": [
-      "Requested by the owner after the release-integrity discussion. This task adds checksums, not signing, notarization or artifact attestations. Priority defaults to medium; only the separate security-maintenance task was explicitly requested as low.",
-      "Owner authorised task 8 implementation and preparation of stable v1.5 in the same task branch, task-8-release-checksums. Main already contains package/lock version 1.5.0 from task 11; latest published release is v1.4. Current release candidate gate requires advancement from main and changed package/lock files, so v1.5 preparation needs an explicit decision on that existing gate contract. Asked owner whether to permit an already-prepared main version newer than the latest published release; dependent gate changes remain unimplemented pending the answer. Checksum implementation, documentation and independent verification continue within the original scope. Publication/download acceptance remains read-only after owner merge; no push or PR authorised yet.",
-      "Implementation checkpoint a08a7db adds deterministic three-entry SHA256SUMS, checksum asset equality/retry checks, strict downloaded-manifest validation before smoke, exact-note opt-in for historical recovery, new-candidate checksum link gate and platform verification instructions/native doc-command CI registration. Independent feature review PASS at a08a7db: no additional defects; release version/file-change gate remains unresolved pending owner decision.",
-      "Local QA PASS on Linux x64 Node 24.21.0: make ci exit 0, locked installs/audits, 328 core tests, 14 MCP tests, Linux installed v1.5 archive lifecycle (SHA256 4fd88372521e8c95688f0f4a2a1f537600abc71d4442921ee86a113bf85ffff4). Focused generation/upload tests 19/19 and release-pr/recovery tests 16/16 passed. Built all three actual v1.5 archives in temporary storage; generated manifest and verified all bytes with shared verifier plus documented sha256sum/shasum commands, then confirmed altered bytes fail. Native Linux documentation matching/tampered/missing-entry cases passed. Temporary QA artifacts cleaned; existing dist artifact preserved. Documentation audit PASS locally; root/app READMEs remain below 200 lines. Value gate PASS: users obtain a checksum asset and can immediately detect altered downloaded archive bytes; public delivery remains pending.",
-      "Remaining task 8 gates: owner decision on preparing v1.5 when main already1.5.0; implement approved gate resolution and affected verification/review; candidate acceptance/closure before requesting exact push/draft-PR/CI/ready agreement. Hosted native macOS/Windows and Node22.23.3 plus final release archive checks remain required; local Linux checks do not substitute them. Actual four published assets, exact notes and six downloaded-archive results are read-only post-owner-merge acceptance. No remote mutation or publication performed.",
-      "Owner correction: prepare and publish stable v1.5.1 instead of v1.5. This supersedes the pending v1.5 gate exception; retain existing version-advance and package/lockfile-change gates. Update package/lock to1.5.1 and exact notes/docs examples, repeat full regression on changed artifact and independent affected review, then finish candidate closure before presenting exact push/draft-PR/CI/ready approval. Actions publication follows owner merge under existing delivery rules."
-    ],
-    "updated_at": "2026-10-29T16:35:29.268Z"
-  },
-  {
     "id": 9,
     "title": "Prevent cross-clone task ID collisions with optional shared ID allocation",
     "status": "pending",
