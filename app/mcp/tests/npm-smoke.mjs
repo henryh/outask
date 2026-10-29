@@ -31,6 +31,7 @@ mkdirSync(home, { recursive: true });
 writeFileSync(npmrc, '');
 let server;
 let client;
+let previousClient;
 
 function run(command, args, cwd = temporary) {
   if (process.platform === 'win32' && command === 'npm') {
@@ -55,6 +56,18 @@ function commandVersion(command) {
   return run(join(prefix, 'bin', command), ['--version']);
 }
 
+async function connect(entry) {
+  const connection = new Client({ name: 'outask-npm-smoke', version: '1.0.0' });
+  await connection.connect(new StdioClientTransport({ command: process.platform === 'win32' ? process.execPath : 'outask', args: process.platform === 'win32' ? [entry, 'mcp'] : ['mcp'], env, cwd: project }));
+  return connection;
+}
+
+async function call(connection, name, args = {}) {
+  const result = await connection.callTool({ name, arguments: { project_path: project, ...args } });
+  assert.notEqual(result.isError, true, JSON.stringify(result));
+  return result.structuredContent;
+}
+
 try {
   const config = join(home, '.config/outask/config.json');
   mkdirSync(dirname(config), { recursive: true }); writeFileSync(config, '{}\n');
@@ -72,6 +85,12 @@ try {
   await run('tar', ['-xzf', artifact, '-C', extracted]);
   const old = { ...manifest, version: '0.0.0' };
   writeFileSync(join(extracted, 'package/package.json'), JSON.stringify(old));
+  const adapterVersion = JSON.parse(readFileSync(join(extracted, 'package/mcp/package.json'))).version;
+  const oldServer = join(extracted, 'package/mcp/server.mjs');
+  const originalServer = readFileSync(oldServer, 'utf8');
+  const previousServer = originalServer.replace(`version: '${adapterVersion}'`, `version: '${old.version}'`);
+  assert.notEqual(previousServer, originalServer, 'older fixture must identify its loaded MCP code');
+  writeFileSync(oldServer, previousServer);
   const oldArtifact = JSON.parse(await run('npm', ['pack', '--json', '--ignore-scripts'], join(extracted, 'package')))[0].filename;
   await run('npm', ['install', '-g', '--prefix', prefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', join(extracted, 'package', oldArtifact)]);
   assert.equal((await commandVersion('outask')).trim(), 'Outask v0.0');
@@ -79,6 +98,9 @@ try {
   const oldEntry = join(prefix, process.platform === 'win32' ? 'node_modules' : 'lib/node_modules', manifest.name, 'bin/outask');
   await run(process.execPath, [oldEntry, 'create', '--title', 'preserved npm task'], project);
   const previousRecords = readFileSync(join(project, 'tasks/active.json'));
+  previousClient = await connect(oldEntry);
+  assert.equal(previousClient.getServerVersion().version, old.version);
+  assert.match(JSON.stringify(await call(previousClient, 'list_tasks')), /preserved npm task/);
 
   const bytes = readFileSync(artifact);
   let tarball;
@@ -104,6 +126,9 @@ try {
   for (const command of ['outask', 'tasks']) {
     assert.equal((await commandVersion(command)).trim(), `Outask v${distributionVersion(manifest.version)}`);
   }
+  assert.equal(previousClient.getServerVersion().version, old.version);
+  assert.match(JSON.stringify(await call(previousClient, 'list_tasks')), /preserved npm task/);
+  await call(previousClient, 'create_task', { task: { title: 'Live MCP write after npm update' } });
   const packageRoot = join(prefix, process.platform === 'win32' ? 'node_modules' : 'lib/node_modules', manifest.name);
   const entry = join(packageRoot, 'bin/outask');
   await assert.rejects(run(process.execPath, [join(packageRoot, 'scripts/install-release.mjs'), 'update']), /INVALID_RELEASE/);
@@ -111,12 +136,14 @@ try {
   await run(process.execPath, [entry, 'create', '--title', 'npm lifecycle task'], project);
   const listed = JSON.parse(await run(process.execPath, [entry, 'list', '--format', 'json'], project));
   assert.match(JSON.stringify(listed), /npm lifecycle task/);
-  const records = readFileSync(join(project, 'tasks/active.json'));
-  client = new Client({ name: 'outask-npm-smoke', version: '1.0.0' });
-  await client.connect(new StdioClientTransport({ command: process.platform === 'win32' ? process.execPath : 'outask', args: process.platform === 'win32' ? [entry, 'mcp'] : ['mcp'], env, cwd: project }));
-  const result = await client.callTool({ name: 'list_tasks', arguments: { project_path: project } });
-  assert.equal(result.isError, undefined);
+  client = await connect(entry);
+  assert.equal(client.getServerVersion().version, adapterVersion);
+  const result = await call(client, 'list_tasks');
   assert.match(JSON.stringify(result), /npm lifecycle task/);
+  assert.match(JSON.stringify(result), /Live MCP write after npm update/);
+  await call(client, 'create_task', { task: { title: 'Fresh MCP write after npm update' } });
+  assert.match(JSON.stringify(await call(previousClient, 'list_tasks')), /Fresh MCP write after npm update/);
+  const records = readFileSync(join(project, 'tasks/active.json'));
   await client.close(); client = undefined;
   await run('npm', ['uninstall', '-g', manifest.name, '--prefix', prefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund']);
   assert.equal(existsSync(packageRoot), false);
@@ -124,11 +151,16 @@ try {
     assert.equal(existsSync(join(prefix, process.platform === 'win32' ? `${command}.cmd` : `bin/${command}`)), false);
   }
   assert.deepEqual(readFileSync(join(project, 'tasks/active.json')), records);
+  assert.match(JSON.stringify(await call(previousClient, 'list_tasks')), /Fresh MCP write after npm update/);
+  await call(previousClient, 'create_task', { task: { title: 'Live MCP write after npm uninstall' } });
+  assert.match(readFileSync(join(project, 'tasks/active.json'), 'utf8'), /Live MCP write after npm uninstall/);
+  await previousClient.close(); previousClient = undefined;
   assert.equal(readFileSync(config, 'utf8'), '{}\n');
   assert.equal(readFileSync(skill, 'utf8'), 'preserve skill\n');
-  console.log(`npm lifecycle: PASS (${process.platform}-${process.arch}, Node ${process.versions.node}, ${manifest.name}@${manifest.version}, SHA256 ${createHash('sha256').update(bytes).digest('hex')}; packed contents, global install/update/uninstall, CLI aliases, fresh MCP, preserved data)`);
+  console.log(`npm lifecycle: PASS (${process.platform}-${process.arch}, Node ${process.versions.node}, ${manifest.name}@${manifest.version}, SHA256 ${createHash('sha256').update(bytes).digest('hex')}; packed contents, global install/update/uninstall, CLI aliases, live MCP through update/uninstall, fresh updated MCP, preserved data)`);
 } finally {
   if (client) await client.close();
+  if (previousClient) await previousClient.close();
   if (server) await new Promise((resolveClose) => server.close(resolveClose));
   cleanupProjectLocks(project);
   rmSync(temporary, { recursive: true, force: true });
