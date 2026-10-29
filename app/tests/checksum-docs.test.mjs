@@ -27,9 +27,13 @@ for (const platform of platforms) {
     const entries = platforms.map(p => `${checksum}  Outask-1.5.1-${p.target}.tar.gz\n`);
     const path = join(directory, 'verify.ps1');
     if (platform.name === 'Windows') writeFileSync(path, platform.command);
+    // PowerShell 7 module paths break Windows PowerShell autoloading through Node.
+    const env = platform.name === 'Windows'
+      ? Object.fromEntries(Object.entries(process.env).filter(([key]) => key.toUpperCase() !== 'PSMODULEPATH'))
+      : process.env;
     const invoke = () => spawnSync(platform.shell, platform.name === 'Windows'
       ? ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path]
-      : ['-c', platform.command], { cwd: directory, encoding: 'utf8' });
+      : ['-c', platform.command], { cwd: directory, encoding: 'utf8', env });
     writeFileSync(join(directory, archive), bytes);
     writeFileSync(join(directory, 'SHA256SUMS'), entries.join(''));
     const matching = invoke();
