@@ -9,7 +9,7 @@ import { approvedNotes } from './helpers/release-fixture.mjs';
 import { distributionVersion } from '../src/version.mjs';
 
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = false, lockVersion = version, notesChange = false, squash = false} = {}) {
+function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = false, lockVersion = version, notesChange = false, squash = false, checksums = true} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'outask-release-pr-'));
   t.after(() => rmSync(root, {recursive: true, force: true}));
   for (const dir of ['app/scripts', 'app/src', 'scripts', 'docs']) mkdirSync(join(root, dir), {recursive: true});
@@ -30,7 +30,7 @@ function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = fal
   git('switch', '-c', 'release-0.16');
   packageFiles(version, lockVersion);
   const id = distributionVersion(version);
-  writeFileSync(join(root, 'docs/release-notes.md'), approvedNotes(id));
+  writeFileSync(join(root, 'docs/release-notes.md'), approvedNotes(id, { checksums }));
   if (extra) writeFileSync(join(root, 'app/code.mjs'), 'unreviewed code\n');
   git('add', '.'); git('commit', '-qm', 'Release');
   const head = git('rev-parse', 'HEAD');
@@ -75,6 +75,13 @@ test('ordinary PRs and closed unmerged release PRs skip publication', t => {
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.output, 'release=false\n');
   }
+});
+
+test('new release candidates require their own checksum download link', t => {
+  const f = fixture(t, { checksums: false });
+  const result = f.invoke();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Downloads must link.*SHA256SUMS/);
 });
 
 test('contributor merges, wrong revision, fork release PRs and changed approval title cannot publish', t => {
@@ -134,7 +141,7 @@ test('tag creation and retry push only the annotated tag at the approved merge',
 
 
 test('recovery verifies original approval and existing annotated tag without creating or moving it', t => {
-  const f = fixture(t, {extra: true});
+  const f = fixture(t, {extra: true, checksums: false});
   const verify = () => f.invoke({}, 'verify', 'scripts/release-recovery.mjs');
   assert.notEqual(verify().status, 0, 'missing original tag must not be created by recovery');
   assert.equal(f.git('tag', '--list'), '');

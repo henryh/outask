@@ -93,11 +93,12 @@ test('MCP and CLI report the shared project byte boundary', async (t) => {
   const path = join(root, 'tasks/active.json');
   const source = readFileSync(path);
   writeFileSync(path, Buffer.concat([source, Buffer.alloc(projectBytes - source.length, 0x20)]));
-  assert.deepEqual((await call('list_tasks', { fields: ['id'] })).tasks, [{ id: 1 }]);
-  assert.equal(cli(root, ['list', '--fields', 'id', '--format', 'json']).status, 0);
+  // Test the authoritative JSON byte budget without leaving detached cache refreshes.
+  assert.deepEqual((await call('list_tasks', { fields: ['id'], no_cache: true })).tasks, [{ id: 1 }]);
+  assert.equal(cli(root, ['list', '--no-cache', '--fields', 'id', '--format', 'json']).status, 0);
   truncateSync(path, projectBytes + 1);
-  await call('list_tasks', { fields: ['id'] }, 'INPUT_TOO_LARGE');
-  const result = cli(root, ['list', '--fields', 'id', '--format', 'json']);
+  await call('list_tasks', { fields: ['id'], no_cache: true }, 'INPUT_TOO_LARGE');
+  const result = cli(root, ['list', '--no-cache', '--fields', 'id', '--format', 'json']);
   assert.equal(result.status, 1);
   assert.match(result.stderr, new RegExp(`INPUT_TOO_LARGE:.*${projectBytes / 1024 / 1024} MiB`));
 });

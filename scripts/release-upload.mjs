@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { releaseNotes } from './release-notes.mjs';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { checksumsEnabled, releaseNotes } from './release-notes.mjs';
+import { archiveChecksums, checksumName } from './release-checksums.mjs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fail } from '../app/src/errors.mjs';
@@ -40,6 +41,19 @@ function verifyAssets(release, required) {
   }
 }
 
+function verifyAssetNames(release, expected) {
+  const names = release.assets.map(asset => asset.name);
+  if (names.some(name => !expected.includes(name)) || new Set(names).size !== names.length) {
+    fail('INVALID_INPUT', 'Existing release contains unexpected or duplicate assets; refusing to change it');
+  }
+}
+
+function verifyChecksums(releaseId) {
+  if (readFileSync(join(distRoot, checksumName), 'utf8') !== archiveChecksums(distRoot, releaseId)) {
+    fail('INVALID_INPUT', 'Local SHA256SUMS differs from the verified archives; refusing publication');
+  }
+}
+
 let approvedNotesDirectory;
 try {
   const packageId = version();
@@ -51,6 +65,11 @@ try {
   const selectedNames = selected.map(target => archiveName(target, releaseId));
   const expectedNames = targets.map(target => archiveName(target, releaseId));
   const approved = releaseNotes(releaseId, packageId, repo, targets);
+  const withChecksums = checksumsEnabled(approved.notes, releaseId, repo);
+  if (withChecksums) {
+    selectedNames.push(checksumName);
+    expectedNames.push(checksumName);
+  }
   if (!succeeds('git', ['rev-parse', '--verify', tag])) {
     fail('INVALID_INPUT', `Tag ${tag} is required. Inspect or retry the approved Release workflow; do not tag manually`);
   }
@@ -67,6 +86,15 @@ try {
   }
   rejectMixedArchives(packageId);
   requireArchives(selected, releaseId);
+  if (withChecksums) {
+    requireArchives(targets, releaseId);
+    const checksums = archiveChecksums(distRoot, releaseId);
+    const path = join(distRoot, checksumName);
+    if (existsSync(path) && readFileSync(path, 'utf8') !== checksums) {
+      fail('INVALID_INPUT', 'Local SHA256SUMS differs from the verified archives; refusing publication');
+    }
+    writeFileSync(path, checksums);
+  }
   approvedNotesDirectory = mkdtempSync(join(tmpdir(), 'outask-release-notes-'));
   const approvedNotesPath = join(approvedNotesDirectory, 'release-notes.md');
   writeFileSync(approvedNotesPath, approved.notes, { flag: 'wx', mode: 0o400 });
@@ -77,10 +105,8 @@ try {
     if (release.body !== approved.notes || release.name !== releaseTitle(releaseId)) {
       fail('INVALID_INPUT', 'Existing release title/description differs from the approved release; refusing to rewrite it');
     }
-    if (release.assets.some((asset) => !expectedNames.includes(asset.name))) {
-      fail('INVALID_INPUT', 'Existing release contains unexpected assets; refusing to change it');
-    }
-    verifyAssets(release, selectedNames.filter(name => release.assets.some(asset => asset.name === name)));
+    verifyAssetNames(release, expectedNames);
+    verifyAssets(release, (withChecksums ? expectedNames : selectedNames).filter(name => release.assets.some(asset => asset.name === name)));
   } else {
     run('gh', ['release', 'create', tag, '--repo', repo, '--verify-tag', '--draft', ...(packageId.includes('-') ? ['--prerelease'] : []), '--title', releaseTitle(releaseId), '--notes-file', approvedNotesPath]);
     release = { draft: true, assets: [] };
@@ -88,20 +114,20 @@ try {
   const missing = selectedNames.filter(name => !release.assets.some(asset => asset.name === name));
   if (!release.draft) {
     requireArchives(targets, releaseId);
+    if (withChecksums) verifyChecksums(releaseId);
     verifyAssets(release, expectedNames);
   } else {
     if (missing.length) run('gh', ['release', 'upload', tag, '--repo', repo, ...missing.map(name => join(distRoot, name))]);
     const final = readRelease(repo, tag);
     if (!expectedNames.every(name => final.assets.some((asset) => asset.name === name && asset.state === 'uploaded'))) {
-      fail('INVALID_INPUT', 'Draft retained: all required uploaded platform archives are required before publication');
+      fail('INVALID_INPUT', 'Draft retained: all required uploaded release assets are required before publication');
     }
     if (final.body !== approved.notes || final.name !== releaseTitle(releaseId)) {
       fail('INVALID_INPUT', 'Draft description changed during upload; refusing publication');
     }
-    if (final.assets.some((asset) => !expectedNames.includes(asset.name))) {
-      fail('INVALID_INPUT', 'Draft contains unexpected assets; refusing publication');
-    }
+    verifyAssetNames(final, expectedNames);
     requireArchives(targets, releaseId);
+    if (withChecksums) verifyChecksums(releaseId);
     verifyAssets(final, expectedNames);
     run('gh', ['release', 'edit', tag, '--repo', repo, '--draft=false', packageId.includes('-') ? '--latest=false' : '--latest']);
   }

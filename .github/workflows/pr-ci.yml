@@ -67,6 +67,8 @@ jobs:
         run: make ci-dependencies
       - name: Native shell profile installation
         run: node --test app/tests/install-path.test.mjs
+      - name: Documented macOS checksum verification
+        run: node --test app/tests/checksum-docs.test.mjs
       - name: Native macOS archive and installed CLI/MCP
         run: make test-distribution
 
@@ -95,6 +97,8 @@ jobs:
         run: node scripts/ci.mjs dependencies
       - name: Native writer locks and Windows PATH diagnostics
         run: node --test app/tests/project-lock.test.mjs app/tests/windows-install.test.mjs
+      - name: Documented Windows checksum verification
+        run: node --test app/tests/checksum-docs.test.mjs
       - name: Native Windows archive and installed PowerShell, cmd.exe CLI and MCP
         run: node scripts/ci.mjs distribution
 

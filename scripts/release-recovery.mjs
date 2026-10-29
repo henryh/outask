@@ -67,7 +67,7 @@ export function recoveryPlan(event, actors, read = api) {
 
 export function verifyRecovery(event) {
   // Run from the original approved checkout, using corrected tooling from the PR.
-  const approved = gate(event, true);
+  const approved = gate(event, true, { recovery: true });
   if (!approved || approved.tag !== tagName()) throw new Error('Publisher version must match the approved release');
   verifyTag(approved.tag);
   return approved;

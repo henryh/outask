@@ -51,7 +51,7 @@ ownership needs a separately defined release approver.
 
 Use these six `##` headings once each in order, without a repeated release title:
 
-1. `Downloads`: direct links for Linux x64, macOS Apple silicon and Windows x64.
+1. `Downloads`: direct links for Linux x64, macOS Apple silicon, Windows x64 and `SHA256SUMS`.
 2. `Current version`: short product overview.
 3. `What's new`: user-visible release changes, including new commands/options.
 4. `Install`: Node.js 22.23.3 or later on PATH; extract and open the Outask
@@ -106,6 +106,33 @@ coordination-file cleanup or an incompatible coordination-protocol migration.
 Report any remaining fresh-launch version/path mismatch; publication alone does not
 confirm the owner's PC is current.
 
+## Verify a download
+
+Download your platform's archive and `SHA256SUMS` from the same release into one directory. Before extracting, open that directory in a terminal and run the matching command below (these examples use v1.5.1). A matching file reports `OK`; altered bytes or a missing checksum fail. SHA-256 checksums verify file integrity; they are not a signature of origin.
+
+Linux:
+
+```sh
+sha256sum --ignore-missing --strict -c SHA256SUMS
+```
+
+macOS:
+
+```sh
+shasum -a 256 --ignore-missing --strict -c SHA256SUMS
+```
+
+Windows PowerShell:
+
+```powershell
+$archive = 'Outask-1.5.1-windows-x64.tar.gz'
+$entries = @(Get-Content .\SHA256SUMS -ErrorAction Stop | Where-Object { $_ -cmatch ('^[0-9a-f]{64}  ' + [regex]::Escape($archive) + '$') })
+if ($entries.Count -ne 1) { throw 'Missing or duplicate checksum entry' }
+$actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive -ErrorAction Stop).Hash.ToLowerInvariant()
+if ($actual -cne $entries[0].Substring(0, 64)) { throw 'Checksum mismatch' }
+Write-Output "Checksum OK: $archive"
+```
+
 ## Retry and private rehearsal
 
 For a publisher code fix, the owner explicitly requests real Actions recovery in
@@ -127,6 +154,8 @@ may change bytes that cannot replace an existing draft asset. If artifacts expir
 stop and resolve the incomplete draft with the owner. Inspect drafts through the
 release API URL returned by `gh release view`, which identifies the release by ID;
 the release-by-tag API cannot retrieve drafts.
+
+The publisher generates `SHA256SUMS` from the three final accepted archives, in Linux/macOS/Windows order, with lowercase SHA-256, two spaces and the exact filename per line. It uploads this fourth asset without rebuilding archives. All local archives are required for checksum generation, including partial `TARGETS` uploads. Publication requires all four matching uploaded assets. Download acceptance verifies the checksum file and the selected archive before installation. Follow the [platform verification commands](#verify-a-download) before installing a manual download. Checksums verify integrity, not a signature of origin. Historical recovery retains the asset contract in the original approved notes; releases without a `SHA256SUMS` link are not retrofitted.
 
 The existing tag must be annotated at the approved merge. Title/notes must match;
 no unexpected assets are allowed. Selected existing assets must match verified

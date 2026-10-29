@@ -8,13 +8,11 @@ node app/scripts/install-cli.mjs install
 outask --help
 ```
 
-Keep the checkout; remove its command with `node app/scripts/install-cli.mjs uninstall`.
-Use `outask --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
+Keep the checkout; remove its command with `node app/scripts/install-cli.mjs uninstall`. Use `outask --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
 
 ## Installation and updates
 
 Open a new terminal after installation; restart an editor with an old PATH.
-
 | Platform | Installed application | Command |
 | --- | --- | --- |
 | Linux | `~/.local/share/outask` | `~/.local/bin/outask` |
@@ -45,6 +43,10 @@ From the installed application's directory, remove the command with
 `./Install.cmd uninstall` in PowerShell or `Install.cmd uninstall` in cmd.exe.
 Application files and project data remain;
 PATH/profile settings remain. Move any user files before removing the application.
+
+## Verify a download
+
+Before extracting, download `SHA256SUMS` from the same release and follow the [platform verification commands](../docs/releases.md#verify-a-download).
 
 ## Selecting a project
 
