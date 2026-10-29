@@ -5,15 +5,17 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { approvedNotes } from './helpers/release-fixture.mjs';
+import { approvedNotes, conciseNotes, openingSentence } from './helpers/release-fixture.mjs';
 import { distributionVersion } from '../src/version.mjs';
 
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = false, lockVersion = version, notesChange = false, squash = false, checksums = true} = {}) {
+function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = false, lockVersion = version, notesChange = false, squash = false, legacy = false, crlf = false, readme} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'outask-release-pr-'));
   t.after(() => rmSync(root, {recursive: true, force: true}));
   for (const dir of ['app/scripts', 'app/src', 'scripts', 'docs']) mkdirSync(join(root, dir), {recursive: true});
-  for (const name of ['scripts/release-recovery.mjs', 'scripts/release-pr.mjs', 'scripts/release-notes.mjs', 'scripts/release-config.mjs', 'app/scripts/output.mjs', 'app/src/errors.mjs', 'app/src/limits.mjs', 'app/src/fields.mjs', 'app/src/response.mjs', 'app/src/version.mjs']) cpSync(join(source, name), join(root, name));
+  for (const name of ['README.md', 'scripts/release-recovery.mjs', 'scripts/release-pr.mjs', 'scripts/release-notes.mjs', 'scripts/release-config.mjs', 'app/scripts/output.mjs', 'app/src/errors.mjs', 'app/src/limits.mjs', 'app/src/fields.mjs', 'app/src/response.mjs', 'app/src/version.mjs']) cpSync(join(source, name), join(root, name));
+  if (readme) writeFileSync(join(root, 'README.md'), readme);
+  if (crlf) writeFileSync(join(root, 'README.md'), readFileSync(join(root, 'README.md'), 'utf8').replaceAll('\n', '\r\n'));
   const git = (...args) => {
     const result = spawnSync('git', args, {cwd: root, encoding: 'utf8'});
     assert.equal(result.status, 0, result.stderr);
@@ -30,7 +32,8 @@ function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = fal
   git('switch', '-c', 'release-0.16');
   packageFiles(version, lockVersion);
   const id = distributionVersion(version);
-  writeFileSync(join(root, 'docs/release-notes.md'), approvedNotes(id, { checksums }));
+  const notes = legacy ? approvedNotes(id) : conciseNotes(id);
+  writeFileSync(join(root, 'docs/release-notes.md'), crlf ? notes.replaceAll('\n', '\r\n') : notes);
   if (extra) writeFileSync(join(root, 'app/code.mjs'), 'unreviewed code\n');
   git('add', '.'); git('commit', '-qm', 'Release');
   const head = git('rev-parse', 'HEAD');
@@ -41,7 +44,7 @@ function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = fal
     git('add', '.'); git('commit', '-qm', 'Destination changed');
     const merge = spawnSync('git', ['merge', '--no-ff', 'release-0.16', '-m', 'Merge'], {cwd: root, encoding: 'utf8'});
     assert.notEqual(merge.status, 0);
-    writeFileSync(join(root, 'docs/release-notes.md'), approvedNotes(id).replace('Added a user-visible capability.', 'Other content.'));
+    writeFileSync(join(root, 'docs/release-notes.md'), conciseNotes(id).replace('Added a user-visible capability.', 'Other content.'));
     git('add', '.'); git('commit', '-qm', 'Resolve with changed notes');
   } else if (squash) {
     git('merge', '--squash', 'release-0.16'); git('commit', '-qm', 'Squashed release');
@@ -77,11 +80,14 @@ test('ordinary PRs and closed unmerged release PRs skip publication', t => {
   }
 });
 
-test('new release candidates require their own checksum download link', t => {
-  const f = fixture(t, { checksums: false });
-  const result = f.invoke();
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Downloads must link.*SHA256SUMS/);
+test('new release candidates accept concise notes without a checksum link and reject the historical format', t => {
+  for (const crlf of [false, true]) {
+    const concise = fixture(t, { version: '1.6.0', previousVersion: '1.5.1', crlf }).invoke();
+    assert.equal(concise.status, 0, concise.stderr);
+  }
+  const legacy = fixture(t, { legacy: true }).invoke();
+  assert.notEqual(legacy.status, 0);
+  assert.match(legacy.stderr, /unheaded README opening sentence/);
 });
 
 test('contributor merges, wrong revision, fork release PRs and changed approval title cannot publish', t => {
@@ -141,7 +147,7 @@ test('tag creation and retry push only the annotated tag at the approved merge',
 
 
 test('recovery verifies original approval and existing annotated tag without creating or moving it', t => {
-  const f = fixture(t, {extra: true, checksums: false});
+  const f = fixture(t, {extra: true, legacy: true});
   const verify = () => f.invoke({}, 'verify', 'scripts/release-recovery.mjs');
   assert.notEqual(verify().status, 0, 'missing original tag must not be created by recovery');
   assert.equal(f.git('tag', '--list'), '');
@@ -172,4 +178,21 @@ test('the final task PR promotes an RC to a new stable release after the owner m
     assert.equal(result.output, 'release=true\nversion=0.15\nprerelease=false\n');
   }
   assert.notEqual(f.invoke({...patch, title: 'Outask v0.15-rc.2'}).status, 0);
+});
+
+test('recovery of concise notes uses the approved checkout README with separate publisher tooling', t => {
+  const f = fixture(t);
+  f.git('tag', '-a', 'v0.16', '-m', 'Approved release');
+  const publisher = mkdtempSync(join(tmpdir(), 'outask-concise-publisher-'));
+  t.after(() => rmSync(publisher, { recursive: true, force: true }));
+  for (const dir of ['scripts', 'app']) cpSync(join(f.root, dir), join(publisher, dir), { recursive: true });
+  writeFileSync(join(publisher, 'README.md'), '# Tooling checkout\n\nDifferent description.\n');
+  const result = f.invoke({}, 'verify', join(publisher, 'scripts/release-recovery.mjs'));
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('candidate validation uses the README first sentence across source lines and ignores later sentences', t => {
+  const readme = `# Outask\n\n${openingSentence.replace('for personal', '\nfor personal')} A second sentence on the same line.\n`;
+  const result = fixture(t, { readme }).invoke();
+  assert.equal(result.status, 0, result.stderr);
 });

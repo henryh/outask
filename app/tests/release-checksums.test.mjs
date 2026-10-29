@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { archiveChecksums, parseChecksums, verifyArchive } from '../../scripts/release-checksums.mjs';
+import { archiveChecksums, checksumsRequired, parseChecksums, verifyArchive } from '../../scripts/release-checksums.mjs';
 import { archiveName, hostTarget, targets } from '../../scripts/release-config.mjs';
-import { approvedNotes } from './helpers/release-fixture.mjs';
+import { approvedNotes, conciseNotes } from './helpers/release-fixture.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const version = '1.6';
@@ -26,6 +26,7 @@ test('SHA256SUMS deterministically lists exactly the three final archive digests
   assert.ok(checksums.startsWith(`ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  Outask-${version}-linux-x64.tar.gz\n`));
   assert.equal(archiveChecksums(root, version), checksums);
   assert.equal(checksums.split('\n').length, 4);
+  assert.deepEqual(parseChecksums(checksums.replaceAll('\n', '\r\n'), version), parseChecksums(checksums, version));
   const entries = parseChecksums(checksums, version);
   assert.deepEqual([...entries.keys()], targets.map(target => archiveName(target, version)));
   for (const target of targets) {
@@ -53,7 +54,7 @@ test('downloaded acceptance verifies checksums before running installed smoke', 
   for (const name of ['scripts/ci.mjs', 'scripts/release-checksums.mjs', 'scripts/release-config.mjs', 'scripts/release-notes.mjs', 'app/src/errors.mjs', 'app/src/limits.mjs', 'app/src/fields.mjs', 'app/src/response.mjs', 'app/src/version.mjs']) cpSync(join(repo, name), join(root, name));
   writeFileSync(join(root, 'app/package.json'), JSON.stringify({ version: '1.6.0', type: 'module' }));
   const notes = join(root, 'docs/release-notes.md');
-  writeFileSync(notes, approvedNotes(version, { checksums: true }));
+  writeFileSync(notes, conciseNotes(version));
   writeFileSync(join(root, 'SHA256SUMS'), archiveChecksums(root, version));
   const marker = join(root, 'smoke-ran');
   writeFileSync(join(root, 'app/mcp/tests/distribution-smoke.mjs'), `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'yes');`);
@@ -87,7 +88,16 @@ fs.copyFileSync(path.join(process.env.DOWNLOAD_SOURCE, name), path.join(args[arg
   assert.notEqual(invoke().status, 0);
   assert.ok(!existsSync(marker));
   writeFileSync(notes, approvedNotes(version));
+  assert.notEqual(invoke().status, 0, 'legacy prose cannot disable checksums for a newer version');
+  writeFileSync(join(root, 'app/package.json'), JSON.stringify({ version: '1.5.0', type: 'module' }));
+  cpSync(join(root, archiveName(hostTarget(), version)), join(root, archiveName(hostTarget(), '1.5')));
+  writeFileSync(notes, approvedNotes('1.5'));
   const historical = invoke();
   assert.equal(historical.status, 0, historical.stderr);
   assert.ok(existsSync(marker));
+});
+
+test('checksum assets are required from the first checksummed release independently of prose', () => {
+  for (const version of ['0.16', '1.0', '1.5']) assert.equal(checksumsRequired(version), false);
+  for (const version of ['1.5.1', '1.6', '1.6-rc.1', '2.0']) assert.equal(checksumsRequired(version), true);
 });
