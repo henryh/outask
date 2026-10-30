@@ -331,5 +331,35 @@
       "Public-doc correction reviewed PASS at 16ebef1 with diagnostic cleanup e2a0534. Removed tracked personal npm walkthrough, owner-PC follow-up and unrelated generic agent work-loop advice; kept Outask-specific user/contributor/release contracts. QA PASS: local Markdown paths/anchors, removed-reference search, README limits, private handoff excluded from Git, exact release notes, 13 focused publisher/recovery/checksum tests (0 skips), direct npm publisher guard refusal before registry access, and read-only npm acceptance WAITING. Full package/runtime evidence is unchanged. Baseline PR run40943872088 at bd2f0ac succeeded: six native PR CI jobs, three archive jobs, six same-artifact npm acceptance jobs, npm-package build and release-candidate gate; two recovery-only jobs skipped. origin/main integration remains unchanged. New candidate awaits renewed push agreement and final-commit hosted CI before Ready; first npm publication remains explicitly held until owner confirms GitHub release/download checks."
     ],
     "completed_at": "2026-10-29T19:59:32Z"
+  },
+  {
+    "id": 23,
+    "title": "Clarify the npm package overview and CLI quick start",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Rewrite the canonical npm package README so a new visitor immediately understands what Outask is and can install and use its CLI. Lead with a concise product description, keep a short global npm install and CLI quick start, retain a compact MCP route, and move lifecycle edge cases to existing detailed documentation. Package the exact README through the shared npm artifact build. Confirm the global `npm install -g outask` route is present in the root quick start, operator installation guide and npm README. RELEASE_DEFERRED: keep the current version and release notes unchanged; publish this README with a later substantive release. Do not add npm tokens or duplicate general documentation.",
+    "acceptance": [
+      "The canonical npm README begins with a concise description of Outask and explains its local JSON, CLI and optional MCP purpose before installation details.",
+      "A short CLI quick start shows global installation and useful create, list and task-lifecycle commands from a project directory; readers can reach detailed operator documentation without repeating it.",
+      "Update/removal and MCP guidance remain concise and accurate, while platform/channel-switching and cleanup edge cases stay in their existing detailed owners.",
+      "The actual locally built npm tarball contains the intended README and package metadata; the documented CLI scenario passes without changing runtime behavior.",
+      "The root README, operator installation guide and npm README each expose the supported global command `npm install -g outask` and route readers to the appropriate detailed guide.",
+      "RELEASE_DEFERRED: app version and exact release notes remain at the current published release. Public npm page verification and Trusted Publisher validation belong to the later substantive release that includes this change."
+    ],
+    "values": {
+      "goal": "Make the Outask npm distribution easy to understand and use for developers and local AI agents.",
+      "value": "The maintained package documentation gives contributors and the next release artifact a concise product explanation and executable CLI quick start, while all public installation routes name the global npm command.",
+      "observable_result": "The repository's canonical npm README and a locally built npm tarball show the concise overview and CLI workflow; root and operator docs expose `npm install -g outask`.",
+      "verification": "Inspect the three installation routes, compare the packed README to docs/npm.md and install the local tarball to execute the documented CLI scenario."
+    },
+    "notes": [
+      "Owner explicitly chose RELEASE_DEFERRED on 2026-10-30: no v1.6.1 or documentation-only release; include the concise npm README in a later substantive release. app/package.json, both lockfile version fields and docs/release-notes.md exactly match origin/main/current v1.6.0.",
+      "Implementation is commits 40e76c0 plus correction 80d70b0. Resulting product diff is limited to docs/npm.md (39-line product-first overview, global install, five-command CLI quick start, compact MCP and lifecycle guidance) and app/README.md link wording.",
+      "Global installation coverage PASS: README.md, app/README.md and docs/npm.md each expose `npm install -g outask`; app/mcp/README.md links the npm package route. Actual deferred outask-1.6.0.tgz contained exact README/metadata; isolated install ran documented create/list/get/update/transition, confirmed final title/status and uninstalled.",
+      "Independent initial and correction reviews PASS with no findings. Full Linux CI on Node.js 22.23.3 and24.21.0 previously passed (locked installs/audits,339 core,14 MCP, archive/npm lifecycle); version/release rollback changed no runtime. Post-correction release/release-notes focused suite PASS40/40, release file diff vs origin/main empty, doc routes and diff checks PASS. Public npm README and Trusted Publisher validation remain explicitly deferred to the later substantive release."
+    ],
+    "updated_at": "2026-10-30T07:22:29.923Z",
+    "completed_at": "2026-10-30T07:21:46Z"
   }
 ]
