@@ -331,5 +331,34 @@
       "Public-doc correction reviewed PASS at 16ebef1 with diagnostic cleanup e2a0534. Removed tracked personal npm walkthrough, owner-PC follow-up and unrelated generic agent work-loop advice; kept Outask-specific user/contributor/release contracts. QA PASS: local Markdown paths/anchors, removed-reference search, README limits, private handoff excluded from Git, exact release notes, 13 focused publisher/recovery/checksum tests (0 skips), direct npm publisher guard refusal before registry access, and read-only npm acceptance WAITING. Full package/runtime evidence is unchanged. Baseline PR run40943872088 at bd2f0ac succeeded: six native PR CI jobs, three archive jobs, six same-artifact npm acceptance jobs, npm-package build and release-candidate gate; two recovery-only jobs skipped. origin/main integration remains unchanged. New candidate awaits renewed push agreement and final-commit hosted CI before Ready; first npm publication remains explicitly held until owner confirms GitHub release/download checks."
     ],
     "completed_at": "2026-10-29T19:59:32Z"
+  },
+  {
+    "id": 23,
+    "title": "Clarify the npm package overview and CLI quick start",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Rewrite the npm package README shown on npmjs.com so a new visitor immediately understands what Outask is and can install and use its CLI. Lead with a concise product description, keep a short install and CLI quick start, retain a compact MCP route, and move lifecycle edge cases to existing detailed documentation. Package the exact README through the shared npm artifact build. Publish the smallest stable patch release through the approved GitHub release workflow so the public npm page is updated and the configured npm Trusted Publisher is validated; do not add npm tokens or duplicate general documentation.",
+    "acceptance": [
+      "The packaged npm README begins with a concise description of Outask and explains its local JSON, CLI and optional MCP purpose before installation details.",
+      "A short CLI quick start shows global installation and useful create, list and task-lifecycle commands from a project directory; readers can reach detailed operator documentation without repeating it.",
+      "Update/removal and MCP guidance remain concise and accurate, while platform/channel-switching and cleanup edge cases stay in their existing detailed owners.",
+      "The actual npm tarball contains the intended README and package metadata; focused package/readme checks pass without changing runtime behavior.",
+      "Publish the next stable patch through the owner-approved GitHub release workflow using OIDC Trusted Publishing, without npm tokens. Verify the public npm package page/readme and registry metadata, and confirm the Trusted Publisher is validated."
+    ],
+    "values": {
+      "goal": "Make the public Outask distribution easy to understand and use for developers and local AI agents.",
+      "value": "Visitors to the npm package can identify Outask and complete a useful CLI workflow without reading installation internals first.",
+      "observable_result": "The public npm page opens with a concise product explanation and executable CLI quick start.",
+      "verification": "Inspect the packed README and the published npm readme, then install the published patch and execute the documented CLI scenario."
+    },
+    "notes": [
+      "Candidate v1.6.1 on task-23-npm-readme: implementation 40e76c0. npm README reduced to 39 lines with a product-first description, global install, five-command CLI quick start, compact MCP setup and npm update/removal guidance; detailed edge cases remain in owning docs. app/README link text and exact v1.6.1 notes/metadata aligned.",
+      "Independent feature review PASS with no findings. Actual outask-1.6.1.tgz contains README bytes exactly matching docs/npm.md and correct name/version/bin metadata. Isolated global install executed every documented CLI command (create/list/get/update/transition), confirmed final title/status, and uninstalled successfully.",
+      "Full Linux CI PASS on Node.js 24.21.0 and official Node.js 22.23.3: locked installs and audits, 339 core tests, 14 MCP tests, installed archive lifecycle and actual packed npm install/update/uninstall, aliases, live/fresh MCP and data preservation. Both runtimes accepted identical npm bytes SHA256 18ce1d68a55b7b2ec20a9242d4b878ac517e770e8e4663f16e876c2c22e3b6ce. Exact release notes, local doc paths, concise README length and diff checks PASS.",
+      "Publication remains post-merge read-only acceptance. Trusted Publisher 72b188f4-7fb3-48cc-a525-01f71277a1fe is pending validation until release.yml publishes v1.6.1; it expires 2026-11-01 06:48 UTC if no release occurs. No npm tokens, push, PR or publication performed."
+    ],
+    "updated_at": "2026-10-30T07:06:50.593Z",
+    "completed_at": "2026-10-30T07:06:40Z"
   }
 ]

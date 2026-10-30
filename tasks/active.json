@@ -268,30 +268,5 @@
       "verification": "Owner completes guided publication; install, upgrade and remove via Homebrew on macOS Apple silicon and exercise CLI/MCP."
     },
     "updated_at": "2026-10-28T09:36:51.949Z"
-  },
-  {
-    "id": 23,
-    "title": "Clarify the npm package overview and CLI quick start",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Rewrite the npm package README shown on npmjs.com so a new visitor immediately understands what Outask is and can install and use its CLI. Lead with a concise product description, keep a short install and CLI quick start, retain a compact MCP route, and move lifecycle edge cases to existing detailed documentation. Package the exact README through the shared npm artifact build. Publish the smallest stable patch release through the approved GitHub release workflow so the public npm page is updated and the configured npm Trusted Publisher is validated; do not add npm tokens or duplicate general documentation.",
-    "acceptance": [
-      "The packaged npm README begins with a concise description of Outask and explains its local JSON, CLI and optional MCP purpose before installation details.",
-      "A short CLI quick start shows global installation and useful create, list and task-lifecycle commands from a project directory; readers can reach detailed operator documentation without repeating it.",
-      "Update/removal and MCP guidance remain concise and accurate, while platform/channel-switching and cleanup edge cases stay in their existing detailed owners.",
-      "The actual npm tarball contains the intended README and package metadata; focused package/readme checks pass without changing runtime behavior.",
-      "Publish the next stable patch through the owner-approved GitHub release workflow using OIDC Trusted Publishing, without npm tokens. Verify the public npm package page/readme and registry metadata, and confirm the Trusted Publisher is validated."
-    ],
-    "values": {
-      "goal": "Make the public Outask distribution easy to understand and use for developers and local AI agents.",
-      "value": "Visitors to the npm package can identify Outask and complete a useful CLI workflow without reading installation internals first.",
-      "observable_result": "The public npm page opens with a concise product explanation and executable CLI quick start.",
-      "verification": "Inspect the packed README and the published npm readme, then install the published patch and execute the documented CLI scenario."
-    },
-    "notes": [
-      "Requested after reviewing the first public outask@1.6.0 npm page. The page currently starts with platform and PATH details before explaining the product, and its CLI example is embedded in installation text. The existing Trusted Publisher is pending validation until a new version is published through release.yml."
-    ],
-    "updated_at": "2026-10-30T06:56:00.689Z"
   }
 ]
