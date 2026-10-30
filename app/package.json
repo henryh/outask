@@ -1,6 +1,6 @@
 {
   "name": "outask",
-  "version": "1.6.1",
+  "version": "1.6.0",
   "description": "Outask CLI for repository-local JSON task tracking",
   "private": true,
   "author": "Henry <me@henrydev.me>",
