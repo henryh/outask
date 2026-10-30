@@ -12,7 +12,7 @@ Keep the checkout; remove its command with `node app/scripts/install-cli.mjs uni
 
 ## Installation and updates
 
-For npm installations, use `npm install -g outask`, `npm update -g outask` and `npm uninstall -g outask`. See the [npm guide](../docs/npm.md) for PATH, switching channels and preserved user data. The paths and installer commands below describe archive installations; see the [footprint and migration rules](../docs/contract.md#product-identity-and-installation-footprint). Open a new terminal after installation and restart an editor with an old PATH.
+For npm installations, use `npm install -g outask`, `npm update -g outask` and `npm uninstall -g outask`. See the [npm quick start](../docs/npm.md) for CLI and MCP use. The paths and installer commands below describe archive installations; see the [footprint and migration rules](../docs/contract.md#product-identity-and-installation-footprint). Open a new terminal after installation and restart an editor with an old PATH.
 
 | Platform | Installed application | Command |
 | --- | --- | --- |
