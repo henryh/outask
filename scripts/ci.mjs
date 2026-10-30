@@ -64,6 +64,36 @@ function distribution() {
   }
 }
 
+function npmSmoke(artifact) {
+  process.stdout.write(run('npm installed CLI/MCP lifecycle', process.execPath, ['app/mcp/tests/npm-smoke.mjs', artifact]));
+}
+
+function npmDistribution() {
+  const temporary = mkdtempSync(join(tmpdir(), 'outask-ci-npm-'));
+  try {
+    const output = run('npm build', process.execPath, ['app/scripts/release.mjs', '--npm', '--out-dir', temporary]);
+    npmSmoke(JSON.parse(output).artifacts[0].archive);
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
+}
+
+async function npmDownloaded() {
+  const { packageMetadata, packageName, artifactIntegrity } = await import('./npm-release.mjs');
+  const metadata = await packageMetadata();
+  if (!metadata) {
+    console.log('npm download acceptance: WAITING (package has no registry entry; see docs/releases.md#npm-publication)');
+    return;
+  }
+  const expected = metadata.versions?.[JSON.parse(readFileSync(join(root, 'app/package.json'))).version];
+  if (!expected) throw new Error('Approved npm version has not been published');
+  const temporary = mkdtempSync(join(tmpdir(), 'outask-npm-downloaded-'));
+  try {
+    const packed = JSON.parse(run('Public registry package download', 'npm', ['pack', `${packageName}@${expected.version}`, '--json', '--ignore-scripts', '--registry', 'https://registry.npmjs.org', '--pack-destination', temporary]))[0];
+    const artifact = join(temporary, packed.filename);
+    if (artifactIntegrity(artifact) !== expected.dist.integrity) throw new Error('Downloaded npm package integrity mismatch');
+    npmSmoke(artifact);
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
+}
+
 function smoke(archive) {
   const evidence = run('Installed CLI/MCP smoke', process.execPath, ['app/mcp/tests/distribution-smoke.mjs', archive]);
   process.stdout.write(evidence);
@@ -90,14 +120,17 @@ function downloaded() {
 
 try {
   const mode = process.argv[2];
-  if (process.argv.length > 3 || (mode !== undefined && !['dependencies', 'test', 'distribution', 'archive', 'downloaded'].includes(mode))) {
-    throw new Error('Usage: node scripts/ci.mjs [dependencies|test|distribution|archive|downloaded]');
+  if (process.argv.length > 3 || (mode !== undefined && !['dependencies', 'test', 'distribution', 'archive', 'downloaded', 'npm', 'npm-archive', 'npm-downloaded'].includes(mode))) {
+    throw new Error('Usage: node scripts/ci.mjs [dependencies|test|distribution|archive|downloaded|npm|npm-archive|npm-downloaded]');
   }
   if (mode === undefined || mode === 'dependencies') dependencies();
   if (mode === undefined || mode === 'test') tests();
   if (mode === undefined || mode === 'distribution') distribution();
   if (mode === 'archive') smoke(archivePath(hostTarget()));
   if (mode === 'downloaded') downloaded();
+  if (mode === undefined || mode === 'distribution' || mode === 'npm') npmDistribution();
+  if (mode === 'npm-archive') npmSmoke((await import('./npm-release.mjs')).npmArtifact);
+  if (mode === 'npm-downloaded') await npmDownloaded();
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

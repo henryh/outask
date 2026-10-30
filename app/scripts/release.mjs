@@ -50,18 +50,20 @@ function run(command, args, options = {}) {
 }
 
 function parseArgs(args) {
-  const values = { targets: [], outDir: join(root, 'dist') };
+  const values = { targets: [], npm: false, outDir: join(root, 'dist') };
   for (let index = 0; index < args.length; index += 1) {
     const name = args[index];
     if (name === '--help' || name === '-h') {
-      process.stdout.write(`Usage: node app/scripts/release.mjs [--target <target>] [--out-dir <directory>]\nTargets: ${[...targets.keys()].join(', ')}. Default: current host target.\n`);
+      process.stdout.write(`Usage: node app/scripts/release.mjs [--npm] [--target <target>] [--out-dir <directory>]\nTargets: ${[...targets.keys()].join(', ')}. Default: current host target.\n`);
       process.exit(0);
     }
-    if (name === '--target') values.targets.push(args[++index]);
+    if (name === '--npm') values.npm = true;
+    else if (name === '--target') values.targets.push(args[++index]);
     else if (name === '--out-dir') values.outDir = args[++index];
     else fail('INVALID_INPUT', `unknown option ${name}`);
   }
-  if (!values.targets.length) values.targets.push(hostTarget());
+  if (values.npm && values.targets.length) fail('INVALID_INPUT', '--npm cannot be combined with --target');
+  if (!values.npm && !values.targets.length) values.targets.push(hostTarget());
   if (values.targets.some((target) => !targets.has(target))) {
     fail('INVALID_INPUT', `target must be one of: ${[...targets.keys()].join(', ')}`);
   }
@@ -515,6 +517,35 @@ Use \`--bin-dir\` and \`--release-root\` for custom command and application-pare
 `);
 }
 
+async function prepareApp(destination) {
+  copyApp(destination);
+  const npmrc = join(destination, '.npmrc-release');
+  writeFileSync(npmrc, '');
+  try {
+    run('npm', ['ci', '--omit=dev', '--userconfig', npmrc], { cwd: destination, env: cleanNpmEnv(npmrc) });
+  } finally { rmSync(npmrc, { force: true }); }
+  pruneTests(join(destination, 'node_modules'));
+}
+
+async function buildNpm(options) {
+  const stage = join(options.outDir, 'npm-stage');
+  rmSync(stage, { recursive: true, force: true });
+  try {
+    await prepareApp(stage);
+    const path = join(stage, 'package.json');
+    const manifest = JSON.parse(readFileSync(path, 'utf8'));
+    delete manifest.private;
+    delete manifest.scripts;
+    manifest.bundleDependencies = Object.keys(manifest.dependencies);
+    writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');
+    cpSync(join(root, 'LICENSE'), join(stage, 'LICENSE'));
+    cpSync(join(root, 'docs/npm.md'), join(stage, 'README.md'));
+    assertClean(stage);
+    const packed = JSON.parse(run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', options.outDir], { cwd: stage }).stdout)[0];
+    return { format: 'npm', archive: join(options.outDir, packed.filename), bytes: packed.size };
+  } finally { rmSync(stage, { recursive: true, force: true }); }
+}
+
 async function build(target, options) {
   const appPackage = JSON.parse(readFileSync(join(appRoot, 'package.json'), 'utf8'));
   const version = distributionVersion(appPackage.version);
@@ -522,14 +553,7 @@ async function build(target, options) {
   rmSync(stage, { recursive: true, force: true });
   mkdirSync(stage, { recursive: true });
 
-  copyApp(join(stage, 'app'));
-  const npmrc = join(stage, '.npmrc-release');
-  writeFileSync(npmrc, '');
-  run('npm', ['ci', '--omit=dev', '--userconfig', npmrc], { cwd: join(stage, 'app'), env: cleanNpmEnv(npmrc) });
-  run('npm', ['ci', '--omit=dev', '--userconfig', npmrc], { cwd: join(stage, 'app/mcp'), env: cleanNpmEnv(npmrc) });
-  rmSync(npmrc, { force: true });
-  pruneTests(join(stage, 'app/node_modules'));
-  pruneTests(join(stage, 'app/mcp/node_modules'));
+  await prepareApp(join(stage, 'app'));
   writeSupport(stage, version, target, appPackage.engines.node);
 
   for (const forbidden of ['tasks', '.git', 'references', 'tests']) {
@@ -548,7 +572,8 @@ async function main() {
   const version = distributionVersion(JSON.parse(readFileSync(join(appRoot, 'package.json'), 'utf8')).version);
   mkdirSync(options.outDir, { recursive: true });
   const results = [];
-  for (const target of options.targets) results.push(await build(target, options));
+  if (options.npm) results.push(await buildNpm(options));
+  else for (const target of options.targets) results.push(await build(target, options));
   process.stdout.write(`${JSON.stringify({ version, artifacts: results }, null, 2)}\n`);
 }
 

@@ -422,7 +422,7 @@ test('removing optional MCP dependencies leaves CLI and standalone scripts usabl
   const root = fixture(t, [task(1)]);
   const copy = join(root, 'application');
   const app = fileURLToPath(new URL('../../', import.meta.url));
-  cpSync(app, copy, { recursive: true, filter: (path) => !path.includes('/mcp/node_modules') });
+  cpSync(app, copy, { recursive: true, filter: (path) => !path.includes('/mcp/node_modules') && !path.includes('/node_modules/@modelcontextprotocol') });
   const before = readFileSync(join(root, 'tasks/active.json'), 'utf8');
   for (const args of [
     [join(copy, 'bin/tasks'), 'list', '--format', 'json'],

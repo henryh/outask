@@ -24,6 +24,8 @@ root, registry, cache and coordination inodes stay in place; successful updates
 remove staging and backups. Confirmed old managed payloads are retired after success;
 unrecognised sibling files are preserved. Conflicting registries stop migration.
 
+npm installations use npm's global package directory and command entries for application files. They use the same default Outask configuration, cache and coordination paths. Native npm install/update/uninstall owns the program lifecycle; npm uninstall preserves configuration, cache, skills and project records. Archive installer lifecycle commands do not manage npm installations. See the [npm guide](npm.md).
+
 Necessary external integrations are POSIX links for both commands in
 `~/.local/bin`, existing managed shell PATH blocks (including `ZDOTDIR`), and
 Windows user PATH pointing to the root's `commands/` directory. Installation

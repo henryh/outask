@@ -6,11 +6,7 @@ own scope, priorities, acceptance, review and Git actions.
 
 ## Authority and adoption
 
-Read the project's instructions and existing task workflow first. Use its
-current tracker; adopting or migrating to Outask requires the user's decision.
-Do not create parallel task stores. Status questions only read existing state;
-planning authorisation does not itself authorise implementation. Task changes
-and delivery follow the project's assigned roles and approval boundaries.
+Outask uses the selected project's task stores and schema. Adoption requires selecting or creating that project's records deliberately; connecting MCP does not migrate another tracker or define the project's workflow.
 
 For a project that has adopted Outask, add this reference to its `AGENTS.md`
 or equivalent, adjusting the guide path to its readable maintained location:
@@ -50,19 +46,3 @@ manual JSON edits. Reads preserve task records but may prepare service metadata.
 See [CLI commands](../app/README.md), [MCP setup/tools](../app/mcp/README.md),
 and [data rules](contract.md). This repository has stricter
 [agent task access](task-management.md#agent-task-access).
-
-## Work loop
-
-1. Read current persisted task state before choosing work or resuming a session.
-   Existing in-progress, review or merge-pending work stays current until the
-   project workflow releases it.
-2. Check relevant existing tasks before creating new ones. Split authorised work
-   into independently observable outcomes with acceptance checks at their
-   actual boundary.
-3. For next-task selection, rank bounded Active candidates using project rules
-   and inspect local blockers. Selecting or proposing work does not start it.
-4. Record local dependencies as blocker IDs; inactive/unknown IDs do not block
-   eligibility. External references remain informational.
-5. During authorised delivery, record meaningful changes, observed checks, gaps
-   and next action in the task. Do not claim acceptance beyond the exercised
-   boundary or reconstruct task state from memory on continuation.

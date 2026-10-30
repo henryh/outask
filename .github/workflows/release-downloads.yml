@@ -35,3 +35,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: node scripts/ci.mjs downloaded
+      - name: Download and accept the public npm package or report bootstrap pending
+        if: ${{ hashFiles('scripts/npm-release.mjs') != '' }}
+        run: node scripts/ci.mjs npm-downloaded

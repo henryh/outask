@@ -244,32 +244,6 @@
     "updated_at": "2026-10-28T09:36:51.889Z"
   },
   {
-    "id": 19,
-    "title": "Add npm global installation, updates and removal with guided owner publication",
-    "status": "pending",
-    "priority": "high",
-    "blockers": [
-      7,
-      11
-    ],
-    "scope": "Distribute Outask through the npm registry with global install, update and uninstall commands. Prepare the package, executable entries, release/publication integration and concise operator/user instructions. Guide the owner step by step through account setup, package-name or namespace selection, ownership verification, authentication and first publication so the owner can perform the complete registration/publication process personally. Never require credentials to be copied into task records or chat. Use the existing application/runtime and command contracts; coordinate with the canonical-command task without duplicating its rename scope. Reuse common application payload preparation, build/release tooling and application-owned install/update/uninstall logic across distribution channels and target builds. Do not create or copy separate implementations or scripts for each format, platform or release build. Keep only the final distribution artifacts and minimal format-required metadata/declarative packaging adapters channel-specific; delegate lifecycle operations to the native package manager or shared application mechanisms as appropriate.",
-    "acceptance": [
-      "Prepare an npm-distributable package containing the runtime files and command entries required for CLI/MCP; verify actual packed contents and supported-platform behavior.",
-      "Document the confirmed package name and exact npm install -g, update -g and uninstall -g commands, runtime requirements and how to launch MCP through the installed command.",
-      "Provide and follow a step-by-step owner walkthrough for npm registration, name/namespace availability, ownership, authentication and initial publication. The owner can complete these actions personally with agent guidance; record the actual publication outcome without secrets.",
-      "From the public registry, verify global installation, sample CLI create/list, version and a fresh MCP connection; verify updating from an older published version and uninstalling. Preserve project/skill data, and document the scope of npm removal and any application cleanup required by the current contract.",
-      "Align subsequent releases with the project's approved publication process, add focused package/lifecycle checks and update owning documentation. Treat real registry download checks as read-only after the approved publication boundary.",
-      "Review the packaging paths to confirm they reuse common payload/build/release and application-owned lifecycle implementations. Format/platform differences are limited to final artifacts and necessary packaging metadata or thin adapters, with no duplicated build or install/update/uninstall scripts; native package-manager lifecycle behavior remains native. Verify this channel's actual artifact still passes its installed CLI/MCP and lifecycle acceptance."
-    ],
-    "values": {
-      "goal": "Supported scope: distribute the repository-local task CLI and MCP for developers and local AI agents.",
-      "value": "Users install, update and remove the CLI/MCP through npm; the owner can independently register and publish the package.",
-      "result": "An owner-published npm package with documented, verified global lifecycle commands.",
-      "verification": "Owner completes the guided publication and a clean user environment installs/updates/removes the registry package with working CLI/MCP."
-    },
-    "updated_at": "2026-10-28T09:36:51.907Z"
-  },
-  {
     "id": 20,
     "title": "Add Homebrew installation, updates and removal with guided owner publication",
     "status": "pending",

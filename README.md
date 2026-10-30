@@ -8,6 +8,8 @@ Use `outask` from your terminal. `tasks` is a permanent alias for the same insta
 
 ## Install the CLI
 
+Install through npm with `npm install -g outask`, or use the platform archives below. See [npm installation, updates and removal](docs/npm.md).
+
 Requires Node.js 22.23.3 or later. Download your platform's archive from
 [Releases](https://github.com/henryh/outask/releases), [verify its checksum](app/README.md#verify-a-download), extract it and open
 `Outask` in a terminal.
