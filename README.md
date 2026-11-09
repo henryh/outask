@@ -1,4 +1,4 @@
-# Outask
+# Outask AI
 
 Outask is a lightweight task tracker for personal projects and your AI harness.
 Keep active, completed and archived tasks alongside project code as readable JSON,
