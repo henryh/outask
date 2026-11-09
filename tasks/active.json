@@ -268,5 +268,36 @@
       "verification": "Owner completes guided publication; install, upgrade and remove via Homebrew on macOS Apple silicon and exercise CLI/MCP."
     },
     "updated_at": "2026-10-28T09:36:51.949Z"
+  },
+  {
+    "id": 24,
+    "title": "Coordinate online task operations through Work Origin",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [
+      9
+    ],
+    "scope": "Implement the lightweight online Work Origin client in shared core/standalone creation and mutation operations and expose aligned behavior through CLI and MCP. Explicit project enrollment assigns stable outask_origin_uuid task identities while retaining numeric IDs, existing records and unknown fields. Register each independent clone/worktree as outask_client using hostname plus a server-assigned numeric suffix; reconnecting the same copy preserves its identity, while independent copies and coincident hostnames must not share authority accidentally. Coordinate creation, taking ownership, changes, completion and archival across every retained status/store, checking current ownership and revisions. Reject unintended edits to another client's work and stale changes; require explicit confirmation tied to the concrete operation and expected state for force, including destructive replacement of an occupied ID. Recover safely from lost replies and local write failures without duplicate tasks or repeat application. Keep server traffic limited to coordination data; local JSON/Git retain full task content. Preserve unchanged non-coordinated task formats, numeric allocation, statuses, lists, outputs and network-free operation. Update affected user/contributor contracts and pass required checks. Offline reconciliation, server implementation/installation/systemd management and Git-hook integration are excluded and belong to subsequent delivery tasks.",
+    "acceptance": [
+      "Against a real Outask Server, two independent project directories concurrently create tasks with distinct positive safe-integer numeric IDs and outask_origin_uuid values; project identity isolates unrelated projects and all retained IDs remain occupied.",
+      "Independent clones/worktrees register distinct outask_client identifiers with atomically allocated hostname-based suffixes. Reconnection retains the same client; hostnames alone do not grant another client's authority. Coordination enrollment is explicit and preserves existing task fields and records.",
+      "Two clients attempting to take the same task concurrently yield one successful owner and a clear conflict for the other. Ordinary edits, completion, archival and other mutations reject conflicting ownership or stale state across all retained statuses, including custom statuses.",
+      "CLI and MCP force flows require explicit confirmation of a concrete operation, affected task, owner, expected state and destructive consequences. Changed state invalidates prior confirmation; no permanent blanket force permission is introduced. An occupied numeric ID can be explicitly replaced, never duplicated within the final store.",
+      "Lost replies and retries do not create an additional task or apply an operation twice. Exercise local failure after server authorization and recovery without silently overwriting another client's work. Network waits do not hold the local writer lock; ordinary validation and local write coordination still apply.",
+      "Without configured Work Origin, regression checks demonstrate unchanged task fields/bytes, numeric ID allocation, statuses, lists and command outputs, with no coordination requests, added fields or installed-server dependency.",
+      "Exercise actual shared operations, standalone/CLI and MCP boundaries against the runnable server using two independent directories. Document enrollment, online conflicts, confirmation and recovery; keep public help/contracts aligned and pass required CI. Fixtures alone do not satisfy real-server acceptance."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON tasks usable by developers and agents working independently across PCs, clones and worktrees.",
+      "value": "Connected participants obtain unique task numbers and protection against accidentally taking or changing another client's work.",
+      "observable_result": "Two real Outask clients connected to one coordinator create distinct tasks, resolve concurrent ownership attempts deterministically and perform intentional overrides only after explicit confirmation.",
+      "verification": "Run concurrent creation and ownership/edit/close/archive scenarios through CLI and MCP against the real server, test lost-reply/local-failure recovery, and verify unchanged server-free operation."
+    },
+    "notes": [
+      "Approved by the owner during task-by-task Work Origin planning under task 9; creation authorizes backlog recording, not implementation.",
+      "External prerequisite: the separately owned Outask Server online coordination contract and runnable implementation must be delivered before this task starts. Link its actual project/task reference when that project creates it; no external identifier is reserved or invented. Server delivery must not depend on this client's completion and must be independently verifiable.",
+      "The owner requires offline-capable coordinated work in the completed feature. The online slice does not settle offline behavior; a subsequent approved task owns offline continuation and reconciliation."
+    ],
+    "updated_at": "2026-11-09T13:34:22.579Z"
   }
 ]
