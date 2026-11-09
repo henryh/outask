@@ -413,5 +413,46 @@
       "Task 25 transitively depends on task 24 and its unrelated-backlog blockers. Recheck scheduling before implementation. Server-side Git enforcement and remote branch policies are outside scope."
     ],
     "updated_at": "2026-11-09T13:45:14.746Z"
+  },
+  {
+    "id": 28,
+    "title": "Reject trailing commas in task-store arrays",
+    "status": "pending",
+    "priority": "high",
+    "blockers": [],
+    "scope": "Restore strict JSON syntax validation for retained task-store arrays. Research reproduced that app/src/input.mjs arrayRecords accepts a trailing comma after the last task, while JSON.parse and the blog's scripts/validate-tasks-json.mjs reject it. Correct the shared parser with a focused change; retain bounded reads and per-record decoding. Do not import the legacy validator or change project field contracts.",
+    "acceptance": [
+      "CLI outask validate and MCP validate_project reject a retained store containing [{\"id\":1,\"title\":\"Task\",\"status\":\"pending\"},] with INVALID_JSON, including whitespace/newlines between the comma and closing bracket.",
+      "Valid empty arrays and valid multi-record arrays continue to validate; malformed object commas remain rejected.",
+      "Focused regression checks cover the outer-array trailing comma; rejected validation does not certify malformed input or rewrite task records."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON authoritative and usable with ordinary JSON tools.",
+      "value": "Prevent successful validation of task stores that standard JSON readers cannot parse.",
+      "result": "The operator receives INVALID_JSON for the reproduced malformed array through CLI and MCP.",
+      "verification": "Validate identical valid and trailing-comma fixture stores via CLI and MCP; only valid JSON succeeds."
+    },
+    "updated_at": "2026-11-09T14:43:26.509Z"
+  },
+  {
+    "id": 29,
+    "title": "Explain how to connect projects with custom or legacy task fields",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Make the existing custom-field/schema support and its minimum record requirements clear to an agent connecting an existing project. Concrete case: blog.henrydev.me retains string scope/acceptance and records without status; list currently returns INVALID_STORE with a generic id/title/status requirement. Provide concise actionable diagnostics and the relevant setup guidance: identify the offending file/record and missing or incompatible field, distinguish configurable project fields from the mandatory minimum, and explain the smallest explicit schema or data correction. Preserve unknown fields and existing values; no automatic bulk migration, permissive invalid-record fallback, new onboarding subsystem or blog migration in this task.",
+    "acceptance": [
+      "A valid project with custom fields and string acceptance works through CLI/MCP when its schema expresses those rules; no conversion to Outask contributor-task fields is required.",
+      "On a legacy fixture lacking status, CLI/MCP task access or validation reports the offending record, explicitly identifies status, and provides an actionable correction or directly referenced setup guidance; an agent can distinguish schema configuration from necessary record changes.",
+      "Guidance explains preservation of IDs, unknown fields and existing field types and the need for explicit migration decisions; failed access leaves task records unchanged.",
+      "Focused checks verify custom-field success and missing-status diagnostics. Keep this a small change to diagnostics/documentation and existing shared boundaries."
+    ],
+    "values": {
+      "goal": "Let each project own its fields and workflow while sharing Outask operations.",
+      "value": "Reduce failed connection attempts and prevent agents from unnecessarily reshaping a project's task data.",
+      "result": "An agent can connect a compatible custom-field fixture and determine the exact correction needed for the reproduced legacy fixture.",
+      "verification": "Run the documented CLI/MCP connection scenarios against custom-field and missing-status fixtures; verify useful diagnostics and unchanged source records."
+    },
+    "updated_at": "2026-11-09T14:43:43.825Z"
   }
 ]
