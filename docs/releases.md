@@ -5,6 +5,12 @@ User-visible changes include a stable release by default. Only an owner's explic
 records `NO_RELEASE` with a reason. The owner's merge approves the exact candidate;
 Actions tags, publishes and verifies it under the [delivery sequence](contributing.md#task-delivery).
 
+## Work Origin scheduling
+
+Deliver unrelated active contributor tasks before starting Work Origin synchronization implementation. Recheck the backlog before starting and keep the implementation task blockers aligned. Contract planning and task recording under task 9 may proceed before that gate.
+
+Release every Work Origin synchronization change, including the client, coordination fields, offline reconciliation, server setup wrappers and related hook changes, only in Outask 2.0.0 or later. Do not include these changes in 1.x releases, even behind a disabled setting. Apply this gate to new synchronization tasks as they are approved; it does not change the version or release scope of unrelated work.
+
 ## Prepare the candidate
 
 Keep implementation, documentation, candidate task closure and release in the

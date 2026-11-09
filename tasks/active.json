@@ -24,36 +24,6 @@
     "updated_at": "2026-10-28T09:36:51.755Z"
   },
   {
-    "id": 9,
-    "title": "Prevent cross-clone task ID collisions with optional shared ID allocation",
-    "status": "pending",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Add opt-in shared ID allocation for task creation while retaining numeric task IDs. Provide a minimal usable HTTP allocator with durable atomic per-project counters and integrate its reservation protocol into shared creation used by core/standalone, CLI and MCP. Configuration explicitly enables allocation and selects the service URL and stable project key shared across clones; absent/disabled configuration preserves local allocation and performs no network requests. The service reserves and returns an ID rather than merely exposing the last occupied ID. Define the minimal endpoint/configuration contract, service deployment route and authentication during technical design. Keep task records local JSON; the shared service holds only allocation state. This task must deliver a runnable allocator and working multi-clone creation, not just a client for an unspecified future backend.",
-    "acceptance": [
-      "Without enabled shared allocation, existing creation behavior and interfaces remain compatible and make no allocator requests. Enabled configuration validates the endpoint and stable project key; local absolute paths are not used as cross-clone project identity.",
-      "Two independent clones configured for the same shared project can create tasks concurrently and receive distinct positive safe-integer IDs; project keys isolate counters. Allocation is an atomic durable reservation and survives service restart.",
-      "Provide an explicit safe enrollment procedure that starts above all existing IDs and retained counters across participating clones. Request floors cannot move the shared counter backward; adding an older/offline clone requires reconciliation. Clearly document that unconfigured/offline writers cannot share this uniqueness guarantee.",
-      "Retries after lost replies use the same allocation-request identity and cannot accidentally reserve a different ID for that retry. Failed local creation may leave a harmless reserved gap; IDs are not recycled. Allocation idempotency does not falsely claim whole-task-creation idempotency.",
-      "When enabled, unreachable/unauthorized service, timeouts, malformed replies, exhausted counters and locally conflicting returned IDs fail clearly without creating a task or silently falling back to local allocation. Explicit-ID creation must not bypass shared uniqueness; define and verify its reservation/rejection behavior.",
-      "Authentication credentials remain outside committed project records, request/response sizes and waits are bounded, and endpoint trust/HTTPS requirements are documented. Network waits do not hold the local writer lock; final local validation, blockers, collision checks and write coordination still run safely after reservation.",
-      "Exercise the actual runnable allocator and at least two independent project directories through shared creation and affected CLI/MCP boundaries, including concurrency, retry, restart, outage and disabled-mode scenarios. Keep transport behavior and public contracts aligned and pass required CI.",
-      "Document minimal service setup, opt-in configuration, safe enrollment, failure handling and the limitation that unique IDs do not automatically resolve Git merges of task JSON. Update the existing local-only product contract to describe the explicitly optional allocation-state service."
-    ],
-    "values": {
-      "goal": "Keep repository-local JSON tasks usable by developers and agents working in independent clones.",
-      "value": "Participating clones can create tasks with globally distinct project-scoped numeric IDs without manual prefixing or renumbering.",
-      "observable_result": "A runnable shared allocator and opt-in tracker configuration demonstrate concurrent task creation across independent clones without ID collisions.",
-      "verification": "Run concurrent creates against one durable allocator from two separate project directories; verify distinct IDs before/after restart, safe retry/outage behavior and unchanged network-free local mode."
-    },
-    "notes": [
-      "Owner proposed an optional config-controlled address for querying the latest occupied project ID. Refined to atomic reservation because a read-last-then-increment protocol still races between clients.",
-      "Existing numeric IDs, blockers and references remain numeric; this task does not adopt composite per-person identifiers.",
-      "Choose the smallest deployable service/storage option during technical design. Do not assume a hosting provider or create paid infrastructure from this planning request. Task creation does not start implementation or deployment."
-    ],
-    "updated_at": "2026-10-27T08:06:39.389Z"
-  },
-  {
     "id": 10,
     "title": "Simplify installer completion messages across platforms",
     "status": "pending",
@@ -268,5 +238,187 @@
       "verification": "Owner completes guided publication; install, upgrade and remove via Homebrew on macOS Apple silicon and exercise CLI/MCP."
     },
     "updated_at": "2026-10-28T09:36:51.949Z"
+  },
+  {
+    "id": 24,
+    "title": "Coordinate online task operations through Work Origin",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [
+      6,
+      9,
+      10,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      20
+    ],
+    "scope": "Implement the lightweight online Work Origin client in shared core/standalone creation and mutation operations and expose aligned behavior through CLI and MCP. Explicit project enrollment assigns stable outask_origin_uuid task identities while retaining numeric IDs, existing records and unknown fields. Register each independent clone/worktree as outask_client using hostname plus a server-assigned numeric suffix; reconnecting the same copy preserves its identity, while independent copies and coincident hostnames must not share authority accidentally. Coordinate creation, taking ownership, changes, completion and archival across every retained status/store, checking current ownership and revisions. Reject unintended edits to another client's work and stale changes; require explicit confirmation tied to the concrete operation and expected state for force, including destructive replacement of an occupied ID. Recover safely from lost replies and local write failures without duplicate tasks or repeat application. Keep server traffic limited to coordination data; local JSON/Git retain full task content. Preserve unchanged non-coordinated task formats, numeric allocation, statuses, lists, outputs and network-free operation. Update affected user/contributor contracts and pass required checks. Offline reconciliation, server implementation/installation/systemd management and Git-hook integration are excluded and belong to subsequent delivery tasks. Follow docs/releases.md: synchronization-related implementation is scheduled only after unrelated active tasks are delivered and ships only in Outask 2.0.0 or later, never in a 1.x release. Refresh unrelated backlog readiness before starting; inherited dependencies enforce the current ordering.",
+    "acceptance": [
+      "Against a real Outask Server, two independent project directories concurrently create tasks with distinct positive safe-integer numeric IDs and outask_origin_uuid values; project identity isolates unrelated projects and all retained IDs remain occupied.",
+      "Independent clones/worktrees register distinct outask_client identifiers with atomically allocated hostname-based suffixes. Reconnection retains the same client; hostnames alone do not grant another client's authority. Coordination enrollment is explicit and preserves existing task fields and records.",
+      "Two clients attempting to take the same task concurrently yield one successful owner and a clear conflict for the other. Ordinary edits, completion, archival and other mutations reject conflicting ownership or stale state across all retained statuses, including custom statuses.",
+      "CLI and MCP force flows require explicit confirmation of a concrete operation, affected task, owner, expected state and destructive consequences. Changed state invalidates prior confirmation; no permanent blanket force permission is introduced. An occupied numeric ID can be explicitly replaced, never duplicated within the final store.",
+      "Lost replies and retries do not create an additional task or apply an operation twice. Exercise local failure after server authorization and recovery without silently overwriting another client's work. Network waits do not hold the local writer lock; ordinary validation and local write coordination still apply.",
+      "Without configured Work Origin, regression checks demonstrate unchanged task fields/bytes, numeric ID allocation, statuses, lists and command outputs, with no coordination requests, added fields or installed-server dependency.",
+      "Exercise actual shared operations, standalone/CLI and MCP boundaries against the runnable server using two independent directories. Document enrollment, online conflicts, confirmation and recovery; keep public help/contracts aligned and pass required CI. Fixtures alone do not satisfy real-server acceptance.",
+      "Follow docs/releases.md: synchronization-related implementation is scheduled only after unrelated active tasks are delivered and ships only in Outask 2.0.0 or later, never in a 1.x release. Refresh unrelated backlog readiness before starting; inherited dependencies enforce the current ordering."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON tasks usable by developers and agents working independently across PCs, clones and worktrees.",
+      "value": "Connected participants obtain unique task numbers and protection against accidentally taking or changing another client's work.",
+      "observable_result": "Two real Outask clients connected to one coordinator create distinct tasks, resolve concurrent ownership attempts deterministically and perform intentional overrides only after explicit confirmation.",
+      "verification": "Run concurrent creation and ownership/edit/close/archive scenarios through CLI and MCP against the real server, test lost-reply/local-failure recovery, and verify unchanged server-free operation."
+    },
+    "notes": [
+      "Approved by the owner during task-by-task Work Origin planning under task 9; creation authorizes backlog recording, not implementation.",
+      "External prerequisite: the separately owned Outask Server online coordination contract and runnable implementation must be delivered before this task starts. Link its actual project/task reference when that project creates it; no external identifier is reserved or invented. Server delivery must not depend on this client's completion and must be independently verifiable.",
+      "The owner requires offline-capable coordinated work in the completed feature. The online slice does not settle offline behavior; a subsequent approved task owns offline continuation and reconciliation.",
+      "Owner decision: Work Origin and every related synchronization change are for Outask 2.0 or later. Finish unrelated tasks first; planning can continue now. docs/releases.md owns this scheduling/release rule."
+    ],
+    "updated_at": "2026-11-09T13:38:58.814Z"
+  },
+  {
+    "id": 25,
+    "title": "Continue task work offline and reconcile pending changes",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [
+      24
+    ],
+    "scope": "Continue coordinated Outask task work when Work Origin is unreachable and reconcile it after reconnecting. Maintain a durable local queue outside Git-tracked project files. Support offline creation, taking ownership, edits, completion and archival while preserving full task content in local JSON/Git. Create stable outask_origin_uuid identities immediately; consume non-overlapping client-allocated numeric ID blocks while valid, then allow provisional numeric IDs without blocking creation. Explicitly show unconfirmed operations and ownership. Known foreign ownership requires explicitly confirmed force; taking a task last known to be free is provisional. Reconcile operations in bounded batches, automatically confirming compatible changes and retaining conflicts for user resolution without silently discarding work. Require confirmation for renumbering and update known structural references without silently rewriting arbitrary text, external references or Git branch names. Reconfirm ownership and ID allocations after the coordinator is rebuilt from a selected Git state on another host without transferring its database. Detect changes made by editors or older clients during reconciliation. Keep core/standalone, CLI and MCP behavior aligned, document offline/recovery scenarios and preserve unchanged operation for projects without configured coordination. Server implementation, service installation/lifecycle and Git-hook changes are excluded. Follow docs/releases.md: synchronization-related implementation is scheduled only after unrelated active tasks are delivered and ships only in Outask 2.0.0 or later, never in a 1.x release. Refresh unrelated backlog readiness before starting; inherited dependencies enforce the current ordering.",
+    "acceptance": [
+      "Two disconnected clients continue creating, taking, editing, closing and archiving tasks. New tasks immediately receive outask_origin_uuid; UUID identity survives reconciliation and numeric renumbering. Local task work remains readable and persisted before confirmation.",
+      "Numeric IDs from valid client blocks do not overlap across clients. Exhausted or unavailable blocks allow provisional numeric IDs and clearly expose their unconfirmed state rather than blocking creation. After server reconstruction, prior blocks are not assumed valid without reconfirmation.",
+      "Changes to tasks known to belong to another client require explicit force confirmation. Offline taking of a task last known to be free is marked provisional; simultaneous offline claims are detected during reconciliation. Offline completion or status changes do not silently assert server confirmation.",
+      "Upon reconnecting, compatible operations are confirmed automatically in bounded batches. Conflicting ownership, stale changes, numeric collisions and forced edits are presented for explicit resolution; local work is not silently overwritten, dropped or declared accepted.",
+      "Renumbering shows affected tasks/references and requires confirmation, preserving outask_origin_uuid. Known structural references such as blockers are updated consistently and validated; arbitrary task text, external links and Git branch names are not silently rewritten. Explicitly confirmed destructive force remains tied to the concrete operation and expected state.",
+      "A durable local queue survives client restart, lost replies and interrupted reconciliation without duplicate task creation or repeated operation application. Queue, credentials and client identity remain outside Git-tracked project files; network waits do not hold local writer locks.",
+      "Against a real coordinator rebuilt on another host from an agreed Git snapshot without a database transfer, previously connected clients preserve pending work, reconfirm ownership and allocations, and reconcile their operations without silently reusing obsolete authority.",
+      "Reconciliation detects manual/editor and older-client changes and offers ordinary or explicitly confirmed forced resolution. Server-free projects retain their existing fields, numeric allocation, statuses, lists, command behavior and absence of network requests.",
+      "Verify two independent project directories and actual Outask Server through affected core/standalone, CLI and MCP boundaries, covering disconnect/reconnect, concurrent offline work, provisional-ID collisions, client restart, repeated sync and coordinator reconstruction. Document the behavior and pass required CI; mocked-server checks alone do not satisfy integrated acceptance.",
+      "Follow docs/releases.md: synchronization-related implementation is scheduled only after unrelated active tasks are delivered and ships only in Outask 2.0.0 or later, never in a 1.x release. Refresh unrelated backlog readiness before starting; inherited dependencies enforce the current ordering."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON tasks usable by developers and agents working independently across PCs, clones and worktrees.",
+      "value": "Participants continue productive task work during coordinator outages and recover a shared coordination state without silently losing local results.",
+      "observable_result": "Disconnected clients create and complete tasks; reconnecting confirms compatible changes and exposes resolvable conflicts, including after a coordinator move or rebuild.",
+      "verification": "Disconnect two real clients, exercise creation/ownership/edits/completion, restart a client, reconnect to the original and rebuilt real coordinator, and verify retained work, safe retries, explicit conflicts/renumbering and unchanged non-coordinated mode."
+    },
+    "notes": [
+      "Approved by the owner in one-task-at-a-time Work Origin planning under task 9. Creating this task records planned work only and does not start implementation.",
+      "External prerequisite: the separate Outask Server project's offline reconciliation and reconstruction support must be delivered before this task starts. Link its actual project/task reference when created; do not invent an external ID. Server acceptance must be independently verifiable and must not depend on this client's completion.",
+      "Owner decision: Work Origin and every related synchronization change are for Outask 2.0 or later. Finish unrelated tasks first; planning can continue now. docs/releases.md owns this scheduling/release rule."
+    ],
+    "updated_at": "2026-11-09T13:39:01.079Z"
+  },
+  {
+    "id": 26,
+    "title": "Configure Work Origin connections and manage the Linux server service",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [
+      24
+    ],
+    "scope": "Provide outask origin up/down/status as configuration and wrappers around standard systemd lifecycle commands, keeping the Linux Outask Server implementation in its separate project/package. Check installed Outask, the server component, runtime dependencies, service configuration and access to registered server-side project checkouts. When absent, offer explicit installation of the separate server package. Register multiple projects with one system service operating outside project directories. Ask for the published project address, keep bind and published addresses distinct, and save the shared project binding without automatic Git commits or publication. Support local per-project address overrides and explicitly selected network profiles for loopback, LAN and Internet endpoints; retain credentials outside committed files. Diagnose service/connectivity failures and point users to journald. Remote coordinator clients remain usable on supported non-Linux platforms; server installation/start is Linux-only. Preserve unchanged operation without configured coordination. Update documentation and verify the real service. Server implementation, offline reconciliation, NAT/port forwarding, DNS setup and Git-hook changes are excluded. Follow docs/releases.md: synchronization-related implementation is scheduled after unrelated active tasks and is released only in Outask 2.0.0 or later.",
+    "acceptance": [
+      "On Linux, origin up checks prerequisites, obtains explicit authorization for any installation or required system privileges, registers the selected project and starts the standard system service. systemctl can independently start/stop/restart/report that same service; origin wrappers do not create a second process manager.",
+      "One service coordinates multiple registered projects outside their checkout directories. Installed Outask and accessible project checkouts are required. Failure to access one registered project blocks that project's coordination without stopping the others.",
+      "Bind and published addresses are separately configurable. The published address is requested from the user and saved to the shared project configuration; no automatic commit, push, DNS or port-forwarding change occurs.",
+      "After receiving shared configuration through Git, another environment knows the project origin address. Local user configuration overrides addresses per stable project identity and selected network profile, including loopback, LAN and public endpoints.",
+      "Different endpoint addresses are checked for the intended project identity, not trusted solely by address or hostname. Credentials are neither committed nor exposed in logs.",
+      "origin down warns that the shared service serves all registered projects before stopping it, preserving project registrations and bindings. status reports service state and the selected project's connection state; diagnostics include journalctl usage.",
+      "Remote-origin connection works on supported Linux/macOS/Windows clients; server installation and service lifecycle actions are explicitly limited to Linux.",
+      "With no configured origin, existing Outask task formats, numeric IDs, statuses, lists and operation remain unchanged, with no required server installation or coordination traffic. Verify real Linux service operation, multiple projects and local/remote connection settings; update documentation and pass required CI.",
+      "Apply the Work Origin scheduling/release gate in docs/releases.md: deliver unrelated active tasks before synchronization implementation; publish all synchronization-related changes only in Outask 2.0.0 or later, never a 1.x release."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON task coordination optional and usable across independent developer and agent environments.",
+      "value": "An owner can install and run a shared Linux coordinator using familiar service controls and connect project participants from different network contexts.",
+      "observable_result": "A real separately installed Linux system service serves multiple project checkouts; clients discover shared addresses through Git and use local per-project/network-profile overrides when needed.",
+      "verification": "Exercise origin up/down/status together with systemctl and journald, register two projects, connect over loopback and another advertised endpoint, and verify no-origin behavior and release eligibility."
+    },
+    "notes": [
+      "Approved by the owner during task-by-task planning under task 9; recording does not start implementation.",
+      "External prerequisite: the separate Outask Server project's online implementation and Linux installation/system-service package must be delivered before this task starts. Link actual external task references when available; server verification must not depend on completion of this client task.",
+      "The owner schedules all synchronization-related changes for version 2.0 or later and requires unrelated tasks to be delivered first; task 24 carries current unrelated backlog blockers and this task inherits that ordering."
+    ],
+    "updated_at": "2026-11-09T13:38:40.903Z"
+  },
+  {
+    "id": 27,
+    "title": "Integrate Work Origin checks with existing Git hooks",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [
+      25
+    ],
+    "scope": "Extend existing outask hook --install/--remove with optional Work Origin checks before Git publication, retaining current working-tree JSON validation before commit. Resolve the invoking project and outask_client correctly for standalone clones and linked worktrees. Before push inspect task state in the outgoing revision rather than relying solely on working-tree files. Diagnose known ownership conflicts, provisional numeric IDs and inconsistent statuses, including changes made with editors or older clients. Block known conflicts by default and offer explicitly confirmed continuation tied to the concrete risk and outgoing state. Lack of connectivity or ordinary unconfirmed offline operations alone must not block commit/push; show a reconciliation warning. Preserve existing user hooks/checks and provide safe integration/removal in shared hook locations. Do not perform implicit synchronization, task writes, renumbering, staging, commits or publication. Preserve existing no-origin behavior, document supported platforms/limitations and verify real clone/worktree scenarios. Remote Git enforcement and repository administration are excluded. Follow docs/releases.md: release synchronization changes only in Outask 2.0.0 or later, after unrelated active work is delivered.",
+    "acceptance": [
+      "Existing outask hook --install/--remove supports safe repeated integration and removal while preserving unrelated user hooks and checks. Existing JSON working-tree validation before commit remains explicit about its scope.",
+      "Verify a standalone clone and two linked worktrees. Each hook resolves the invoking project, its own outask_client and connection settings, without accidentally using another worktree's ownership or local queue.",
+      "Before-push checks inspect task data in the outgoing Git revision(s), not only working-tree files. A clean working tree or different staged files do not hide known conflicts in the published candidate.",
+      "Known ownership/status conflicts block publication by default. Explicit continuation requires confirmation of the concrete affected tasks, risk and outgoing state; changed state invalidates previous confirmation. Provisional numeric IDs and reconciliation requirements are clearly diagnosed.",
+      "Unavailable connectivity and ordinary unconfirmed offline operations alone do not block commit or push. Warn that subsequent reconciliation is required while preserving distributed offline work.",
+      "Hooks do not silently synchronize, renumber, edit tasks, stage data, create commits or publish. Manual/editor or older-client changes are detected against available coordination state without claiming detection of unknown remote offline work.",
+      "Projects without configured origin retain their prior task behavior and hook checks. Document supported platforms and shared-hook/worktree limitations; test real commit/push scenarios against a disposable local remote, including conflicts, offline publication and confirmed continuation; pass required CI.",
+      "Apply docs/releases.md: synchronization-related implementation starts after unrelated active tasks are delivered and is published only in Outask 2.0.0 or later, never in 1.x."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON task collaboration independent while preventing accidental publication of known coordination conflicts.",
+      "value": "Participants see actionable ownership/status conflicts before publishing and consciously accept risk when overriding them without losing ordinary offline Git work.",
+      "observable_result": "Hooked clones and worktrees block known conflicting publication, permit explicitly confirmed continuation and allow normal offline commits/pushes with clear warnings.",
+      "verification": "Exercise actual commits and pushes to a disposable Git remote from a clone and linked worktrees, using conflicting outgoing task revisions, offline operations, confirmation, repeated installation/removal and existing user checks."
+    },
+    "notes": [
+      "Approved by the owner during one-task-at-a-time Work Origin planning under task 9. This records planned work only; implementation is not started.",
+      "Task 25 transitively depends on task 24 and its unrelated-backlog blockers. Recheck scheduling before implementation. Server-side Git enforcement and remote branch policies are outside scope."
+    ],
+    "updated_at": "2026-11-09T13:45:14.746Z"
+  },
+  {
+    "id": 28,
+    "title": "Reject trailing commas in task-store arrays",
+    "status": "pending",
+    "priority": "high",
+    "blockers": [],
+    "scope": "Restore strict JSON syntax validation for retained task-store arrays. Research reproduced that app/src/input.mjs arrayRecords accepts a trailing comma after the last task, while JSON.parse and the blog's scripts/validate-tasks-json.mjs reject it. Correct the shared parser with a focused change; retain bounded reads and per-record decoding. Do not import the legacy validator or change project field contracts.",
+    "acceptance": [
+      "CLI outask validate and MCP validate_project reject a retained store containing [{\"id\":1,\"title\":\"Task\",\"status\":\"pending\"},] with INVALID_JSON, including whitespace/newlines between the comma and closing bracket.",
+      "Valid empty arrays and valid multi-record arrays continue to validate; malformed object commas remain rejected.",
+      "Focused regression checks cover the outer-array trailing comma; rejected validation does not certify malformed input or rewrite task records."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON authoritative and usable with ordinary JSON tools.",
+      "value": "Prevent successful validation of task stores that standard JSON readers cannot parse.",
+      "result": "The operator receives INVALID_JSON for the reproduced malformed array through CLI and MCP.",
+      "verification": "Validate identical valid and trailing-comma fixture stores via CLI and MCP; only valid JSON succeeds."
+    },
+    "updated_at": "2026-11-09T14:43:26.509Z"
+  },
+  {
+    "id": 29,
+    "title": "Explain how to connect projects with custom or legacy task fields",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Make the existing custom-field/schema support and its minimum record requirements clear to an agent connecting an existing project. Concrete case: blog.henrydev.me retains string scope/acceptance and records without status; list currently returns INVALID_STORE with a generic id/title/status requirement. Provide concise actionable diagnostics and the relevant setup guidance: identify the offending file/record and missing or incompatible field, distinguish configurable project fields from the mandatory minimum, and explain the smallest explicit schema or data correction. Preserve unknown fields and existing values; no automatic bulk migration, permissive invalid-record fallback, new onboarding subsystem or blog migration in this task.",
+    "acceptance": [
+      "A valid project with custom fields and string acceptance works through CLI/MCP when its schema expresses those rules; no conversion to Outask contributor-task fields is required.",
+      "On a legacy fixture lacking status, CLI/MCP task access or validation reports the offending record, explicitly identifies status, and provides an actionable correction or directly referenced setup guidance; an agent can distinguish schema configuration from necessary record changes.",
+      "Guidance explains preservation of IDs, unknown fields and existing field types and the need for explicit migration decisions; failed access leaves task records unchanged.",
+      "Focused checks verify custom-field success and missing-status diagnostics. Keep this a small change to diagnostics/documentation and existing shared boundaries."
+    ],
+    "values": {
+      "goal": "Let each project own its fields and workflow while sharing Outask operations.",
+      "value": "Reduce failed connection attempts and prevent agents from unnecessarily reshaping a project's task data.",
+      "result": "An agent can connect a compatible custom-field fixture and determine the exact correction needed for the reproduced legacy fixture.",
+      "verification": "Run the documented CLI/MCP connection scenarios against custom-field and missing-status fixtures; verify useful diagnostics and unchanged source records."
+    },
+    "updated_at": "2026-11-09T14:43:43.825Z"
   }
 ]
