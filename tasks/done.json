@@ -398,9 +398,10 @@
       "Requirements review: checked docs/work-origin.md against owner decisions and persisted scopes/acceptance of tasks 24–27. All four remain pending; their dependency graph is acyclic. Task 24 retains unrelated backlog blockers and tasks 25–27 inherit that ordering. External server prerequisites remain requirements of the implementation tasks, not blockers of this completed planning task.",
       "QA PASS: focused documentation check verified local links/anchors, contract entry point, all four task owners and explicit planned status; git diff --check passed. make ci exited 0 on Linux x64 with Node v24.21.0: both locked dependency installs/audits, 339 core tests, 14 MCP tests, native archive build/installed CLI-MCP smoke and npm install/update/uninstall lifecycle passed. Native macOS/Windows were not executed for this documentation/task-only change.",
       "NO_RELEASE: this task changes planning documentation and contributor task records only; no synchronization implementation, product version change, server installation or deployment. User-visible synchronization remains restricted to Outask 2.0.0 or later and after unrelated tasks.",
-      "Owner requested completion of planning task 9. Closing the local candidate on task-9-work-origin-plan; no push, PR, merge or implementation of tasks 24–27 is authorized by this closure."
+      "Owner requested completion of planning task 9. Closing the local candidate on task-9-work-origin-plan; no push, PR, merge or implementation of tasks 24–27 is authorized by this closure.",
+      "RELEASE_DEFERRED: the owner explicitly authorized pushing and merging all current changes via the task-9-work-origin-plan PR, with no new version or release. Accumulate publication until several subsequent tasks are delivered. This authorization supersedes the earlier local-only handoff; preserve the current package version and release notes. Scope includes all accumulated planning/task/documentation commits and the README heading change since origin/main, including backlog tasks 28 and 29. The existing Work Origin 2.0+ scheduling restriction remains in force."
     ],
-    "updated_at": "2026-11-09T14:54:27.313Z",
+    "updated_at": "2026-11-09T15:05:48.171Z",
     "completed_at": "2026-11-09T14:53:45.000Z"
   }
 ]
