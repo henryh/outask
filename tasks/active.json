@@ -299,5 +299,37 @@
       "The owner requires offline-capable coordinated work in the completed feature. The online slice does not settle offline behavior; a subsequent approved task owns offline continuation and reconciliation."
     ],
     "updated_at": "2026-11-09T13:34:22.579Z"
+  },
+  {
+    "id": 25,
+    "title": "Continue task work offline and reconcile pending changes",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [
+      24
+    ],
+    "scope": "Continue coordinated Outask task work when Work Origin is unreachable and reconcile it after reconnecting. Maintain a durable local queue outside Git-tracked project files. Support offline creation, taking ownership, edits, completion and archival while preserving full task content in local JSON/Git. Create stable outask_origin_uuid identities immediately; consume non-overlapping client-allocated numeric ID blocks while valid, then allow provisional numeric IDs without blocking creation. Explicitly show unconfirmed operations and ownership. Known foreign ownership requires explicitly confirmed force; taking a task last known to be free is provisional. Reconcile operations in bounded batches, automatically confirming compatible changes and retaining conflicts for user resolution without silently discarding work. Require confirmation for renumbering and update known structural references without silently rewriting arbitrary text, external references or Git branch names. Reconfirm ownership and ID allocations after the coordinator is rebuilt from a selected Git state on another host without transferring its database. Detect changes made by editors or older clients during reconciliation. Keep core/standalone, CLI and MCP behavior aligned, document offline/recovery scenarios and preserve unchanged operation for projects without configured coordination. Server implementation, service installation/lifecycle and Git-hook changes are excluded.",
+    "acceptance": [
+      "Two disconnected clients continue creating, taking, editing, closing and archiving tasks. New tasks immediately receive outask_origin_uuid; UUID identity survives reconciliation and numeric renumbering. Local task work remains readable and persisted before confirmation.",
+      "Numeric IDs from valid client blocks do not overlap across clients. Exhausted or unavailable blocks allow provisional numeric IDs and clearly expose their unconfirmed state rather than blocking creation. After server reconstruction, prior blocks are not assumed valid without reconfirmation.",
+      "Changes to tasks known to belong to another client require explicit force confirmation. Offline taking of a task last known to be free is marked provisional; simultaneous offline claims are detected during reconciliation. Offline completion or status changes do not silently assert server confirmation.",
+      "Upon reconnecting, compatible operations are confirmed automatically in bounded batches. Conflicting ownership, stale changes, numeric collisions and forced edits are presented for explicit resolution; local work is not silently overwritten, dropped or declared accepted.",
+      "Renumbering shows affected tasks/references and requires confirmation, preserving outask_origin_uuid. Known structural references such as blockers are updated consistently and validated; arbitrary task text, external links and Git branch names are not silently rewritten. Explicitly confirmed destructive force remains tied to the concrete operation and expected state.",
+      "A durable local queue survives client restart, lost replies and interrupted reconciliation without duplicate task creation or repeated operation application. Queue, credentials and client identity remain outside Git-tracked project files; network waits do not hold local writer locks.",
+      "Against a real coordinator rebuilt on another host from an agreed Git snapshot without a database transfer, previously connected clients preserve pending work, reconfirm ownership and allocations, and reconcile their operations without silently reusing obsolete authority.",
+      "Reconciliation detects manual/editor and older-client changes and offers ordinary or explicitly confirmed forced resolution. Server-free projects retain their existing fields, numeric allocation, statuses, lists, command behavior and absence of network requests.",
+      "Verify two independent project directories and actual Outask Server through affected core/standalone, CLI and MCP boundaries, covering disconnect/reconnect, concurrent offline work, provisional-ID collisions, client restart, repeated sync and coordinator reconstruction. Document the behavior and pass required CI; mocked-server checks alone do not satisfy integrated acceptance."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON tasks usable by developers and agents working independently across PCs, clones and worktrees.",
+      "value": "Participants continue productive task work during coordinator outages and recover a shared coordination state without silently losing local results.",
+      "observable_result": "Disconnected clients create and complete tasks; reconnecting confirms compatible changes and exposes resolvable conflicts, including after a coordinator move or rebuild.",
+      "verification": "Disconnect two real clients, exercise creation/ownership/edits/completion, restart a client, reconnect to the original and rebuilt real coordinator, and verify retained work, safe retries, explicit conflicts/renumbering and unchanged non-coordinated mode."
+    },
+    "notes": [
+      "Approved by the owner in one-task-at-a-time Work Origin planning under task 9. Creating this task records planned work only and does not start implementation.",
+      "External prerequisite: the separate Outask Server project's offline reconciliation and reconstruction support must be delivered before this task starts. Link its actual project/task reference when created; do not invent an external ID. Server acceptance must be independently verifiable and must not depend on this client's completion."
+    ],
+    "updated_at": "2026-11-09T13:36:17.798Z"
   }
 ]
