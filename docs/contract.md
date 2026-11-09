@@ -1,5 +1,7 @@
 # Tracker contract
 
+For planned optional coordination, see the [Work Origin delivery contract](work-origin.md). It does not change the currently implemented behavior below.
+
 Core/standalone operations own storage, validation and write coordination. CLI,
 MCP and read-only HTTP adapt their inputs and outputs to those operations.
 Shared reads belong in all four interfaces; writes belong in core/standalone,
