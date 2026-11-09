@@ -52,9 +52,10 @@
       "Choose the smallest deployable service/storage option during technical design. Do not assume a hosting provider or create paid infrastructure from this planning request. Task creation does not start implementation or deployment.",
       "Owner approved reframing task 9 as Work Origin planning and task decomposition. This scope supersedes the earlier ID-only implementation requirements and the original fail-closed offline policy. Agree and save Outask tasks one at a time; prepare the separate Outask Server specification only after those tasks are created. Preserve implementation and deployment as follow-up task scope.",
       "Owner decision: Work Origin and every related synchronization change are for Outask 2.0 or later. Finish unrelated tasks first; planning can continue now. docs/releases.md owns this scheduling/release rule.",
-      "Approved implementation tasks recorded so far: 24 — Coordinate online task operations through Work Origin; 25 — Continue task work offline and reconcile pending changes; 26 — Configure Work Origin connections and manage the Linux server service. Continue approving remaining tasks one at a time, then prepare the separate Outask Server specification."
+      "Approved implementation tasks recorded so far: 24 — Coordinate online task operations through Work Origin; 25 — Continue task work offline and reconcile pending changes; 26 — Configure Work Origin connections and manage the Linux server service. Continue approving remaining tasks one at a time, then prepare the separate Outask Server specification.",
+      "Approved Outask implementation backlog is now recorded: 24 — Coordinate online task operations through Work Origin; 25 — Continue task work offline and reconcile pending changes; 26 — Configure Work Origin connections and manage the Linux server service; 27 — Integrate Work Origin checks with existing Git hooks. All are subject to docs/releases.md (2.0 or later and unrelated work first). Outask task-by-task creation is complete; next prepare the separate-project Outask Server specification and save the agreed contract documentation. Do not start implementation or create server-project tasks without that project's own task context."
     ],
-    "updated_at": "2026-11-09T13:38:55.959Z"
+    "updated_at": "2026-11-09T13:45:43.623Z"
   },
   {
     "id": 10,
@@ -381,5 +382,36 @@
       "The owner schedules all synchronization-related changes for version 2.0 or later and requires unrelated tasks to be delivered first; task 24 carries current unrelated backlog blockers and this task inherits that ordering."
     ],
     "updated_at": "2026-11-09T13:38:40.903Z"
+  },
+  {
+    "id": 27,
+    "title": "Integrate Work Origin checks with existing Git hooks",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [
+      25
+    ],
+    "scope": "Extend existing outask hook --install/--remove with optional Work Origin checks before Git publication, retaining current working-tree JSON validation before commit. Resolve the invoking project and outask_client correctly for standalone clones and linked worktrees. Before push inspect task state in the outgoing revision rather than relying solely on working-tree files. Diagnose known ownership conflicts, provisional numeric IDs and inconsistent statuses, including changes made with editors or older clients. Block known conflicts by default and offer explicitly confirmed continuation tied to the concrete risk and outgoing state. Lack of connectivity or ordinary unconfirmed offline operations alone must not block commit/push; show a reconciliation warning. Preserve existing user hooks/checks and provide safe integration/removal in shared hook locations. Do not perform implicit synchronization, task writes, renumbering, staging, commits or publication. Preserve existing no-origin behavior, document supported platforms/limitations and verify real clone/worktree scenarios. Remote Git enforcement and repository administration are excluded. Follow docs/releases.md: release synchronization changes only in Outask 2.0.0 or later, after unrelated active work is delivered.",
+    "acceptance": [
+      "Existing outask hook --install/--remove supports safe repeated integration and removal while preserving unrelated user hooks and checks. Existing JSON working-tree validation before commit remains explicit about its scope.",
+      "Verify a standalone clone and two linked worktrees. Each hook resolves the invoking project, its own outask_client and connection settings, without accidentally using another worktree's ownership or local queue.",
+      "Before-push checks inspect task data in the outgoing Git revision(s), not only working-tree files. A clean working tree or different staged files do not hide known conflicts in the published candidate.",
+      "Known ownership/status conflicts block publication by default. Explicit continuation requires confirmation of the concrete affected tasks, risk and outgoing state; changed state invalidates previous confirmation. Provisional numeric IDs and reconciliation requirements are clearly diagnosed.",
+      "Unavailable connectivity and ordinary unconfirmed offline operations alone do not block commit or push. Warn that subsequent reconciliation is required while preserving distributed offline work.",
+      "Hooks do not silently synchronize, renumber, edit tasks, stage data, create commits or publish. Manual/editor or older-client changes are detected against available coordination state without claiming detection of unknown remote offline work.",
+      "Projects without configured origin retain their prior task behavior and hook checks. Document supported platforms and shared-hook/worktree limitations; test real commit/push scenarios against a disposable local remote, including conflicts, offline publication and confirmed continuation; pass required CI.",
+      "Apply docs/releases.md: synchronization-related implementation starts after unrelated active tasks are delivered and is published only in Outask 2.0.0 or later, never in 1.x."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON task collaboration independent while preventing accidental publication of known coordination conflicts.",
+      "value": "Participants see actionable ownership/status conflicts before publishing and consciously accept risk when overriding them without losing ordinary offline Git work.",
+      "observable_result": "Hooked clones and worktrees block known conflicting publication, permit explicitly confirmed continuation and allow normal offline commits/pushes with clear warnings.",
+      "verification": "Exercise actual commits and pushes to a disposable Git remote from a clone and linked worktrees, using conflicting outgoing task revisions, offline operations, confirmation, repeated installation/removal and existing user checks."
+    },
+    "notes": [
+      "Approved by the owner during one-task-at-a-time Work Origin planning under task 9. This records planned work only; implementation is not started.",
+      "Task 25 transitively depends on task 24 and its unrelated-backlog blockers. Recheck scheduling before implementation. Server-side Git enforcement and remote branch policies are outside scope."
+    ],
+    "updated_at": "2026-11-09T13:45:14.746Z"
   }
 ]
