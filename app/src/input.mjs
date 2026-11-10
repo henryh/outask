@@ -123,6 +123,8 @@ export function* arrayRecords(source, label) {
     index++;
     if (source[offset] === 0x2c) {
       offset++;
+      while (whitespace(source[offset])) offset++;
+      if (source[offset] === 0x5d) fail('INVALID_JSON', `${label}: invalid JSON; correct the input and retry`);
       continue;
     }
     if (source[offset] !== 0x5d) fail('INVALID_JSON', `${label}: invalid JSON; correct the input and retry`);

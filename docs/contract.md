@@ -149,14 +149,7 @@ not prepare projects. Reads preserve task bytes and do not refresh existing
 service metadata or inspect it for blocker eligibility. Missing metadata is
 uncertified; successful validation or writes establish its fingerprints/counter.
 
-Selected read stores must be arrays of objects with positive safe-integer IDs,
-non-empty title/status strings and no duplicate IDs across selected files.
-Declared statuses are checked unless `validate: false`. Even exempt stores need
-this read structure. Every present `updated_at` must be canonical UTC
-milliseconds; legacy absence is valid. Reads preserve unknown fields and do
-not validate unselected history or all project-required fields. Blocker
-inspection additionally checks examined blocker fields. A successful read is
-not a full validation verdict.
+Selected read stores must be arrays of objects with positive safe-integer IDs, non-empty title/status strings and no duplicate IDs across selected files. Declared statuses are checked unless `validate: false`. Even exempt stores need this read structure; a schema cannot waive it or supply missing record values. Minimum-field read errors identify the source file, zero-based record index and first missing/incompatible field with a correction to make. See [connecting an existing project](outask-skill.md#connect-an-existing-project) for explicit schemas and approved corrections that preserve existing data. Every present `updated_at` must be canonical UTC milliseconds; legacy absence is valid. Reads preserve unknown fields and do not validate unselected history or all project-required fields. Blocker inspection additionally checks examined blocker fields. A successful read is not a full validation verdict.
 
 ## Records and project rules
 

@@ -4,6 +4,8 @@ Install with the [CLI quick start](../../README.md#install-the-cli).
 Requires Node.js 22.23.3 or later and a trusted local stdio client. Release
 archives and the [npm package](../../docs/npm.md) include the adapter and its dependencies.
 
+For custom or legacy records, follow [existing-project setup](../../docs/outask-skill.md#connect-an-existing-project) before changing data.
+
 ## Codex on Linux/macOS
 
 After installation, open a new terminal and register the server:
