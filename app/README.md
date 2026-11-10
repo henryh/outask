@@ -164,14 +164,14 @@ outask hook --install
 outask hook --remove
 ```
 
-The optional hook validates working-tree files, including unstaged edits; it
-does not certify partially staged data. Review and stage the intended task,
-schema and service bytes yourself. Keep the install's absolute validator path
-and Node available; remove the hook before moving them.
-Existing/edited hooks are preserved. Shared hooks, linked worktrees and nested
-projects require manual integration: add the printed validator invocation with
-its failure handling to the existing hook, preserving its checks. Remove only
-that line to undo manual integration. A hook never stages refreshed metadata.
+The optional hook validates working-tree files, including unstaged edits; it does not certify partially staged data or stage refreshed metadata. Review and stage the intended task, schema and service bytes yourself. Automatic installation uses an absolute validator path; keep that install and Node available and remove its hook before moving them.
+
+Existing/edited hooks are preserved. For an existing repository-root `pre-commit`, keep its other checks and add:
+```sh
+outask validate || exit $?
+```
+
+Git invokes `pre-commit` from the working-tree root, so this uses the current project. Keep `outask` on PATH. Shared hooks, linked worktrees and nested projects need manual integration appropriate to their target; use the printed invocation when an explicit target or schema is needed. Remove only the added validation line to undo integration.
 
 ## Configuration
 `--config` selects the global registry; then `TASK_TRACKER_CONFIG`, then

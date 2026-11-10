@@ -32,10 +32,10 @@ validate/refresh service state; use `validate_project` after manual repairs and
 at explicit validation gates. Report failures and inspect state before retrying;
 a mutation transport failure may already have persisted.
 
-If MCP is unavailable, use the [CLI](../app/README.md) with an explicit project path:
+If MCP is unavailable, run the [CLI](../app/README.md) from the repository root. Use `--project-path` when selecting another directory:
 
 ```sh
-outask list --project-path /absolute/project --fields id,title,status --limit 10
-outask get 1 --project-path /absolute/project
-outask validate --project-path /absolute/project
+outask list --fields id,title,status --limit 10
+outask get 1
+outask validate
 ```
