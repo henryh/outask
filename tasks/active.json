@@ -383,7 +383,7 @@
   {
     "id": 28,
     "title": "Reject trailing commas in task-store arrays",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "high",
     "blockers": [],
     "scope": "Restore strict JSON syntax validation for retained task-store arrays. Research reproduced that app/src/input.mjs arrayRecords accepts a trailing comma after the last task, while JSON.parse and the blog's scripts/validate-tasks-json.mjs reject it. Correct the shared parser with a focused change; retain bounded reads and per-record decoding. Do not import the legacy validator or change project field contracts.",
@@ -398,7 +398,7 @@
       "result": "The operator receives INVALID_JSON for the reproduced malformed array through CLI and MCP.",
       "verification": "Validate identical valid and trailing-comma fixture stores via CLI and MCP; only valid JSON succeeds."
     },
-    "updated_at": "2026-11-09T14:43:26.509Z"
+    "updated_at": "2026-11-10T07:21:41.724Z"
   },
   {
     "id": 29,
