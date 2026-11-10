@@ -257,7 +257,8 @@
       18,
       20,
       30,
-      31
+      31,
+      32
     ],
     "scope": "Implement the lightweight online Work Origin client in shared core/standalone creation and mutation operations and expose aligned behavior through CLI and MCP. Explicit project enrollment assigns stable outask_origin_uuid task identities while retaining numeric IDs, existing records and unknown fields. Register each independent clone/worktree as outask_client using hostname plus a server-assigned numeric suffix; reconnecting the same copy preserves its identity, while independent copies and coincident hostnames must not share authority accidentally. Coordinate creation, taking ownership, changes, completion and archival across every retained status/store, checking current ownership and revisions. Reject unintended edits to another client's work and stale changes; require explicit confirmation tied to the concrete operation and expected state for force, including destructive replacement of an occupied ID. Recover safely from lost replies and local write failures without duplicate tasks or repeat application. Keep server traffic limited to coordination data; local JSON/Git retain full task content. Preserve unchanged non-coordinated task formats, numeric allocation, statuses, lists, outputs and network-free operation. Update affected user/contributor contracts and pass required checks. Offline reconciliation, server implementation/installation/systemd management and Git-hook integration are excluded and belong to subsequent delivery tasks. Follow docs/releases.md: synchronization-related implementation is scheduled only after unrelated active tasks are delivered and ships only in Outask 2.0.0 or later, never in a 1.x release. Refresh unrelated backlog readiness before starting; inherited dependencies enforce the current ordering.",
     "acceptance": [
@@ -282,7 +283,7 @@
       "The owner requires offline-capable coordinated work in the completed feature. The online slice does not settle offline behavior; a subsequent approved task owns offline continuation and reconciliation.",
       "Owner decision: Work Origin and every related synchronization change are for Outask 2.0 or later. Finish unrelated tasks first; planning can continue now. docs/releases.md owns this scheduling/release rule."
     ],
-    "updated_at": "2026-11-10T09:05:29.809Z"
+    "updated_at": "2026-11-10T09:29:29.754Z"
   },
   {
     "id": 25,
@@ -408,5 +409,32 @@
       "The earlier ENEEDAUTH was a separate Trusted Publisher configuration issue and is resolved. This task does not change npm account permissions, credentials, publisher configuration or published v1.7 contents."
     ],
     "updated_at": "2026-11-10T09:05:17.377Z"
+  },
+  {
+    "id": 32,
+    "title": "Report the installed Outask version in MCP server metadata",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Replace the hardcoded version in app/mcp/server.mjs with the installed Outask release version derived from the same authoritative app/package.json metadata and existing distribution-version convention used by the CLI. A fresh MCP connection must identify the actual Outask release in source-checkout, archive and npm layouts. Keep one source of truth; do not add a separately maintained MCP product version or new version/configuration subsystem. Preserve the existing lifecycle: already-running sessions can retain their loaded version until the client restarts them. Update affected source/installed update tests and concise guidance only where needed. No manual edits to an installed application, no changes to published release contents and no target release version assigned.",
+    "acceptance": [
+      "MCP initialization serverInfo.version reports the same Outask release identifier as the CLI, derived from the authoritative application package metadata rather than a hardcoded adapter version.",
+      "Focused checks verify the metadata for a fresh MCP session in the source checkout and actual installed archive/npm layouts, using the current package version and naming rules without fixing the expected result to a particular release number.",
+      "Installation/update acceptance verifies that fresh CLI and MCP launches identify the updated application version. Remove obsolete test-fixture rewriting of the hardcoded MCP version when the package metadata alone now supplies it.",
+      "Existing MCP sessions and active operations retain their normal lifecycle during compatible updates; fresh metadata is obtained by restarting the launching client/session. Do not terminate unrelated processes or add automatic client reconfiguration.",
+      "Run affected MCP/version/distribution checks and required project gates. Preserve task data, installed user configuration and existing source/archive/npm startup contracts. Update restart/version guidance only if a current claim needs correction."
+    ],
+    "values": {
+      "goal": "Make the installed Outask release identifiable consistently through CLI and MCP.",
+      "value": "Prevent operators from mistaking fixed adapter metadata for an outdated installation or unsuccessful update.",
+      "result": "A fresh MCP connection displays the installed Outask release version and agrees with the CLI after installation or updating.",
+      "verification": "Initialize fresh MCP clients against source and installed archive/npm fixtures, compare serverInfo.version with the package-derived CLI release identifier, and repeat the fresh-client check after a controlled update."
+    },
+    "notes": [
+      "Owner explicitly requested a separate fix task without tying it to a particular release version. Task creation only; implementation is not authorized by this planning request.",
+      "Reproduced on the installed Outask application: app/package.json reported 1.7.0 while MCP server construction still used version: '0.1.0'. This is server metadata, not the MCP protocol version.",
+      "Keep release scheduling separate from this task record; do not assign a version number or change manifests merely to create the task."
+    ],
+    "updated_at": "2026-11-10T09:29:17.000Z"
   }
 ]
