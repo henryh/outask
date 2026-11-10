@@ -384,7 +384,7 @@
   {
     "id": 30,
     "title": "Infer missing legacy task status from its store",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "medium",
     "blockers": [],
     "scope": "Allow existing projects to use retained tasks without a persisted status by deriving an effective status from the containing store. Without an explicit project schema, active.json supplies pending and done.json supplies done; do not infer in_progress, review or other working states. Existing schemas must explicitly configure compatible per-store fallback statuses and allow those statuses; document the smallest manual schema correction instead of silently changing schema files. Apply the effective status consistently through shared core/standalone, CLI, MCP and read-only HTTP operations, including full validation, activity groups and blocker checks. Infer only an absent status; preserve and validate every explicit value. Reads and validation do not migrate task records. New tasks always persist status, and actual changes to legacy tasks persist their effective/final status; preserve existing no-op, timestamp, locking and byte-preservation contracts. Preserve IDs, unknown fields and existing field types such as string scope/acceptance. Update the owning contract, setup guidance and diagnostics. No blog migration, automatic schema rewriting, new onboarding subsystem or inference for unspecified stores.",
@@ -407,6 +407,6 @@
       "Follow-up to delivered tasks 28 and 29 in merged PR #15 (merge 1f7edc1). This is a deliberate change to the strict missing-status contract; it does not reopen those delivered tasks.",
       "Planning only: task creation is authorized; implementation has not started."
     ],
-    "updated_at": "2026-11-10T08:02:16.624Z"
+    "updated_at": "2026-11-10T08:03:31.566Z"
   }
 ]
