@@ -403,7 +403,7 @@
   {
     "id": 29,
     "title": "Explain how to connect projects with custom or legacy task fields",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "medium",
     "blockers": [],
     "scope": "Make the existing custom-field/schema support and its minimum record requirements clear to an agent connecting an existing project. Concrete case: blog.henrydev.me retains string scope/acceptance and records without status; list currently returns INVALID_STORE with a generic id/title/status requirement. Provide concise actionable diagnostics and the relevant setup guidance: identify the offending file/record and missing or incompatible field, distinguish configurable project fields from the mandatory minimum, and explain the smallest explicit schema or data correction. Preserve unknown fields and existing values; no automatic bulk migration, permissive invalid-record fallback, new onboarding subsystem or blog migration in this task.",
@@ -419,6 +419,6 @@
       "result": "An agent can connect a compatible custom-field fixture and determine the exact correction needed for the reproduced legacy fixture.",
       "verification": "Run the documented CLI/MCP connection scenarios against custom-field and missing-status fixtures; verify useful diagnostics and unchanged source records."
     },
-    "updated_at": "2026-11-09T14:43:43.825Z"
+    "updated_at": "2026-11-10T07:25:13.954Z"
   }
 ]
