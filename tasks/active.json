@@ -380,5 +380,40 @@
       "Task 25 transitively depends on task 24 and its unrelated-backlog blockers. Recheck scheduling before implementation. Server-side Git enforcement and remote branch policies are outside scope."
     ],
     "updated_at": "2026-11-09T13:45:14.746Z"
+  },
+  {
+    "id": 30,
+    "title": "Infer missing legacy task status from its store",
+    "status": "review",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Allow existing projects to use retained tasks without a persisted status by deriving an effective status from the containing store. Without an explicit project schema, active.json supplies pending and done.json supplies done; do not infer in_progress, review or other working states. Existing schemas must explicitly configure compatible per-store fallback statuses and allow those statuses; document the smallest manual schema correction instead of silently changing schema files. Apply the effective status consistently through shared core/standalone, CLI, MCP and read-only HTTP operations, including full validation, activity groups and blocker checks. Infer only an absent status; preserve and validate every explicit value. Reads and validation do not migrate task records. New tasks always persist status, and actual changes to legacy tasks persist their effective/final status; preserve existing no-op, timestamp, locking and byte-preservation contracts. Preserve IDs, unknown fields and existing field types such as string scope/acceptance. Update the owning contract, setup guidance and diagnostics. No blog migration, automatic schema rewriting, new onboarding subsystem or inference for unspecified stores.",
+    "acceptance": [
+      "An isolated no-schema fixture with status-less tasks in active.json and done.json is readable and fully valid: returned effective statuses are pending and done, default Active reads contain only active tasks, explicit Done reads contain completed tasks, and records/service behavior follows existing read/validation contracts without adding status to source records.",
+      "A custom-schema fixture works with explicit compatible per-store fallback statuses. A missing or incompatible fallback configuration produces an actionable file/store/schema diagnostic with the required manual correction; schema files and task records remain unchanged on failure. Unspecified stores do not acquire a guessed status.",
+      "Explicit status values retain precedence. Empty, null, wrong-type and undeclared explicit statuses remain errors under the existing validation rules; inference never silently repairs them or assigns working statuses.",
+      "Shared read/validation, filtering/counts, search, grouping and blocker behavior use the same effective status through core/standalone, CLI, MCP and read-only HTTP. Focused boundary tests cover active/done inference, compatible/incompatible schemas and explicit invalid values; strict JSON rejection from task 28 remains intact.",
+      "Creation persists an explicit status. An actual update or transition of a status-less legacy task persists the effective/final status while preserving unrelated fields, IDs and types. No-op operations preserve source bytes and timestamps; focused write checks cover both cases.",
+      "Document and exercise the connection scenario using string scope/acceptance, custom fields and missing status. Show the exact schema settings for existing projects and distinguish effective read values from persisted fields. Do not change the real blog project as part of this task."
+    ],
+    "values": {
+      "goal": "Let existing projects share Outask operations while retaining their repository-local task data and workflow.",
+      "value": "Connect legacy active/done stores without requiring a bulk task migration or silently treating unfinished tasks as started.",
+      "result": "Operators can list and validate status-less legacy tasks as pending/done, with explicit and actionable configuration for projects owning a schema.",
+      "verification": "Run CLI/MCP and read-only HTTP scenarios against isolated status-less active/done and custom-schema fixtures; verify returned statuses, unchanged read-side task bytes, invalid explicit-status rejection and explicit status persistence on actual writes."
+    },
+    "notes": [
+      "Owner-approved behavior from the discussion after task 29: infer absent status from the store; active means pending, done means done. Preserve explicit values, keep reads non-mutating, persist status for new tasks and actual legacy-task changes, and make custom-schema fallbacks explicit.",
+      "Follow-up to delivered tasks 28 and 29 in merged PR #15 (merge 1f7edc1). This is a deliberate change to the strict missing-status contract; it does not reopen those delivered tasks.",
+      "RELEASE_DEFERRED: Owner requested task 30 first, then publication of one joint release including still-unreleased changes since v1.6. Release version/notes will be agreed after completion.",
+      "Delivery started on task-30-infer-store-status. Preserve the local planning commit 8a6096e inherited from main; no main push or additional worktree is authorized.",
+      "Candidate acceptance: PASS at implementation 0b89c0b. No-schema active/done records receive effective pending/done; configured stores require a declared non-working missing_status. Explicit invalid statuses and unspecified-store absence still fail. Effective status reaches reads, validation, scan/index filtering/counts/search/groups/blockers and all public adapters.",
+      "Writes compare effective values for no-op detection and persisted values for actual changes: readonly and no-op operations preserve task bytes/timestamps; actual legacy updates/transitions persist status while preserving unrelated fields and source lexemes. Creation persists explicit status. No real blog files or runtime environments changed.",
+      "Independent feature review: PASS (review30), no findings. QA: 149 focused tests, latest 38 HTTP/MCP tests and 9 core/schema tests passed. Full make ci exited 0 on Linux x64 / Node 24.21.0: 345 core tests, 18 MCP tests, locked installs/audits, installed native archive and npm lifecycle PASS.",
+      "Documentation/value gates: PASS. Exact documented schema and CLI schema/list/validate commands exercised on status-less active/done fixtures with string fields and unchanged source bytes. Contract/setup guidance and schema materialisation agree; README limits and whitespace checks pass. Observable result: legacy projects can be read/validated without bulk task migration.",
+      "Origin/main integrated locally (already current at 1f7edc1); local planning commit 8a6096e retained in task candidate. Other OS/Node combinations await hosted PR CI. Final task-branch push, draft PR, CI monitoring and ready transition require exact owner agreement; owner alone merges. Joint stable release remains deferred to the next agreed step.",
+      "Owner now requested finishing task 30, preparing the joint stable release and creating its PR. Candidate returned to review for version/lockfile/exact notes and final release gates. Prepare package 1.7.0 / distribution v1.7 as the next minor under docs/releases.md, including all still-unreleased user-visible changes since v1.6. Work Origin implementation remains excluded by its 2.0.0 gate."
+    ],
+    "updated_at": "2026-11-10T08:17:46.711Z"
   }
 ]
