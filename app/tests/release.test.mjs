@@ -103,6 +103,15 @@ function fixture(t, target = 'linux-x64') {
   return { home, downloads, source, bin, releases, installed, env, install, tools };
 }
 
+test('successful packaged installers show the short command, quoted immediate path and completion block', (t) => {
+  for (const target of ['linux-x64', 'macos-arm64']) {
+    const f = fixture(t, target);
+    const output = ok(f.install());
+    assert.ok(output.endsWith(`Installed Outask at ${f.installed}.\n\nCommand: outask\nRun immediately: '${join(f.bin, 'outask')}' --help\n\nInstallation complete. Open a new terminal to start working.\n`), output);
+    assert.doesNotMatch(output, /Press any key|Cmd\+W/);
+  }
+});
+
 test('builders reject unsupported targets before creating artifacts', () => {
   const outDir = join(root, 'unsupported-target');
   for (const [script, args, env] of [
@@ -589,7 +598,6 @@ test('Finder launcher uses installed NVM after confirmation and rechecks Node', 
   const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
   const result = await terminal(quoted, [
     { prompt: 'Run this NVM command now?', input: 'y\n' },
-    { prompt: 'Press any key', input: 'x' },
   ], {
     ...f.env,
     BASH_ENV: hook,
@@ -647,7 +655,6 @@ fi
   const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
   const result = await terminal(quoted, [
     { prompt: 'Run this Homebrew command now?', input: 'y\n' },
-    { prompt: 'Press any key', input: 'x' },
   ], {
     ...f.env,
     BASH_ENV: hook,
@@ -684,7 +691,6 @@ fi
   const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
   const result = await terminal(quoted, [
     { prompt: 'Run this Homebrew command now?', input: 'y\n' },
-    { prompt: 'Press any key', input: 'x' },
   ], { ...f.env, PATH: `${dirname(node)}:${f.tools}:/usr/bin:/bin`, TERM_PROGRAM: 'OutaskTest' });
   assert.equal(result.status, 0, result.output);
   assert.match(result.output, /DEPENDENCY_LIBRARY_MISSING/);
@@ -717,7 +723,6 @@ fi
   const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
   const result = await terminal(quoted, [
     { prompt: 'Run this Homebrew command now?', input: 'y\n' },
-    { prompt: 'Press any key', input: 'x' },
   ], { ...f.env, PATH: `${dirname(node)}:${f.tools}:/usr/bin:/bin`, TERM_PROGRAM: 'OutaskTest' });
   assert.equal(result.status, 0, result.output);
   assert.match(result.output, /INCOMPATIBLE_RUNTIME/);
@@ -775,7 +780,7 @@ test('Finder launcher rejects missing Node and dirname before writing installati
   }
 });
 
-test('Finder launcher accepts one non-Return key and preserves terminal state and failed diagnostics', async (t) => {
+test('persistent terminals do not pause and preserve terminal state and failed diagnostics', async (t) => {
   const f = fixture(t, 'macos-arm64');
   const launcher = join(f.source, 'Install.command');
   const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
@@ -788,7 +793,7 @@ test('Finder launcher accepts one non-Return key and preserves terminal state an
     assert.match(result.output, /TTY_RESTORED/);
     assert.match(result.output, new RegExp(`WRAPPER_STATUS:${status}`));
     assert.match(result.output, new RegExp(`INSTALL_RESULT_${status}`));
-    assert.match(result.output, status === 0 ? /Cmd\+W/ : /Installation failed.*close this window when ready/);
+    assert.doesNotMatch(result.output, /Press any key|Cmd\+W/);
   }
   if (process.platform === 'darwin') {
     const script = windowWorker(readFileSync(launcher, 'utf8'));
@@ -796,6 +801,46 @@ test('Finder launcher accepts one non-Return key and preserves terminal state an
     writeFileSync(path, script);
     ok(run('/usr/bin/osacompile', ['-o', join(f.home, 'close.scpt'), path]));
   }
+});
+
+test('auto-closing Terminal launches wait for one key, while persistent and unknown contexts finish', async (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const launcher = join(f.source, 'Install.command');
+  const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
+  const probe = join(f.tools, 'osascript');
+  // Substitute Terminal's GUI response; the generated wrapper and TTY are real.
+  for (const response of ['true', 'false', 'unavailable']) {
+    writeFileSync(probe, `#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' '${response}'\n`, { mode: 0o755 });
+    for (const status of [0, 7]) {
+      writeFileSync(internalInstaller(f.source), `console.log('INSTALL_RESULT'); process.exit(${status});\n`);
+      const result = await terminal(`saved=$(stty -g); ${quote(launcher)}; result=$?; [ "$(stty -g)" = "$saved" ] && echo TTY_RESTORED; echo STATUS:$result`,
+        response === 'true' ? 'x' : [], { ...f.env, TERM_PROGRAM: 'Apple_Terminal' });
+      assert.equal(result.status, 0, result.output);
+      assert.match(result.output, new RegExp(`STATUS:${status}`));
+      assert.match(result.output, /TTY_RESTORED/);
+      assert.doesNotMatch(result.output, /Cmd\+W/);
+      assert.equal(result.output.includes('Press any key to finish.'), response === 'true', result.output);
+      if (response === 'true' && status !== 0) assert.match(result.output, /Installation failed/);
+    }
+  }
+});
+
+test('Terminal launch detection compiles and handles wrapped commands and persistent prompts', { skip: process.platform !== 'darwin' }, (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const launcher = readFileSync(join(f.source, 'Install.command'), 'utf8');
+  const probe = launcher.split("<<'APPLESCRIPT'\n")[1].split('\nAPPLESCRIPT')[0];
+  const path = join(f.home, 'probe.applescript');
+  writeFileSync(path, probe);
+  ok(run('/usr/bin/osacompile', ['-o', join(f.home, 'probe.scpt'), path]));
+  const handler = probe.slice(probe.indexOf('on isClosingLaunch('));
+  const script = `${handler}\non run arguments\nreturn isClosingLaunch(item 1 of arguments)\nend run`;
+  for (const [screen, expected] of [
+    ['/Users/person/My\\ Downloads/Install.command ; exit;\n\n', 'true'],
+    ['% /Users/person/My\\ Downloads/Install.command\n ; exit;   \n   ', 'true'],
+    ['% /Users/person/Install.command\n', 'false'],
+    ['% /Users/person/Install.command ; exit;\n% ./Install.command\n', 'false'],
+    ['% echo unrelated ; exit;', 'false'],
+  ]) assert.equal(ok(run('/usr/bin/osascript', ['-e', script, screen])).trim(), expected, screen);
 });
 
 test('window closure process query distinguishes absence from permissions, errors and malformed results', (t) => {
@@ -853,7 +898,8 @@ fs.renameSync(report + '.tmp', report);`;
     input: source.replace("'/usr/bin/osascript'", "'/unavailable-Outask-window-worker'"), env: f.env,
   });
   ok(failed);
-  assert.match(failed.stderr, /Automatic window closure unavailable.*Cmd\+W/);
+  assert.match(failed.stderr, /Automatic window closure unavailable/);
+  assert.doesNotMatch(failed.stderr, /Cmd\+W/);
 });
 
 test('a manual wrapper ending does not authorise closure while its Terminal session shell lives', async (t) => {

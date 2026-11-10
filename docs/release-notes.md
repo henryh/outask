@@ -2,16 +2,14 @@ Outask is a lightweight task tracker for personal projects and your AI harness.
 
 ## Downloads
 
-- [Linux x64](https://github.com/henryh/outask/releases/download/v1.7/Outask-1.7-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.7/Outask-1.7-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/henryh/outask/releases/download/v1.7/Outask-1.7-windows-x64.tar.gz)
+- [Linux x64](https://github.com/henryh/outask/releases/download/v1.8/Outask-1.8-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.8/Outask-1.8-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/henryh/outask/releases/download/v1.8/Outask-1.8-windows-x64.tar.gz)
 
 ## What's new
 
-- Read legacy tasks without a status as `pending` in `active.json` and `done` in `done.json`, without rewriting records. Existing schemas need explicit per-store fallbacks; see the [connection guide](https://github.com/henryh/outask/blob/v1.7/docs/outask-skill.md#connect-an-existing-project).
-- Follow clearer setup guidance and file/record diagnostics when connecting projects with string fields and custom data.
-- Reject malformed JSON with trailing commas consistently in task operations.
-- Find clearer npm installation and CLI examples in the [npm guide](https://github.com/henryh/outask/blob/v1.7/docs/npm.md).
+- Finish archive installation with a clear `outask` command and a quoted command for immediate use. Keep installation messages visible in automatically closing windows without pausing persistent terminals.
+- Use simpler CLI examples from the project directory, with explicit paths when selecting another project.
 
 ## Install
 
@@ -43,6 +41,6 @@ outask list --format table
 
 ## Documentation
 
-- [Basic use](https://github.com/henryh/outask/blob/v1.7/README.md#basic-use)
-- [Full operator reference](https://github.com/henryh/outask/blob/v1.7/app/README.md)
-- [MCP setup](https://github.com/henryh/outask/blob/v1.7/app/mcp/README.md)
+- [Basic use](https://github.com/henryh/outask/blob/v1.8/README.md#basic-use)
+- [Full operator reference](https://github.com/henryh/outask/blob/v1.8/app/README.md)
+- [MCP setup](https://github.com/henryh/outask/blob/v1.8/app/mcp/README.md)

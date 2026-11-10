@@ -92,6 +92,9 @@ function documentedInstall(source, shell) {
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /PATH configured/);
+  const output = result.stdout.replaceAll('\r\n', '\n');
+  assert.ok(output.includes(`Installed Outask at ${application}.\n\nCommand: outask\nRun immediately in PowerShell: & "${join(bin, 'outask.cmd')}" --help\nRun immediately in cmd.exe: "${join(bin, 'outask.cmd')}" --help\n\nInstallation complete. Open a new terminal to start working.\n`), output);
+  assert.doesNotMatch(output, /Press any key|Cmd\+W/);
 }
 function registry(script) { return run(powershell, ['-NoProfile', '-NonInteractive', '-Command', '[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding; ' + script]); }
 try {
