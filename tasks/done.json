@@ -403,5 +403,33 @@
     ],
     "updated_at": "2026-11-09T15:05:48.171Z",
     "completed_at": "2026-11-09T14:53:45.000Z"
+  },
+  {
+    "id": 28,
+    "title": "Reject trailing commas in task-store arrays",
+    "status": "done",
+    "priority": "high",
+    "blockers": [],
+    "scope": "Restore strict JSON syntax validation for retained task-store arrays. Research reproduced that app/src/input.mjs arrayRecords accepts a trailing comma after the last task, while JSON.parse and the blog's scripts/validate-tasks-json.mjs reject it. Correct the shared parser with a focused change; retain bounded reads and per-record decoding. Do not import the legacy validator or change project field contracts.",
+    "acceptance": [
+      "CLI outask validate and MCP validate_project reject a retained store containing [{\"id\":1,\"title\":\"Task\",\"status\":\"pending\"},] with INVALID_JSON, including whitespace/newlines between the comma and closing bracket.",
+      "Valid empty arrays and valid multi-record arrays continue to validate; malformed object commas remain rejected.",
+      "Focused regression checks cover the outer-array trailing comma; rejected validation does not certify malformed input or rewrite task records."
+    ],
+    "values": {
+      "goal": "Keep repository-local JSON authoritative and usable with ordinary JSON tools.",
+      "value": "Prevent successful validation of task stores that standard JSON readers cannot parse.",
+      "result": "The operator receives INVALID_JSON for the reproduced malformed array through CLI and MCP.",
+      "verification": "Validate identical valid and trailing-comma fixture stores via CLI and MCP; only valid JSON succeeds."
+    },
+    "updated_at": "2026-11-10T07:25:06.763Z",
+    "notes": [
+      "RELEASE_DEFERRED: Owner requested tasks 28 and 29 first, then a separately agreed release.",
+      "Candidate acceptance: PASS. CLI validate and MCP validate_project reject outer trailing commas (immediate and CRLF/tab whitespace) and malformed object commas with INVALID_JSON; valid empty and multi-record arrays succeed. Rejected validation preserves all task and existing service bytes.",
+      "Independent feature review: PASS (review28), no findings. QA: make ci exited 0 on Linux x64 / Node 24.21.0: 339 core tests, 15 MCP tests, locked dependency installs/audits, native installed archive smoke and npm lifecycle PASS.",
+      "Documentation audit: PASS, no edits needed; strict JSON was already the contract. Value gate: PASS, operators now detect invalid task JSON at both public boundaries. Fetched origin/main and integration was already current (82a4c03). Other native OS/Node combinations require hosted PR CI.",
+      "Local candidate only; push, draft PR, hosted CI monitoring and ready transition await exact owner agreement. Only owner merges."
+    ],
+    "completed_at": "2026-11-10T07:25:01.250Z"
   }
 ]
