@@ -405,8 +405,9 @@
     "notes": [
       "Owner-approved behavior from the discussion after task 29: infer absent status from the store; active means pending, done means done. Preserve explicit values, keep reads non-mutating, persist status for new tasks and actual legacy-task changes, and make custom-schema fallbacks explicit.",
       "Follow-up to delivered tasks 28 and 29 in merged PR #15 (merge 1f7edc1). This is a deliberate change to the strict missing-status contract; it does not reopen those delivered tasks.",
-      "Planning only: task creation is authorized; implementation has not started."
+      "RELEASE_DEFERRED: Owner requested task 30 first, then publication of one joint release including still-unreleased changes since v1.6. Release version/notes will be agreed after completion.",
+      "Delivery started on task-30-infer-store-status. Preserve the local planning commit 8a6096e inherited from main; no main push or additional worktree is authorized."
     ],
-    "updated_at": "2026-11-10T08:03:31.566Z"
+    "updated_at": "2026-11-10T08:04:53.549Z"
   }
 ]
