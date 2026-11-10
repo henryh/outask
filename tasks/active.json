@@ -256,7 +256,9 @@
       17,
       18,
       20,
-      30
+      30,
+      31,
+      32
     ],
     "scope": "Implement the lightweight online Work Origin client in shared core/standalone creation and mutation operations and expose aligned behavior through CLI and MCP. Explicit project enrollment assigns stable outask_origin_uuid task identities while retaining numeric IDs, existing records and unknown fields. Register each independent clone/worktree as outask_client using hostname plus a server-assigned numeric suffix; reconnecting the same copy preserves its identity, while independent copies and coincident hostnames must not share authority accidentally. Coordinate creation, taking ownership, changes, completion and archival across every retained status/store, checking current ownership and revisions. Reject unintended edits to another client's work and stale changes; require explicit confirmation tied to the concrete operation and expected state for force, including destructive replacement of an occupied ID. Recover safely from lost replies and local write failures without duplicate tasks or repeat application. Keep server traffic limited to coordination data; local JSON/Git retain full task content. Preserve unchanged non-coordinated task formats, numeric allocation, statuses, lists, outputs and network-free operation. Update affected user/contributor contracts and pass required checks. Offline reconciliation, server implementation/installation/systemd management and Git-hook integration are excluded and belong to subsequent delivery tasks. Follow docs/releases.md: synchronization-related implementation is scheduled only after unrelated active tasks are delivered and ships only in Outask 2.0.0 or later, never in a 1.x release. Refresh unrelated backlog readiness before starting; inherited dependencies enforce the current ordering.",
     "acceptance": [
@@ -281,7 +283,7 @@
       "The owner requires offline-capable coordinated work in the completed feature. The online slice does not settle offline behavior; a subsequent approved task owns offline continuation and reconciliation.",
       "Owner decision: Work Origin and every related synchronization change are for Outask 2.0 or later. Finish unrelated tasks first; planning can continue now. docs/releases.md owns this scheduling/release rule."
     ],
-    "updated_at": "2026-11-10T08:02:26.675Z"
+    "updated_at": "2026-11-10T09:29:29.754Z"
   },
   {
     "id": 25,
@@ -380,5 +382,82 @@
       "Task 25 transitively depends on task 24 and its unrelated-backlog blockers. Recheck scheduling before implementation. Server-side Git enforcement and remote branch policies are outside scope."
     ],
     "updated_at": "2026-11-09T13:45:14.746Z"
+  },
+  {
+    "id": 31,
+    "title": "Wait for npm registry visibility before verifying publication",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Correct the reproduced Outask v1.7 publication failure in scripts/npm-release.mjs: npm publish succeeded through trusted publishing and reported asynchronous processing, but the immediate metadata read could not yet see 1.7.0 and incorrectly reported an integrity mismatch. After an accepted publication, use bounded read-only retries for visibility of the exact approved package version and its intended dist-tag, then verify the published integrity against the already accepted artifact. Distinguish a not-yet-visible version/tag, transient registry failures, an actual immutable integrity mismatch and authentication/publication rejection. Preserve owner-merged release approval, existing-version safeguards, bootstrap behavior and stable/prerelease tag rules. Retry metadata reads only; never repeat npm publish inside the wait or automatically replace/delete/retag a published version. Keep the change small and within the existing publication helper and its focused tests.",
+    "acceptance": [
+      "A deterministic registry fixture initially hides a successfully accepted version and/or serves the old intended dist-tag, then exposes the approved integrity and tag; verification eventually passes after bounded read retries with exactly one publish invocation.",
+      "Published version metadata containing a different integrity fails as an actual immutable-artifact mismatch. The helper never overwrites, deletes or retags that version, and authentication or rejected-publish failures retain actionable diagnostics rather than being reported as propagation delay.",
+      "The wait has a finite deadline/retry budget. If the expected version or dist-tag never becomes visible, it exits nonzero with the package/version, last observed state and clear pending-visibility or registry-error wording; absence is not described as a confirmed integrity mismatch. Transient registry failures stay within the same bound.",
+      "A rerun against an already visible approved version and intended dist-tag succeeds without invoking npm publish. Existing-version collision checks, initial-registry bootstrap handoff and stable/prerelease latest/next selection retain their contracts.",
+      "Focused tests cover delayed version visibility, delayed tag visibility, timeout, transient registry failure, real integrity mismatch and publish rejection using controlled responses and deterministic timing; they perform no real npm publication. Required local checks pass, and contributor guidance is updated only if the recovery procedure changes."
+    ],
+    "values": {
+      "goal": "Publish approved Outask releases reliably while preserving immutable package integrity and owner approval.",
+      "value": "Avoid false failed releases and manual reruns caused by normal asynchronous npm registry processing.",
+      "result": "A successful publication waits for public visibility and completes verification automatically; real mismatches and expired waits still fail clearly.",
+      "verification": "Run controlled publication scenarios with one accepted publish and delayed metadata/tag responses; observe eventual success, bounded timeout and correct hard-failure diagnostics without repeat publication."
+    },
+    "notes": [
+      "Owner explicitly requested this separate task after the v1.7 incident; planning only, implementation is not started.",
+      "Evidence: Release run 42782896399 attempt 2 logged '+ outask@1.7.0' and the npm asynchronous-processing notice, then failed with 'Published npm integrity differs from the approved artifact' while public metadata still lacked 1.7.0. The version later appeared as latest with SHA-512 matching the accepted artifact; attempt 3 succeeded and all six native downloaded archive/npm acceptance jobs passed.",
+      "The earlier ENEEDAUTH was a separate Trusted Publisher configuration issue and is resolved. This task does not change npm account permissions, credentials, publisher configuration or published v1.7 contents."
+    ],
+    "updated_at": "2026-11-10T09:05:17.377Z"
+  },
+  {
+    "id": 32,
+    "title": "Report the installed Outask version in MCP server metadata",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Replace the hardcoded version in app/mcp/server.mjs with the installed Outask release version derived from the same authoritative app/package.json metadata and existing distribution-version convention used by the CLI. A fresh MCP connection must identify the actual Outask release in source-checkout, archive and npm layouts. Keep one source of truth; do not add a separately maintained MCP product version or new version/configuration subsystem. Preserve the existing lifecycle: already-running sessions can retain their loaded version until the client restarts them. Update affected source/installed update tests and concise guidance only where needed. No manual edits to an installed application, no changes to published release contents and no target release version assigned.",
+    "acceptance": [
+      "MCP initialization serverInfo.version reports the same Outask release identifier as the CLI, derived from the authoritative application package metadata rather than a hardcoded adapter version.",
+      "Focused checks verify the metadata for a fresh MCP session in the source checkout and actual installed archive/npm layouts, using the current package version and naming rules without fixing the expected result to a particular release number.",
+      "Installation/update acceptance verifies that fresh CLI and MCP launches identify the updated application version. Remove obsolete test-fixture rewriting of the hardcoded MCP version when the package metadata alone now supplies it.",
+      "Existing MCP sessions and active operations retain their normal lifecycle during compatible updates; fresh metadata is obtained by restarting the launching client/session. Do not terminate unrelated processes or add automatic client reconfiguration.",
+      "Run affected MCP/version/distribution checks and required project gates. Preserve task data, installed user configuration and existing source/archive/npm startup contracts. Update restart/version guidance only if a current claim needs correction."
+    ],
+    "values": {
+      "goal": "Make the installed Outask release identifiable consistently through CLI and MCP.",
+      "value": "Prevent operators from mistaking fixed adapter metadata for an outdated installation or unsuccessful update.",
+      "result": "A fresh MCP connection displays the installed Outask release version and agrees with the CLI after installation or updating.",
+      "verification": "Initialize fresh MCP clients against source and installed archive/npm fixtures, compare serverInfo.version with the package-derived CLI release identifier, and repeat the fresh-client check after a controlled update."
+    },
+    "notes": [
+      "Owner explicitly requested a separate fix task without tying it to a particular release version. Task creation only; implementation is not authorized by this planning request.",
+      "Reproduced on the installed Outask application: app/package.json reported 1.7.0 while MCP server construction still used version: '0.1.0'. This is server metadata, not the MCP protocol version.",
+      "Keep release scheduling separate from this task record; do not assign a version number or change manifests merely to create the task."
+    ],
+    "updated_at": "2026-11-10T09:29:17.000Z"
+  },
+  {
+    "id": 33,
+    "title": "List unblocked tasks and select the oldest eligible task in one read",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Add read-only operations to obtain all unblocked Active tasks through bounded pagination and to obtain the next task, defined as the lowest-ID Active task whose blockers are absent or no longer Active. Reuse the existing local blocker contract: a task is blocked exactly when its blockers intersect current Active IDs; omitted blockers are empty and inactive/unknown IDs do not block. Expose equivalent behavior in core/standalone, CLI, MCP and read-only HTTP, with discoverable help and documentation. Select and filter inside one operation before pagination, avoiding per-candidate inspectBlockers calls. Preserve existing list and blocker-inspection behavior. This is tracker eligibility only; do not interpret free-text dependencies, project phases, priority rules or external prerequisites, start tasks, or mutate records.",
+    "values": "Goal: let developers and agents choose available work efficiently from repository-local task data. Client value: retrieve the eligible backlog or its oldest task without issuing one blocker-inspection request per candidate. Observable result: one MCP/CLI operation returns the correct next task, and bounded list pages contain only eligible tasks. Measurement: a fixture with dozens of earlier blocked tasks, completed/unknown blockers and later eligible tasks produces the exact eligible set and lowest eligible ID without client-side per-task calls.",
+    "acceptance": [
+      "Provide discoverable read operations for (1) a bounded, pageable list of unblocked Active tasks and (2) the next unblocked task, ordered by ascending numeric ID rather than priority; define and document the no-eligible-task response.",
+      "Compute eligibility using the existing shared local-blocker contract, including configured Active groups, omitted/empty blockers, duplicate blockers and inactive/unknown IDs. Failed Active reads and invalid examined blocker fields remain errors rather than silently making tasks eligible.",
+      "Load the current Active set once per operation and filter eligible candidates before pagination; preserve stable ordering, projection and response-size boundaries. Retrieval does not start a task or modify task records.",
+      "Expose aligned behavior, inputs, outputs, errors and help across core/standalone, CLI, MCP and read-only HTTP, updating the owning contract and user/agent documentation. Existing list_tasks and inspect_blockers remain compatible.",
+      "Verify with focused contract and adapter tests: older blocked tasks precede the first eligible task, blockers complete/archive and release a dependant, no blockers, inactive/unknown IDs, no eligible tasks, pagination beyond a first page containing only blocked candidates, custom Active statuses and failed/malformed Active reads.",
+      "Demonstrate from the client boundary that a backlog with dozens of blocked candidates yields the next eligible task in one request and the eligible list in bounded pages without per-task inspect_blockers calls; run applicable repository checks."
+    ],
+    "sources": [
+      "User request 2026-11-10: add all-unblocked and oldest-next-task retrieval after a selection required 43 individual inspect_blockers calls.",
+      "docs/contract.md: Local blockers and shared read surfaces."
+    ],
+    "notes": "Planning only; implementation is not started. Preserve project-specific selection policy in consumers; this next-task operation implements the explicitly requested oldest-ID rule.",
+    "updated_at": "2026-11-10T16:11:49.340Z"
   }
 ]
