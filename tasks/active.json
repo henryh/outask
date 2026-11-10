@@ -436,5 +436,28 @@
       "Keep release scheduling separate from this task record; do not assign a version number or change manifests merely to create the task."
     ],
     "updated_at": "2026-11-10T09:29:17.000Z"
+  },
+  {
+    "id": 33,
+    "title": "List unblocked tasks and select the oldest eligible task in one read",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Add read-only operations to obtain all unblocked Active tasks through bounded pagination and to obtain the next task, defined as the lowest-ID Active task whose blockers are absent or no longer Active. Reuse the existing local blocker contract: a task is blocked exactly when its blockers intersect current Active IDs; omitted blockers are empty and inactive/unknown IDs do not block. Expose equivalent behavior in core/standalone, CLI, MCP and read-only HTTP, with discoverable help and documentation. Select and filter inside one operation before pagination, avoiding per-candidate inspectBlockers calls. Preserve existing list and blocker-inspection behavior. This is tracker eligibility only; do not interpret free-text dependencies, project phases, priority rules or external prerequisites, start tasks, or mutate records.",
+    "values": "Goal: let developers and agents choose available work efficiently from repository-local task data. Client value: retrieve the eligible backlog or its oldest task without issuing one blocker-inspection request per candidate. Observable result: one MCP/CLI operation returns the correct next task, and bounded list pages contain only eligible tasks. Measurement: a fixture with dozens of earlier blocked tasks, completed/unknown blockers and later eligible tasks produces the exact eligible set and lowest eligible ID without client-side per-task calls.",
+    "acceptance": [
+      "Provide discoverable read operations for (1) a bounded, pageable list of unblocked Active tasks and (2) the next unblocked task, ordered by ascending numeric ID rather than priority; define and document the no-eligible-task response.",
+      "Compute eligibility using the existing shared local-blocker contract, including configured Active groups, omitted/empty blockers, duplicate blockers and inactive/unknown IDs. Failed Active reads and invalid examined blocker fields remain errors rather than silently making tasks eligible.",
+      "Load the current Active set once per operation and filter eligible candidates before pagination; preserve stable ordering, projection and response-size boundaries. Retrieval does not start a task or modify task records.",
+      "Expose aligned behavior, inputs, outputs, errors and help across core/standalone, CLI, MCP and read-only HTTP, updating the owning contract and user/agent documentation. Existing list_tasks and inspect_blockers remain compatible.",
+      "Verify with focused contract and adapter tests: older blocked tasks precede the first eligible task, blockers complete/archive and release a dependant, no blockers, inactive/unknown IDs, no eligible tasks, pagination beyond a first page containing only blocked candidates, custom Active statuses and failed/malformed Active reads.",
+      "Demonstrate from the client boundary that a backlog with dozens of blocked candidates yields the next eligible task in one request and the eligible list in bounded pages without per-task inspect_blockers calls; run applicable repository checks."
+    ],
+    "sources": [
+      "User request 2026-11-10: add all-unblocked and oldest-next-task retrieval after a selection required 43 individual inspect_blockers calls.",
+      "docs/contract.md: Local blockers and shared read surfaces."
+    ],
+    "notes": "Planning only; implementation is not started. Preserve project-specific selection policy in consumers; this next-task operation implements the explicitly requested oldest-ID rule.",
+    "updated_at": "2026-11-10T16:11:49.340Z"
   }
 ]
