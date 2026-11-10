@@ -403,5 +403,35 @@
     ],
     "updated_at": "2026-11-09T15:05:48.171Z",
     "completed_at": "2026-11-09T14:53:45.000Z"
+  },
+  {
+    "id": 29,
+    "title": "Explain how to connect projects with custom or legacy task fields",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Make the existing custom-field/schema support and its minimum record requirements clear to an agent connecting an existing project. Concrete case: blog.henrydev.me retains string scope/acceptance and records without status; list currently returns INVALID_STORE with a generic id/title/status requirement. Provide concise actionable diagnostics and the relevant setup guidance: identify the offending file/record and missing or incompatible field, distinguish configurable project fields from the mandatory minimum, and explain the smallest explicit schema or data correction. Preserve unknown fields and existing values; no automatic bulk migration, permissive invalid-record fallback, new onboarding subsystem or blog migration in this task.",
+    "acceptance": [
+      "A valid project with custom fields and string acceptance works through CLI/MCP when its schema expresses those rules; no conversion to Outask contributor-task fields is required.",
+      "On a legacy fixture lacking status, CLI/MCP task access or validation reports the offending record, explicitly identifies status, and provides an actionable correction or directly referenced setup guidance; an agent can distinguish schema configuration from necessary record changes.",
+      "Guidance explains preservation of IDs, unknown fields and existing field types and the need for explicit migration decisions; failed access leaves task records unchanged.",
+      "Focused checks verify custom-field success and missing-status diagnostics. Keep this a small change to diagnostics/documentation and existing shared boundaries."
+    ],
+    "values": {
+      "goal": "Let each project own its fields and workflow while sharing Outask operations.",
+      "value": "Reduce failed connection attempts and prevent agents from unnecessarily reshaping a project's task data.",
+      "result": "An agent can connect a compatible custom-field fixture and determine the exact correction needed for the reproduced legacy fixture.",
+      "verification": "Run the documented CLI/MCP connection scenarios against custom-field and missing-status fixtures; verify useful diagnostics and unchanged source records."
+    },
+    "updated_at": "2026-11-10T07:32:53.021Z",
+    "notes": [
+      "RELEASE_DEFERRED: Owner requested tasks 28 and 29 first, then a separately agreed release.",
+      "Candidate acceptance: PASS. CLI/MCP support custom schema with string scope/acceptance, preserve IDs/unknown data and record bytes. Missing/incompatible minimum-field reads identify file[index], field and explicit correction; schema cannot waive the read minimum. Exempt-store full-validation behavior is unchanged.",
+      "Independent feature review: PASS (review29), no findings. Focused QA: 35 read-tasks/MCP and 11 validation tests passed; new diagnostic regressions fail against the original source and pass with the fix.",
+      "Full QA: make ci exited 0 on Linux x64 / Node 24.21.0: 340 core tests, 16 MCP tests, locked installs/audits, native installed archive smoke and npm lifecycle PASS. Other native OS/Node combinations require hosted PR CI.",
+      "Documentation audit: PASS. Exact documented JSON schema and CLI schema/list/validate commands exercised on a fresh custom-field project with unchanged records. Guide and contract links resolve; READMEs remain under 200 lines. Value gate: PASS, agents can connect compatible custom projects and identify the minimal missing-status correction.",
+      "Fetched and integrated origin/main (already current at 82a4c03). Local candidate only; push, draft PR, hosted CI monitoring and ready transition await exact owner agreement. Only owner merges."
+    ],
+    "completed_at": "2026-11-10T07:32:46.814Z"
   }
 ]
