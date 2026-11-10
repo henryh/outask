@@ -21,6 +21,34 @@ requests as reads.
 Outask requires no Git workflow or private agent skills. Apply branch, review
 and release requirements only where the target project declares them.
 
+## Connect an existing project
+
+Select the exact project directory and inspect its records and effective schema with `outask schema --project-path /absolute/project` before changing data. MCP uses the same project selector (`project_path`) with `inspect_schema`.
+
+Declare the project's existing stores, statuses, groups and field types in `tasks/task-schema.json` (or retain its existing `docs/task-schema.json`). For example, this schema accepts string `scope` and `acceptance` fields without converting them to arrays or importing this repository's contributor rules:
+
+```json
+{
+  "stores": {
+    "active.json": { "statuses": ["pending", "in_progress"] },
+    "done.json": { "statuses": ["done"] }
+  },
+  "groups": {
+    "Active": ["pending", "in_progress"],
+    "Done": ["done"],
+    "Archive": []
+  },
+  "fields": {
+    "scope": { "type": "string" },
+    "acceptance": { "type": "string" }
+  }
+}
+```
+
+Adapt that example to the actual files and workflow; retain schema extensions and use `required: true` only for fields the project requires. If both schema locations exist, select one with CLI `--schema-path` or MCP `schema_path`. A schema describes project rules; it cannot supply missing record values. Task reads always require a positive safe-integer `id` and non-empty string `title` and `status`, including in `validate: false` stores. Full validation's [exemption rules](contract.md#records-and-project-rules) remain separate.
+
+Run `outask list --project-path /absolute/project --limit 10 --fields id,title,status` (or MCP `list_tasks`), then `outask validate --project-path /absolute/project` (or `validate_project`). A minimum-field read error names the file, zero-based record index and first incompatible or missing field. Obtain the project owner's approval for the smallest data correction: for example, add the agreed status to the identified record. Preserve existing IDs, unknown fields and field types; do not renumber tasks, replace stores or copy another project's data. A malformed ID needs an explicitly agreed unique ID correction. Re-run the read and full validation after approved manual edits. Connecting and reading never migrate or repair task records automatically.
+
 ## Tool route
 
 Prefer connected Outask MCP tools (existing `tasks` registrations remain supported). Select the project on every call using

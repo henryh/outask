@@ -275,8 +275,16 @@ export function recordEntries(project, options = {}) {
       const { records: tasks } = readArray(path, project.budget);
       for (const { value: task, index } of tasks) {
         const label = `${path}[${index}]`;
-        if (!isObject(task) || !Number.isSafeInteger(task.id) || task.id <= 0 || !isText(task.title) || !isText(task.status)) {
-          fail('INVALID_STORE', `${label}: task needs a positive safe integer id and non-empty title/status strings`);
+        if (!isObject(task)) {
+          fail('INVALID_STORE', `${label}: task must be an object; correct this record to include id, title and status`);
+        }
+        const invalidField = !Number.isSafeInteger(task.id) || task.id <= 0 ? 'id'
+          : !isText(task.title) ? 'title' : !isText(task.status) ? 'status' : undefined;
+        if (invalidField) {
+          const expected = invalidField === 'id' ? 'a positive safe integer unique across retained tasks'
+            : invalidField === 'status' ? "a non-empty string matching the project's workflow" : 'a non-empty string';
+          const problem = Object.hasOwn(task, invalidField) ? 'incompatible' : 'missing';
+          fail('INVALID_STORE', `${label}: ${problem} ${invalidField}; set ${invalidField} to ${expected}. Schema rules cannot waive this read minimum`);
         }
         validateTimestamp(task, label);
         const rules = project.stores[file];
