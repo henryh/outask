@@ -233,6 +233,30 @@ test('reusable operations reread manual changes and reject invalid selection/que
   assert.throws(() => getTask(root, 1, null), { code: 'INVALID_INPUT' });
 });
 
+test('read diagnostics identify the first incompatible minimum field without changing records', (t) => {
+  const root = fixture(t, []);
+  const path = join(root, 'tasks/active.json');
+  for (const [record, problem, correction] of [
+    [{ title: 'Legacy', status: 'pending' }, 'missing id', 'set id to a positive safe integer'],
+    [task('2'), 'incompatible id', 'set id to a positive safe integer'],
+    [{ id: 2, status: 'pending' }, 'missing title', 'set title to a non-empty string'],
+    [task(2, { title: [] }), 'incompatible title', 'set title to a non-empty string'],
+    [{ id: 2, title: 'Legacy' }, 'missing status', 'set status to a non-empty string'],
+    [task(2, { status: ' ' }), 'incompatible status', 'set status to a non-empty string'],
+    [null, 'task must be an object', 'correct this record to include id, title and status'],
+  ]) {
+    writeStore(root, 'active.json', [task(1), record]);
+    const before = readFileSync(path);
+    assert.throws(() => listTasks(root, { noCache: true }), (error) => {
+      assert.equal(error.code, 'INVALID_STORE');
+      assert.ok(error.message.includes(`${path}[1]: ${problem}`), error.message);
+      assert.ok(error.message.includes(correction), error.message);
+      return true;
+    });
+    assert.deepEqual(readFileSync(path), before);
+  }
+});
+
 test('manual status typos are reported instead of silently hiding tasks from their group', (context) => {
   const root = fixture(context, [task(1, { status: 'pendnig' })]);
   const result = run('list-tasks', [root, '--format', 'json']);

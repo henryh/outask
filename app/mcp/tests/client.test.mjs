@@ -73,6 +73,50 @@ test('MCP list and count read an uninitialised project without creating task rec
   await call('list_tasks', { count: true, no_cache: true }, 'READ_ERROR');
 });
 
+test('CLI and MCP connect a custom-schema project while preserving string fields and unknown data', async (t) => {
+  const record = task(17, { status: 'ready', scope: 'Keep this string', acceptance: 'Keep this string too', legacy: { owner: 'project' } });
+  const root = fixture(t, [record], {
+    stores: { 'active.json': { statuses: ['ready'] }, 'done.json': { statuses: ['done'] } },
+    groups: { Active: ['ready'], Done: ['done'], Archive: [] },
+    fields: { scope: { type: 'string' }, acceptance: { type: 'string' } },
+  });
+  const path = join(root, 'tasks/active.json');
+  const before = readFileSync(path);
+  const { call } = await connect(t, root);
+  const selected = { project_path: root };
+  const result = cli(root, ['get', '17', '--project-path', root, '--format', 'json']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), record);
+  assert.deepEqual(await call('get_task', { ...selected, id: 17 }), record);
+  assert.deepEqual((await call('list_tasks', { ...selected, fields: ['id', 'title', 'status'] })).tasks,
+    [{ id: 17, title: 'Task 17', status: 'ready' }]);
+  assert.equal(cli(root, ['validate', '--project-path', root]).status, 0);
+  assert.equal((await call('validate_project', selected)).valid, true);
+  assert.deepEqual(readFileSync(path), before);
+});
+
+test('CLI and MCP identify missing status in exempt stores with an actionable file/index error', async (t) => {
+  const root = fixture(t, [task(1), { id: 8, title: 'Legacy', scope: 'Retain', acceptance: 'Retain', unknown: [false] }], {
+    stores: { 'active.json': { statuses: ['pending'], validate: false } },
+    fields: { status: { required: false } },
+  });
+  const path = join(root, 'tasks/active.json');
+  const before = readFileSync(path);
+  const { call } = await connect(t, root);
+  // Full validation exemption remains valid; task reads still need status.
+  assert.equal((await call('validate_project', { project_path: root })).valid, true);
+  const result = cli(root, ['list', '--project-path', root, '--format', 'json']);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  const response = await call('list_tasks', { project_path: root }, 'INVALID_STORE');
+  for (const message of [result.stderr, response.error.message]) {
+    assert.ok(message.includes(`${path}[1]: missing status`), message);
+    assert.match(message, /set status to a non-empty string matching the project's workflow/);
+    assert.match(message, /Schema rules cannot waive this read minimum/);
+  }
+  assert.deepEqual(readFileSync(path), before);
+});
+
 test('MCP validation and writes share the external project lock with core', async (t) => {
   const root = fixture(t, [task(1)]);
   const { call } = await connect(t, root);
