@@ -459,5 +459,26 @@
     ],
     "notes": "Planning only; implementation is not started. Preserve project-specific selection policy in consumers; this next-task operation implements the explicitly requested oldest-ID rule.",
     "updated_at": "2026-11-10T16:11:49.340Z"
+  },
+  {
+    "id": 34,
+    "title": "Document current-project CLI defaults and manual hook integration",
+    "status": "in_progress",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Documentation-only correction to app/README.md Git hooks section and docs/task-management.md CLI fallback. Add a repository-root existing pre-commit example using installed outask from PATH with failure propagation. Show local CLI fallback from this repository root without redundant project selector; keep every MCP absolute project_path requirement. Preserve printed project-specific invocation guidance for nested projects/shared hook locations/linked worktrees needing explicit context. Do not change runtime code, hook/installer diagnostics, versions or installed release files.",
+    "acceptance": [
+      "app/README.md shows an installed-CLI repository-root existing-hook example `outask validate || exit $?`, explains the cwd condition and preserves unrelated hook checks.",
+      "Keep project-specific printed invocation guidance for contexts that cannot rely on hook cwd. Preserve working-tree-versus-staged-data and metadata caveats.",
+      "docs/task-management.md CLI fallback uses repository-root cwd defaults; connected MCP calls continue requiring this repository's absolute project_path.",
+      "Independent review and focused disposable Git verification cover valid commit acceptance, invalid task rejection and preserved unrelated checks. Follow required contributor delivery checks; no release or remote action is authorized."
+    ],
+    "values": {
+      "goal": "Developers and local AI agents use the same repository-local task operations.",
+      "value": "Users can integrate an existing repository-root hook and run local CLI task operations without redundant machine-specific paths.",
+      "result": "Source documentation gives directly usable current-project commands and a manual-hook example with clear context boundaries.",
+      "verification": "Review the examples and run valid/invalid commits in a disposable repository with Outask on PATH."
+    },
+    "updated_at": "2026-11-10T16:25:40.728Z"
   }
 ]
