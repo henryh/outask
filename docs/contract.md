@@ -149,17 +149,13 @@ not prepare projects. Reads preserve task bytes and do not refresh existing
 service metadata or inspect it for blocker eligibility. Missing metadata is
 uncertified; successful validation or writes establish its fingerprints/counter.
 
-Selected read stores must be arrays of objects with positive safe-integer IDs, non-empty title/status strings and no duplicate IDs across selected files. Declared statuses are checked unless `validate: false`. Even exempt stores need this read structure; a schema cannot waive it or supply missing record values. Minimum-field read errors identify the source file, zero-based record index and first missing/incompatible field with a correction to make. See [connecting an existing project](outask-skill.md#connect-an-existing-project) for explicit schemas and approved corrections that preserve existing data. Every present `updated_at` must be canonical UTC milliseconds; legacy absence is valid. Reads preserve unknown fields and do not validate unselected history or all project-required fields. Blocker inspection additionally checks examined blocker fields. A successful read is not a full validation verdict.
+Selected read stores must be arrays of objects with positive safe-integer IDs, non-empty title and effective status strings and no duplicate IDs across selected files. Declared statuses are checked unless `validate: false`. Even exempt stores need this read structure; schemas cannot waive the ID/title minimum. Minimum-field read errors identify the source file, zero-based record index and first missing/incompatible field with a correction to make. See [connecting an existing project](outask-skill.md#connect-an-existing-project) for explicit schemas and approved corrections that preserve existing data. Every present `updated_at` must be canonical UTC milliseconds; legacy absence is valid. Reads preserve unknown fields and do not validate unselected history or all project-required fields. Blocker inspection additionally checks examined blocker fields. A successful read is not a full validation verdict.
 
 ## Records and project rules
 
-The universal retained-record minimum is `id`, `title`, `status`. Standard
-creation adds omitted `priority: "medium"` and `blockers: []`; schema
-`format: "minimal"` omits those defaults. Both stamp tracker-owned `updated_at`.
-Title is required; omitted status defaults to `pending` or configured
-`default_status`; omitted ID is allocated. A configured default must name a
-declared status. Legacy records remain valid without adding missing defaults.
-Unknown fields, IDs, records and readable source formatting must be preserved.
+Read and ordinary validation require `id`, `title` and an effective `status`. Only an absent status is inferred: without a schema, `active.json` supplies `pending` and `done.json` supplies `done`. Other stores have no implicit fallback. With a schema, each store containing status-less tasks needs an explicit `missing_status` naming one of its allowed statuses. Fallbacks cannot be `in_progress`, `review` or any configured `working_statuses` value. Explicit blank, null, wrong-type and undeclared values retain their existing validation rules. Inference supplies the same status for reads, filters, groups, search, counts and blocker checks; it never edits records or schemas. Full-validation exemptions remain as described below.
+
+Standard creation adds omitted `priority: "medium"` and `blockers: []`; schema `format: "minimal"` omits those defaults. Both stamp tracker-owned `updated_at`. Title is required; omitted status defaults to `pending` or configured `default_status`; omitted ID is allocated. A configured default must name a declared status. Legacy records remain valid without adding missing defaults. Unknown fields, IDs, records and readable source formatting must be preserved.
 
 `Active` means current work, `Done` completed work, `Archive` retained cancelled
 or deleted work. Review is optional; standard working statuses are
@@ -370,13 +366,7 @@ writers, atomic snapshots across concurrent completed moves and power-loss
 durability. Detected changes between source checks fail with `PROJECT_CHANGED`;
 an arbitrary editor can still race the last check/rename.
 
-Creation and actual mutations stamp canonical ISO UTC millisecond `updated_at`,
-strictly later than the prior date: max(current clock, prior + 1 ms). No-ops
-preserve record/service bytes; changing store at the same status is a mutation.
-Legacy absence gains a date on its first actual change. The maximum supported
-date is readable/no-op-safe but cannot advance (`TIMESTAMP_EXHAUSTED`). Callers
-cannot supply, patch or remove this field. Manual editors must advance existing
-dates; reads/validation neither infer changes nor bulk-stamp records.
+Creation and actual mutations stamp canonical ISO UTC millisecond `updated_at`, strictly later than the prior date: max(current clock, prior + 1 ms). No-ops preserve record/service bytes; changing store at the same status is a mutation. Legacy absence gains a date on its first actual change. An actual change also persists the effective/final status on a status-less legacy record; equal updates and same-store transitions remain no-ops and leave status absent. The maximum supported date is readable/no-op-safe but cannot advance (`TIMESTAMP_EXHAUSTED`). Callers cannot supply, patch or remove this field. Manual editors must advance existing dates; reads/validation neither infer changes nor bulk-stamp records.
 
 Optional `ifUpdatedAt` (CLI `--if-updated-at`) compares the exact stored date
 under lock after recovery, even for no-ops. Missing/different dates yield

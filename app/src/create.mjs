@@ -9,7 +9,7 @@ import { inputBytes, projectBytes, responseBytes } from './limits.mjs';
 import { jsonBytes } from './response.mjs';
 import { knownCounter, readService, recoverMove, replaceFile, serviceState, withProjectLock } from './service.mjs';
 import { finishStore, formatValue } from './storage-format.mjs';
-import { openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
+import { effectiveRecord, openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
 import { scanProject, validateCycles, validateRecord } from './validation.mjs';
 
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -59,9 +59,10 @@ function readActive(project, target, fingerprints) {
       source = text;
       count = 0;
     }
-    for (const { value: record } of records) {
+    for (const { value } of records) {
       if (file === target) count++;
       if (!activeStore) continue;
+      const record = rules.validate === false && rules.missing_status === undefined ? value : effectiveRecord(value, project, file, `tasks/${file}`);
       if (project.groups.get(record.status) !== 'Active') continue;
       activeIds.add(record.id);
       if (rules.validate !== false) active.set(record.id, { blockers: record.blockers ?? [] });

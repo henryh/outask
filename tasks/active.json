@@ -255,7 +255,8 @@
       16,
       17,
       18,
-      20
+      20,
+      30
     ],
     "scope": "Implement the lightweight online Work Origin client in shared core/standalone creation and mutation operations and expose aligned behavior through CLI and MCP. Explicit project enrollment assigns stable outask_origin_uuid task identities while retaining numeric IDs, existing records and unknown fields. Register each independent clone/worktree as outask_client using hostname plus a server-assigned numeric suffix; reconnecting the same copy preserves its identity, while independent copies and coincident hostnames must not share authority accidentally. Coordinate creation, taking ownership, changes, completion and archival across every retained status/store, checking current ownership and revisions. Reject unintended edits to another client's work and stale changes; require explicit confirmation tied to the concrete operation and expected state for force, including destructive replacement of an occupied ID. Recover safely from lost replies and local write failures without duplicate tasks or repeat application. Keep server traffic limited to coordination data; local JSON/Git retain full task content. Preserve unchanged non-coordinated task formats, numeric allocation, statuses, lists, outputs and network-free operation. Update affected user/contributor contracts and pass required checks. Offline reconciliation, server implementation/installation/systemd management and Git-hook integration are excluded and belong to subsequent delivery tasks. Follow docs/releases.md: synchronization-related implementation is scheduled only after unrelated active tasks are delivered and ships only in Outask 2.0.0 or later, never in a 1.x release. Refresh unrelated backlog readiness before starting; inherited dependencies enforce the current ordering.",
     "acceptance": [
@@ -280,7 +281,7 @@
       "The owner requires offline-capable coordinated work in the completed feature. The online slice does not settle offline behavior; a subsequent approved task owns offline continuation and reconciliation.",
       "Owner decision: Work Origin and every related synchronization change are for Outask 2.0 or later. Finish unrelated tasks first; planning can continue now. docs/releases.md owns this scheduling/release rule."
     ],
-    "updated_at": "2026-11-09T13:38:58.814Z"
+    "updated_at": "2026-11-10T08:02:26.675Z"
   },
   {
     "id": 25,

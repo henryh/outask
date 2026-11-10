@@ -8,7 +8,7 @@ import { jsonBytes } from './response.mjs';
 import { fingerprint, knownCounter, readService, recoverMove, saveMove, serviceState, withProjectLock } from './service.mjs';
 import { changeFields } from './source.mjs';
 import { finishStore } from './storage-format.mjs';
-import { openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
+import { effectiveRecord, openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
 import { nextTimestamp, timestampValue, validateTimestamp } from './timestamps.mjs';
 import { scanProject, validateCycles, validateRecord } from './validation.mjs';
 
@@ -87,10 +87,11 @@ export function moveTask(projectPath, id, status, options, deleting, patch) {
         sources.set(file, selected);
         let previousEnd;
         for (const entry of records) {
-          const task = entry.value;
+          const task = rules.validate === false && rules.missing_status === undefined && entry.value.id !== id
+            ? entry.value : effectiveRecord(entry.value, project, file, `tasks/${file}`);
           selected.count++;
           if (found?.file === file && found.nextStart === undefined) found.nextStart = entry.start;
-          if (task.id === id) found = { file, task, start: entry.start, end: entry.end, previousEnd };
+          if (task.id === id) found = { file, task, persisted: entry.value, start: entry.start, end: entry.end, previousEnd };
           if (project.groups.get(task.status) === 'Active') {
             activeIds.add(task.id);
             if (rules.validate !== false) active.set(task.id, { blockers: task.blockers ?? [] });
@@ -132,8 +133,8 @@ export function moveTask(projectPath, id, status, options, deleting, patch) {
       if (jsonBytes(task) + 1 > responseBytes) fail('OUTPUT_TOO_LARGE', 'the complete transitioned task exceeds 32 KiB; shorten the record before moving it');
       if (!changed) return task;
       const selected = sources.get(found.file);
-      const fields = Object.fromEntries(Object.entries(task).filter(([key, value]) => !Object.hasOwn(found.task, key) || !same(value, found.task[key])));
-      const removed = Object.keys(found.task).filter((key) => !Object.hasOwn(task, key));
+      const fields = Object.fromEntries(Object.entries(task).filter(([key, value]) => !Object.hasOwn(found.persisted, key) || !same(value, found.persisted[key])));
+      const removed = Object.keys(found.persisted).filter((key) => !Object.hasOwn(task, key));
       const lineStart = selected.source.lastIndexOf(0x0a, found.start - 1) + 1;
       const prefix = selected.source.toString('utf8', lineStart, found.start);
       const indent = target === found.file
