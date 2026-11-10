@@ -3,7 +3,7 @@
   "validated": {
     "files": {
       "tasks/task-schema.json": "24d4b7abea66adc76f9c0fef3ab1deaa32aed2723e4c46740f9d635aa8937dbf",
-      "tasks/active.json": "263717c435e654da9323dc83f19728b36b72e1ce93f1583497d8d188e7294c9c",
+      "tasks/active.json": "3bcb642a16c7b4db31ebef350ce7a789ebe8854e57693eecd77e3267b3ac14c7",
       "tasks/done.json": "20853ff09740dfee2996a51df6b33dde79ba381836118d05f36f24a919bf5576"
     },
     "counter": 34
