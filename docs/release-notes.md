@@ -11,6 +11,7 @@ Outask is a lightweight task tracker for personal projects and your AI harness.
 - Read legacy tasks without a status as `pending` in `active.json` and `done` in `done.json`, without rewriting records. Existing schemas need explicit per-store fallbacks; see the [connection guide](https://github.com/henryh/outask/blob/v1.7/docs/outask-skill.md#connect-an-existing-project).
 - Follow clearer setup guidance and file/record diagnostics when connecting projects with string fields and custom data.
 - Reject malformed JSON with trailing commas consistently in task operations.
+- Find clearer npm installation and CLI examples in the [npm guide](https://github.com/henryh/outask/blob/v1.7/docs/npm.md).
 
 ## Install
 
