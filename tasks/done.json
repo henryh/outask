@@ -422,13 +422,13 @@
       "result": "The operator receives INVALID_JSON for the reproduced malformed array through CLI and MCP.",
       "verification": "Validate identical valid and trailing-comma fixture stores via CLI and MCP; only valid JSON succeeds."
     },
-    "updated_at": "2026-11-10T07:25:06.763Z",
+    "updated_at": "2026-11-10T07:38:20.758Z",
     "notes": [
       "RELEASE_DEFERRED: Owner requested tasks 28 and 29 first, then a separately agreed release.",
       "Candidate acceptance: PASS. CLI validate and MCP validate_project reject outer trailing commas (immediate and CRLF/tab whitespace) and malformed object commas with INVALID_JSON; valid empty and multi-record arrays succeed. Rejected validation preserves all task and existing service bytes.",
       "Independent feature review: PASS (review28), no findings. QA: make ci exited 0 on Linux x64 / Node 24.21.0: 339 core tests, 15 MCP tests, locked dependency installs/audits, native installed archive smoke and npm lifecycle PASS.",
       "Documentation audit: PASS, no edits needed; strict JSON was already the contract. Value gate: PASS, operators now detect invalid task JSON at both public boundaries. Fetched origin/main and integration was already current (82a4c03). Other native OS/Node combinations require hosted PR CI.",
-      "Local candidate only; push, draft PR, hosted CI monitoring and ready transition await exact owner agreement. Only owner merges."
+      "Combined candidate acceptance: PASS on task-28-29-json-and-project-guidance. Owner explicitly requested one shared PR for tasks 28 and 29. Integration review PASS at b87fef1; all unrelated records preserved and service fingerprints verified. Combined make ci exited 0 (Linux x64, Node 24.21.0): 340 core tests, 17 MCP tests, locked dependency installs/audits, installed archive and npm lifecycle PASS. Existing independent reviews/docs evidence remains valid. Origin/main is current at 82a4c03. Proceed with one draft PR, monitor six native PR CI jobs and mark ready on success; owner retains merge. Release remains deferred."
     ],
     "completed_at": "2026-11-10T07:25:01.250Z"
   },
@@ -451,14 +451,14 @@
       "result": "An agent can connect a compatible custom-field fixture and determine the exact correction needed for the reproduced legacy fixture.",
       "verification": "Run the documented CLI/MCP connection scenarios against custom-field and missing-status fixtures; verify useful diagnostics and unchanged source records."
     },
-    "updated_at": "2026-11-10T07:32:53.021Z",
+    "updated_at": "2026-11-10T07:38:20.842Z",
     "notes": [
       "RELEASE_DEFERRED: Owner requested tasks 28 and 29 first, then a separately agreed release.",
       "Candidate acceptance: PASS. CLI/MCP support custom schema with string scope/acceptance, preserve IDs/unknown data and record bytes. Missing/incompatible minimum-field reads identify file[index], field and explicit correction; schema cannot waive the read minimum. Exempt-store full-validation behavior is unchanged.",
       "Independent feature review: PASS (review29), no findings. Focused QA: 35 read-tasks/MCP and 11 validation tests passed; new diagnostic regressions fail against the original source and pass with the fix.",
       "Full QA: make ci exited 0 on Linux x64 / Node 24.21.0: 340 core tests, 16 MCP tests, locked installs/audits, native installed archive smoke and npm lifecycle PASS. Other native OS/Node combinations require hosted PR CI.",
       "Documentation audit: PASS. Exact documented JSON schema and CLI schema/list/validate commands exercised on a fresh custom-field project with unchanged records. Guide and contract links resolve; READMEs remain under 200 lines. Value gate: PASS, agents can connect compatible custom projects and identify the minimal missing-status correction.",
-      "Fetched and integrated origin/main (already current at 82a4c03). Local candidate only; push, draft PR, hosted CI monitoring and ready transition await exact owner agreement. Only owner merges."
+      "Combined candidate acceptance: PASS on task-28-29-json-and-project-guidance. Owner explicitly requested one shared PR for tasks 28 and 29. Integration review PASS at b87fef1; all unrelated records preserved and service fingerprints verified. Combined make ci exited 0 (Linux x64, Node 24.21.0): 340 core tests, 17 MCP tests, locked dependency installs/audits, installed archive and npm lifecycle PASS. Existing independent reviews/docs evidence remains valid. Origin/main is current at 82a4c03. Proceed with one draft PR, monitor six native PR CI jobs and mark ready on success; owner retains merge. Release remains deferred."
     ],
     "completed_at": "2026-11-10T07:32:46.814Z"
   }
