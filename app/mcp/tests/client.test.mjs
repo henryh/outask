@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import { beforeFixtureCleanup, fixture, task, writeStore } from '../../tests/fixtures.mjs';
+import { beforeFixtureCleanup, fixture, snapshot, task, writeStore } from '../../tests/fixtures.mjs';
 import { inputBytes, projectBytes, responseBytes } from '../../src/limits.mjs';
 import { projectLockPath } from '../../src/project-lock.mjs';
 import { refreshSearchIndex } from '../../src/search-index.mjs';
@@ -41,6 +41,32 @@ async function connect(t, root, command = executable, env) {
   };
   return { client, call };
 }
+
+test('CLI and MCP validation reject trailing array commas without certifying or changing malformed stores', async (t) => {
+  const root = fixture(t, []);
+  const { call } = await connect(t, root);
+  const path = join(root, 'tasks/active.json');
+  for (const source of ['[]', JSON.stringify([task(1), task(2)])]) {
+    writeFileSync(path, source);
+    assert.equal(cli(root, ['validate']).status, 0);
+    await call('validate_project');
+    assert.equal(readFileSync(path, 'utf8'), source);
+  }
+  for (const source of [
+    `[${JSON.stringify(task(1))},]`,
+    `[${JSON.stringify(task(1))}, \r\n\t]`,
+    '[{"id":1,"title":"Task","status":"pending",}]',
+  ]) {
+    writeFileSync(path, source);
+    const before = snapshot(root);
+    const result = cli(root, ['validate']);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /^INVALID_JSON:.*active\.json/);
+    await call('validate_project', {}, 'INVALID_JSON');
+    assert.deepEqual(snapshot(root), before);
+  }
+});
 
 test('MCP list and count read an uninitialised project without creating task records', async (t) => {
   const root = fixture(t, []);
