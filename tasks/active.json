@@ -26,7 +26,7 @@
   {
     "id": 10,
     "title": "Simplify installer completion messages across platforms",
-    "status": "in_progress",
+    "status": "review",
     "priority": "medium",
     "blockers": [],
     "scope": "Update the packaged Linux, macOS and Windows installer messages and completion behavior. Remove all suggestions to close the window using keyboard shortcuts, including 'If the window stays open, close it with Cmd+W.'. Always display the canonical short command 'outask' in Command; retain the platform-appropriate full executable path with correct quoting in Run immediately for use before a new terminal is opened. End successful installation with 'Installation complete. Open a new terminal to start working.'. Append 'Press any key to finish.' and wait for a key only in launch contexts where the installer window would otherwise close automatically; omit both the prompt and wait when the terminal remains open. Preserve the installed-location line and readable spacing. This task covers completion messages and pause behavior, not update functionality.",
@@ -38,7 +38,16 @@
       "Focused platform installer checks verify final output, short Command, executable-path quoting for paths containing spaces, and pause behavior in automatically closing windows versus persistent terminals; inspect captured successful installation output at the user boundary and run the applicable project gates."
     ],
     "values": "Goal: provide usable packaged CLI/MCP installation on supported Linux, macOS and Windows platforms (docs/product.md). Value: users immediately see the short CLI command and a usable immediate-run command, without unnecessary window-closing instructions or key waits. Observable result: the completed installer presents the agreed concise message and pauses only when needed to keep an automatically closing window readable. Verification: inspect successful installer output and exit/pause behavior for automatically closing launches and persistent terminal sessions on the supported platform routes.",
-    "updated_at": "2026-11-10T20:55:25.153Z"
+    "updated_at": "2026-11-10T21:05:40.189Z",
+    "notes": [
+      "Implementation: 6c59014 on task-10-installer-completion. Packaged installers show the canonical short command, quoted immediate-run commands and the agreed final message. Removed Cmd+W advice; macOS pauses only after a closing-launch probe, Windows only in a dedicated cmd /c console. Existing exit status and safe outer-session closure guard are preserved.",
+      "Release candidate: Outask v1.8 (package 1.8.0); exact docs/release-notes.md validated with releaseNotes. Includes installer completion and the previously unreleased current-project CLI documentation from task 34. Documentation audit aligned installer help and generated archive README Command labels; no separate report needed.",
+      "Independent feature review: PASS, including final macOS hosted-CI registration and canonical Command labels. QA found and resolved missing macOS job coverage; no confirmed implementation defect remains.",
+      "Available automated evidence: final make ci exit 0 on native Linux x64 / Node 24.21.0; dependency installs and audits PASS, core suite 349 tests, MCP suite 18 tests, installed archive CLI/MCP/update/uninstall/data preservation PASS, npm install/update/uninstall lifecycle PASS. Focused baseline 46 tests passed; final focused release/Windows suite 43 passed and 2 native-platform checks skipped on Linux.",
+      "Coverage: packaged POSIX output checked exactly with spaced paths. Real pseudo-terminals check pause/no-pause, exit status and terminal restoration with substituted GUI responses. Required hosted macOS jobs now run real AppleScript compilation and handler tests, including wrapped launch lines. Native Windows jobs check console classification and exact captured installation output.",
+      "Acceptance remains incomplete: no actual Finder/Terminal GUI launch or dedicated Windows console prompt/ReadKey observation is available on this Linux host. Headless/native-predicate checks do not prove those GUI cases. Obtain native observations or an explicit owner exception under docs/contributing.md task-delivery step 3 before candidate closure. Hosted native macOS/Windows and Node 22.23.3 CI remain pending authorized push.",
+      "No push, draft PR, ready transition, merge or publication has been performed or authorized. Task retained in review without completed_at pending the acceptance decision."
+    ]
   },
   {
     "id": 12,
