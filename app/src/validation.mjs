@@ -4,7 +4,7 @@ import { applyFieldRules } from './field-rules.mjs';
 import { validateTimestamp } from './timestamps.mjs';
 import { projectBudget, readArray, readBuffer } from './input.mjs';
 import { knownCounter, readService, recoverMove, replaceFile, serviceState, withProjectLock } from './service.mjs';
-import { openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
+import { effectiveRecord, openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
 
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const text = (value) => typeof value === 'string' && value.trim() !== '';
@@ -93,8 +93,9 @@ export function scanProject(projectPath, validate = true, schemaPath) {
       continue;
     }
     const { records } = readArray(join(project.directory, file), budget);
-    for (const { value: task, index } of records) {
+    for (const { value: persisted, index } of records) {
       const label = `tasks/${file}[${index}]`;
+      const task = project.stores[file]?.validate === false ? persisted : effectiveRecord(persisted, project, file, label);
       if (!object(task) || !id(task.id)) fail('INVALID_STORE', `${label}: id must be a positive safe integer on a task object`);
       if (seen.has(task.id)) fail('INVALID_STORE', `${label}: duplicate id ${task.id}; first seen at ${seen.get(task.id)}`);
       seen.set(task.id, label);

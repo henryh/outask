@@ -137,8 +137,8 @@ test('CLI and MCP identify missing status in exempt stores with an actionable fi
   const response = await call('list_tasks', { project_path: root }, 'INVALID_STORE');
   for (const message of [result.stderr, response.error.message]) {
     assert.ok(message.includes(`${path}[1]: missing status`), message);
-    assert.match(message, /set status to a non-empty string matching the project's workflow/);
-    assert.match(message, /Schema rules cannot waive this read minimum/);
+    assert.ok(message.includes('stores["active.json"].missing_status'), message);
+    assert.match(message, /task-schema.json.*declared non-working status/);
   }
   assert.deepEqual(readFileSync(path), before);
 });
@@ -520,4 +520,38 @@ test('oversized stdio input closes the transport before changing task data', (t)
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /buffer.*size|size.*buffer/i);
   assert.equal(readFileSync(join(root, 'tasks/active.json'), 'utf8'), before);
+});
+
+
+test('CLI and MCP share inferred legacy statuses, read-only records and persistence on actual writes', async (t) => {
+  const root = fixture(t, [{ id: 1, title: 'Legacy active', scope: 'String scope', acceptance: 'String acceptance', custom: false, blockers: [2, 99] }, { id: 2, title: 'Legacy blocker' }]);
+  writeStore(root, 'done.json', [{ id: 99, title: 'Legacy done' }]);
+  const before = snapshot(root);
+  const { call } = await connect(t, root);
+  const selected = { project_path: root };
+  assert.deepEqual((await call('list_tasks', selected)).tasks.map(row => row.status), ['pending', 'pending']);
+  assert.equal((await call('get_task', { ...selected, id: 99, group: 'Done' })).status, 'done');
+  assert.equal((await call('search_tasks', { ...selected, query: 'String' })).tasks[0].status, 'pending');
+  assert.deepEqual((await call('inspect_blockers', { ...selected, id: 1 })).activeBlockers, [2]);
+  const listed = cli(root, ['list', '--project-path', root, '--format', 'json']);
+  assert.equal(listed.status, 0, listed.stderr);
+  assert.equal(JSON.parse(listed.stdout).tasks[0].status, 'pending');
+  assert.deepEqual(snapshot(root), before);
+  writeStore(root, 'task-schema.json', {
+    stores: {
+      'active.json': { statuses: ['pending'], missing_status: 'pending' },
+      'done.json': { statuses: ['done'], missing_status: 'done' },
+    }, fields: { scope: { type: 'string' }, acceptance: { type: 'string' } },
+  });
+  assert.equal((await call('get_task', { ...selected, id: 1 })).status, 'pending');
+  assert.equal((await call('validate_project', selected)).valid, true);
+  const validated = snapshot(root);
+  assert.equal((await call('update_task', { ...selected, id: 1, patch: { set: { scope: 'String scope' } } })).status, 'pending');
+  assert.deepEqual(snapshot(root), validated);
+  const updated = await call('update_task', { ...selected, id: 1, patch: { set: { title: 'Edited' } } });
+  assert.equal(updated.status, 'pending');
+  assert.equal(updated.scope, 'String scope');
+  assert.equal(updated.acceptance, 'String acceptance');
+  assert.equal(updated.custom, false);
+  assert.equal(JSON.parse(readFileSync(join(root, 'tasks/active.json')))[0].status, 'pending');
 });

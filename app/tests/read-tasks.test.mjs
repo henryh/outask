@@ -241,7 +241,6 @@ test('read diagnostics identify the first incompatible minimum field without cha
     [task('2'), 'incompatible id', 'set id to a positive safe integer'],
     [{ id: 2, status: 'pending' }, 'missing title', 'set title to a non-empty string'],
     [task(2, { title: [] }), 'incompatible title', 'set title to a non-empty string'],
-    [{ id: 2, title: 'Legacy' }, 'missing status', 'set status to a non-empty string'],
     [task(2, { status: ' ' }), 'incompatible status', 'set status to a non-empty string'],
     [null, 'task must be an object', 'correct this record to include id, title and status'],
   ]) {

@@ -493,3 +493,31 @@ test('HTTP public selectors retain cwd, positional and configured project select
     await server.stop();
   }
 });
+
+
+test('HTTP exposes effective legacy statuses through group, count, search and blocker reads without changing stores', async (t) => {
+  const root = fixture(t, [{ id: 1, title: 'Legacy active', scope: 'String scope', acceptance: 'String acceptance', custom: false, blockers: [2, 99] }, { id: 2, title: 'Legacy blocker' }]);
+  writeStore(root, 'done.json', [{ id: 99, title: 'Legacy done' }]);
+  const before = snapshot(root);
+  const api = await serve(t, root);
+  for (const suffix of ['', '&no-cache=true']) {
+    const active = await api(`/tasks?fields=id,status${suffix}`);
+    assert.equal(active.status, 200);
+    assert.deepEqual(active.data.tasks.map(row => row.status), ['pending', 'pending']);
+    assert.deepEqual((await api(`/tasks?count=true&status=pending${suffix}`)).data, { count: 2 });
+    assert.equal((await api(`/tasks/99?group=Done${suffix}`)).data.status, 'done');
+    assert.equal((await api(`/tasks/search?query=String&fields=id,status${suffix}`)).data.tasks[0].status, 'pending');
+    assert.deepEqual((await api(`/tasks/1/blockers?depth=1${suffix}`)).data.activeBlockers, [2]);
+  }
+  assert.deepEqual(snapshot(root), before);
+  writeStore(root, 'task-schema.json', {
+    stores: {
+      'active.json': { statuses: ['pending'], missing_status: 'pending' },
+      'done.json': { statuses: ['done'], missing_status: 'done' },
+    }, fields: { scope: { type: 'string' }, acceptance: { type: 'string' } },
+  });
+  const configured = snapshot(root);
+  assert.equal((await api('/tasks/1')).data.status, 'pending');
+  assert.equal((await api('/tasks/99?group=Done')).data.status, 'done');
+  assert.deepEqual(snapshot(root), configured);
+});

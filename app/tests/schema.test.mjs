@@ -21,8 +21,8 @@ test('no-schema inspection expands defaults without creating configuration or st
   const expected = {
     format: 'standard', default_status: 'pending', working_statuses: ['in_progress', 'review'],
     stores: {
-      'active.json': { statuses: ['pending', 'in_progress', 'review'] },
-      'done.json': { statuses: ['done'] }, 'archive.json': { statuses: ['cancelled'] },
+      'active.json': { statuses: ['pending', 'in_progress', 'review'], missing_status: 'pending' },
+      'done.json': { statuses: ['done'], missing_status: 'done' }, 'archive.json': { statuses: ['cancelled'] },
     },
     groups: { Active: ['pending', 'in_progress', 'review'], Done: ['done'], Archive: ['cancelled'] },
     search: { mode: 'scan' },
