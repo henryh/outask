@@ -255,7 +255,8 @@
       16,
       17,
       18,
-      20
+      20,
+      30
     ],
     "scope": "Implement the lightweight online Work Origin client in shared core/standalone creation and mutation operations and expose aligned behavior through CLI and MCP. Explicit project enrollment assigns stable outask_origin_uuid task identities while retaining numeric IDs, existing records and unknown fields. Register each independent clone/worktree as outask_client using hostname plus a server-assigned numeric suffix; reconnecting the same copy preserves its identity, while independent copies and coincident hostnames must not share authority accidentally. Coordinate creation, taking ownership, changes, completion and archival across every retained status/store, checking current ownership and revisions. Reject unintended edits to another client's work and stale changes; require explicit confirmation tied to the concrete operation and expected state for force, including destructive replacement of an occupied ID. Recover safely from lost replies and local write failures without duplicate tasks or repeat application. Keep server traffic limited to coordination data; local JSON/Git retain full task content. Preserve unchanged non-coordinated task formats, numeric allocation, statuses, lists, outputs and network-free operation. Update affected user/contributor contracts and pass required checks. Offline reconciliation, server implementation/installation/systemd management and Git-hook integration are excluded and belong to subsequent delivery tasks. Follow docs/releases.md: synchronization-related implementation is scheduled only after unrelated active tasks are delivered and ships only in Outask 2.0.0 or later, never in a 1.x release. Refresh unrelated backlog readiness before starting; inherited dependencies enforce the current ordering.",
     "acceptance": [
@@ -280,7 +281,7 @@
       "The owner requires offline-capable coordinated work in the completed feature. The online slice does not settle offline behavior; a subsequent approved task owns offline continuation and reconciliation.",
       "Owner decision: Work Origin and every related synchronization change are for Outask 2.0 or later. Finish unrelated tasks first; planning can continue now. docs/releases.md owns this scheduling/release rule."
     ],
-    "updated_at": "2026-11-09T13:38:58.814Z"
+    "updated_at": "2026-11-10T08:02:26.675Z"
   },
   {
     "id": 25,
@@ -379,5 +380,33 @@
       "Task 25 transitively depends on task 24 and its unrelated-backlog blockers. Recheck scheduling before implementation. Server-side Git enforcement and remote branch policies are outside scope."
     ],
     "updated_at": "2026-11-09T13:45:14.746Z"
+  },
+  {
+    "id": 30,
+    "title": "Infer missing legacy task status from its store",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Allow existing projects to use retained tasks without a persisted status by deriving an effective status from the containing store. Without an explicit project schema, active.json supplies pending and done.json supplies done; do not infer in_progress, review or other working states. Existing schemas must explicitly configure compatible per-store fallback statuses and allow those statuses; document the smallest manual schema correction instead of silently changing schema files. Apply the effective status consistently through shared core/standalone, CLI, MCP and read-only HTTP operations, including full validation, activity groups and blocker checks. Infer only an absent status; preserve and validate every explicit value. Reads and validation do not migrate task records. New tasks always persist status, and actual changes to legacy tasks persist their effective/final status; preserve existing no-op, timestamp, locking and byte-preservation contracts. Preserve IDs, unknown fields and existing field types such as string scope/acceptance. Update the owning contract, setup guidance and diagnostics. No blog migration, automatic schema rewriting, new onboarding subsystem or inference for unspecified stores.",
+    "acceptance": [
+      "An isolated no-schema fixture with status-less tasks in active.json and done.json is readable and fully valid: returned effective statuses are pending and done, default Active reads contain only active tasks, explicit Done reads contain completed tasks, and records/service behavior follows existing read/validation contracts without adding status to source records.",
+      "A custom-schema fixture works with explicit compatible per-store fallback statuses. A missing or incompatible fallback configuration produces an actionable file/store/schema diagnostic with the required manual correction; schema files and task records remain unchanged on failure. Unspecified stores do not acquire a guessed status.",
+      "Explicit status values retain precedence. Empty, null, wrong-type and undeclared explicit statuses remain errors under the existing validation rules; inference never silently repairs them or assigns working statuses.",
+      "Shared read/validation, filtering/counts, search, grouping and blocker behavior use the same effective status through core/standalone, CLI, MCP and read-only HTTP. Focused boundary tests cover active/done inference, compatible/incompatible schemas and explicit invalid values; strict JSON rejection from task 28 remains intact.",
+      "Creation persists an explicit status. An actual update or transition of a status-less legacy task persists the effective/final status while preserving unrelated fields, IDs and types. No-op operations preserve source bytes and timestamps; focused write checks cover both cases.",
+      "Document and exercise the connection scenario using string scope/acceptance, custom fields and missing status. Show the exact schema settings for existing projects and distinguish effective read values from persisted fields. Do not change the real blog project as part of this task."
+    ],
+    "values": {
+      "goal": "Let existing projects share Outask operations while retaining their repository-local task data and workflow.",
+      "value": "Connect legacy active/done stores without requiring a bulk task migration or silently treating unfinished tasks as started.",
+      "result": "Operators can list and validate status-less legacy tasks as pending/done, with explicit and actionable configuration for projects owning a schema.",
+      "verification": "Run CLI/MCP and read-only HTTP scenarios against isolated status-less active/done and custom-schema fixtures; verify returned statuses, unchanged read-side task bytes, invalid explicit-status rejection and explicit status persistence on actual writes."
+    },
+    "notes": [
+      "Owner-approved behavior from the discussion after task 29: infer absent status from the store; active means pending, done means done. Preserve explicit values, keep reads non-mutating, persist status for new tasks and actual legacy-task changes, and make custom-schema fallbacks explicit.",
+      "Follow-up to delivered tasks 28 and 29 in merged PR #15 (merge 1f7edc1). This is a deliberate change to the strict missing-status contract; it does not reopen those delivered tasks.",
+      "Planning only: task creation is authorized; implementation has not started."
+    ],
+    "updated_at": "2026-11-10T08:02:16.624Z"
   }
 ]
