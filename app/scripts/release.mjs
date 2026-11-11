@@ -20,6 +20,7 @@ const runtimeScripts = [
   'get-tasks.mjs',
   'hook.mjs',
   'install-launcher.mjs',
+  'install-finish.ps1',
   'install-migration.mjs',
   'install-path.mjs',
   'install-release.mjs',
@@ -134,7 +135,7 @@ function writeSupport(releaseRoot, version, target, nodeRange) {
     writeFileSync(join(releaseRoot, 'bin', name), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
   }
   if (target === 'windows-x64') {
-    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nexit /b %errorlevel%\r\n`);
+    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nset "install_status=%errorlevel%"\r\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0app\\scripts\\install-finish.ps1"\r\nexit /b %install_status%\r\n`);
   }
   writeFileSync(join(releaseRoot, 'release.json'), JSON.stringify({ version, target }) + '\n');
   if (target === 'linux-x64') {
@@ -407,13 +408,57 @@ if [ -t 0 ]; then
     current_pid="$parent_pid"
   done
 fi
+auto_close=false
+if [ -t 0 ] && [ "\${TERM_PROGRAM:-}" = Apple_Terminal ] && command -v osascript >/dev/null 2>&1; then
+  terminal_tty="$(tty)"
+  # Finder submits a command ending in exit; a normal shell invocation stays open.
+  auto_close="$(osascript - "$terminal_tty" <<'APPLESCRIPT'
+on run arguments
+  set installerTTY to item 1 of arguments
+  tell application "Terminal"
+    repeat with candidate in windows
+      repeat with candidateTab in tabs of candidate
+        if tty of candidateTab is installerTTY then
+          return my isClosingLaunch(contents of candidateTab as text)
+        end if
+      end repeat
+    end repeat
+  end tell
+  return false
+end run
+
+on isClosingLaunch(screenText)
+  set launchText to ""
+  set launchLines to paragraphs of screenText
+  repeat with lineIndex from (count of launchLines) to 1 by -1
+    set launchLine to item lineIndex of launchLines
+    repeat while launchLine ends with space or launchLine ends with tab
+      if (count of characters of launchLine) is 1 then
+        set launchLine to ""
+      else
+        set launchLine to text 1 thru -2 of launchLine
+      end if
+    end repeat
+    if launchLine is not "" then
+      if launchText is "" and not (launchLine ends with "; exit;" or launchLine ends with "; exit") then return false
+      set launchText to launchLine & launchText
+      if launchText contains "Install.command" then return true
+    else if launchText is not "" then
+      return false
+    end if
+  end repeat
+  return false
+end isClosingLaunch
+APPLESCRIPT
+  )" || auto_close=false
+fi
 runInstaller "$@"
 status=$?
-if [ -t 0 ]; then
+if [ "$auto_close" = true ]; then
   if [ "$status" -eq 0 ]; then
-    printf '\nInstallation complete. Press any key to finish.\nIf the window stays open, close it with Cmd+W.\n'
+    printf 'Press any key to finish.\\n'
   else
-    printf '\nInstallation failed. Review the messages above. Press any key to finish; close this window when ready.\n'
+    printf '\\nInstallation failed. Review the messages above.\\nPress any key to finish.\\n'
   fi
   pressed=false
   IFS= read -r -s -n 1 answer && pressed=true
@@ -423,7 +468,7 @@ if [ -t 0 ]; then
     node --input-type=module - "$terminal_tty" "$session_pid" <<'NODE'
 import { spawn } from 'node:child_process';
 const script = ${JSON.stringify(closeWindow)};
-const fallback = () => console.error('Automatic window closure unavailable; close this window with Cmd+W.');
+const fallback = () => console.error('Automatic window closure unavailable.');
 try {
   const worker = spawn('/usr/bin/osascript', ['-e', script, ...process.argv.slice(2)], { detached: true, stdio: 'ignore' });
   worker.on('error', fallback);
@@ -447,7 +492,7 @@ PowerShell: \`./Install.cmd\`
 
 cmd.exe: \`Install.cmd\`
 
-Application: \`%LOCALAPPDATA%\\Programs\\Outask\`. Command: \`%LOCALAPPDATA%\\Programs\\Outask\\commands\\outask.cmd\`.
+Application: \`%LOCALAPPDATA%\\Programs\\Outask\`. Command: \`outask\`.
 Open a new terminal, then run from a project directory:
 
 \`\`\`text
@@ -490,7 +535,7 @@ ${target === 'macos-arm64' ? 'Extract the archive, open the extracted applicatio
 \`\`\`
 
 If starting the installer reports Permission denied, run \`${target === 'macos-arm64' ? 'bash' : 'sh'} ./${installer}\`.
-${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\nInstall Node.js with the [macOS installer](https://nodejs.org/en/download) or another provider. Homebrew is optional. The installer checks Node.js and can repair it through installed Homebrew or NVM after confirmation, then checks again. Other failures retain the original diagnostic.\n' : ''}Application: \`${application}\`. Command: \`~/.local/bin/tasks\`.
+${target === 'macos-arm64' ? 'For an Apple verification warning, follow [Apple’s instructions](https://support.apple.com/en-us/102445).\nInstall Node.js with the [macOS installer](https://nodejs.org/en/download) or another provider. Homebrew is optional. The installer checks Node.js and can repair it through installed Homebrew or NVM after confirmation, then checks again. Other failures retain the original diagnostic.\n' : ''}Application: \`${application}\`. Command: \`outask\`.
 Open a new terminal, then run from a project directory:
 
 \`\`\`sh

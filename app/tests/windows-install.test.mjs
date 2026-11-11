@@ -14,6 +14,25 @@ import { test } from 'node:test';
 import { windowsLauncher, launcherEntry } from '../scripts/install-launcher.mjs';
 import { configurePath } from '../scripts/install-path.mjs';
 
+test('only a cmd /c console without a persistent shell waits after installation', { skip: process.platform !== 'win32' }, () => {
+  const helper = fileURLToPath(new URL('../scripts/install-finish.ps1', import.meta.url));
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `
+. $env:OUTASK_FINISH_HELPER
+$closing = @{ Name = 'cmd.exe'; CommandLine = 'cmd.exe /c "Install.cmd"'; ProcessId = 10 }
+$persistent = @{ Name = 'cmd.exe'; CommandLine = 'cmd.exe /k'; ProcessId = 10 }
+@(
+  (Test-ClosingConsole @(10, 20) 20 $closing),
+  (Test-ClosingConsole @(10, 20, 30) 20 $closing),
+  (Test-ClosingConsole @(10, 20) 20 $persistent),
+  (Test-ClosingConsole @(10, 30) 20 $closing),
+  (Test-ClosingConsole @() 20 $closing)
+) | ConvertTo-Json -Compress
+`], { env: { ...process.env, OUTASK_FINISH_HELPER: helper }, encoding: 'utf8', timeout: 10000 });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [true, false, false, false, false]);
+});
+
 test('managed Windows launchers preserve spaces, Unicode and literal percent signs', () => {
   const entry = 'C:\\Users\\東京 person\\100% ready\\app\\bin\\tasks';
   const launcher = windowsLauncher(entry);

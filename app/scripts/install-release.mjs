@@ -65,12 +65,11 @@ try {
     const platform = target === 'windows-x64' ? 'Windows x64' : target === 'macos-arm64' ? 'macOS Apple silicon' : 'Linux x64';
     const application = target === 'windows-x64' ? '%LOCALAPPDATA%\\Programs\\Outask'
       : target === 'macos-arm64' ? '~/Library/Application Support/Outask' : '~/.local/share/outask';
-    const command = target === 'windows-x64' ? '%LOCALAPPDATA%\\Programs\\Outask\\commands\\outask.cmd' : '~/.local/bin/outask';
     console.log(`Outask installer (${platform})
 Usage: ${target === 'windows-x64' ? './Install.cmd (PowerShell), Install.cmd (cmd.exe)' : `./${publicInstallers[target]}`} [install|update|uninstall] [--bin-dir <directory>] [--release-root <parent-directory>]
 Requires Node.js 22.23.3 or later on PATH. Open a new terminal after installation.
 ${target === 'windows-x64' ? 'Before first using this Windows writer generation, finish writes and close all previous CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.\n' : ''}Application: ${application}
-Command: ${command}
+Command: outask
 Install from the extracted application directory. Update downloads GitHub Latest stable; tar and network access are required.
 Options change the command directory and application parent; reuse them for update/uninstall.
 Uninstall removes the managed command link; application files, projects and configuration remain.`);
@@ -242,8 +241,11 @@ Uninstall removes the managed command link; application files, projects and conf
       }
       retireConfig(migration);
       for (const previous of obsolete) retirePayload(previous, managedPayload);
-      console.log(`Installed Outask at ${destination}. Commands: ${targets.join(', ')}`);
-      for (const message of configurePath(bin)) console.log(message);
+      const messages = configurePath(bin);
+      for (const message of messages.filter(message => !message.startsWith('Run immediately'))) console.log(message);
+      console.log(`Installed Outask at ${destination}.\n\nCommand: outask`);
+      for (const message of messages.filter(message => message.startsWith('Run immediately'))) console.log(message);
+      console.log('\nInstallation complete. Open a new terminal to start working.');
     }
   }
 } catch (error) {
