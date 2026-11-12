@@ -446,7 +446,7 @@
   {
     "id": 36,
     "title": "Add installation-aware CLI self updates and non-mutating update checks",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "medium",
     "blockers": [],
     "scope": "Add outask self update and outask self update --check without changing outask update task-mutation semantics. Detect the running installation and update it through its owning mechanism: reuse the existing release updater for managed archives on Linux, macOS and Windows, and delegate global npm installations to npm in the correct installation context. Preserve custom installation paths, npm prefix/registry and the permanent tasks alias. For source checkouts, local npm/npx contexts and unknown installations, provide precise context-appropriate guidance without modifying Git checkouts, unrelated installations or silently switching distribution channels. --check reports availability without installing or changing application/project files, with installation-aware version sources and a documented result usable by future repository/store distributions; implementing new repositories, stores or a generalized provider framework is outside scope. Add dedicated update/check automated coverage that runs only in regression and release verification.",
@@ -477,6 +477,6 @@
       "Future application-store/repository publication motivates check support, but adding those distribution channels is outside this task.",
       "Reuse existing update mechanisms; explicit installation metadata is an implementation option, not a mandatory new manifest contract."
     ],
-    "updated_at": "2026-11-12T15:38:06.565Z"
+    "updated_at": "2026-11-12T16:05:11.606Z"
   }
 ]
