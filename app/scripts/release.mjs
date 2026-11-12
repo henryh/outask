@@ -420,7 +420,8 @@ on run arguments
     repeat with candidate in windows
       repeat with candidateTab in tabs of candidate
         if tty of candidateTab is installerTTY then
-          return my isClosingLaunch(contents of candidateTab as text)
+          set terminalTab to contents of candidateTab
+          return my isClosingLaunch(contents of terminalTab as text)
         end if
       end repeat
     end repeat

@@ -809,8 +809,10 @@ test('auto-closing Terminal launches wait for one key, while persistent and unkn
   const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
   const probe = join(f.tools, 'osascript');
   // Substitute Terminal's GUI response; the generated wrapper and TTY are real.
-  for (const response of ['true', 'false', 'unavailable']) {
-    writeFileSync(probe, `#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' '${response}'\n`, { mode: 0o755 });
+  for (const response of ['true', 'false', 'unavailable', 'failure']) {
+    writeFileSync(probe, response === 'failure'
+      ? '#!/bin/sh\ncat >/dev/null\necho "probe failed (-1700)" >&2\nexit 1\n'
+      : `#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' '${response}'\n`, { mode: 0o755 });
     for (const status of [0, 7]) {
       writeFileSync(internalInstaller(f.source), `console.log('INSTALL_RESULT'); process.exit(${status});\n`);
       const result = await terminal(`saved=$(stty -g); ${quote(launcher)}; result=$?; [ "$(stty -g)" = "$saved" ] && echo TTY_RESTORED; echo STATUS:$result`,
@@ -841,6 +843,50 @@ test('Terminal launch detection compiles and handles wrapped commands and persis
     ['% /Users/person/Install.command ; exit;\n% ./Install.command\n', 'false'],
     ['% echo unrelated ; exit;', 'false'],
   ]) assert.equal(ok(run('/usr/bin/osascript', ['-e', script, screen])).trim(), expected, screen);
+});
+
+test('Terminal launch detection reads nested tab references through the complete generated probe', { skip: process.platform !== 'darwin' }, (t) => {
+  const f = fixture(t, 'macos-arm64');
+  const launcher = readFileSync(join(f.source, 'Install.command'), 'utf8');
+  const probe = launcher.split("<<'APPLESCRIPT'\n")[1].split('\nAPPLESCRIPT')[0];
+  // Script objects supply Terminal's object hierarchy without opening GUI tabs.
+  // Repeat variables still reference list items, as they do in Terminal.
+  const terminalFixtureScript = `script unrelatedTab
+  property tty : "/dev/other"
+  property contents : "Install.command ; exit;"
+end script
+script matchingTab
+  property tty : "/dev/installer"
+  property contents : ""
+end script
+script firstWindow
+  property tabs : {}
+end script
+script secondWindow
+  property tabs : {}
+end script
+script terminalFixture
+  property windows : {}
+end script
+set contents of matchingTab to item 2 of arguments
+set tabs of firstWindow to {unrelatedTab}
+set tabs of secondWindow to {matchingTab}
+set windows of terminalFixture to {firstWindow, secondWindow}
+`;
+  const script = probe.replace('  set installerTTY to item 1 of arguments', `${terminalFixtureScript}  set installerTTY to item 1 of arguments`)
+    .replace('tell application "Terminal"', 'tell terminalFixture');
+  const original = script.replace('set terminalTab to contents of candidateTab\n          return my isClosingLaunch(contents of terminalTab as text)',
+    'return my isClosingLaunch(contents of candidateTab as text)');
+  assert.notEqual(original, script);
+  const reproduced = run('/usr/bin/osascript', ['-e', original, '/dev/installer', '% ./Install.command ; exit;']);
+  assert.notEqual(reproduced.status, 0, reproduced.stdout);
+  assert.match(reproduced.stderr, /-1700/);
+  for (const [tty, screen, expected] of [
+    ['/dev/installer', '% /Users/person/Install.command ; exit;', 'true'],
+    ['/dev/installer', '% ./Install.command', 'false'],
+    ['/dev/installer', '% echo unrelated ; exit;', 'false'],
+    ['/dev/missing', '% /Users/person/Install.command ; exit;', 'false'],
+  ]) assert.equal(ok(run('/usr/bin/osascript', ['-e', script, tty, screen])).trim(), expected, `${tty}: ${screen}`);
 });
 
 test('window closure process query distinguishes absence from permissions, errors and malformed results', (t) => {
