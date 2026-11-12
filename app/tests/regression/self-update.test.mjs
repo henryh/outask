@@ -167,3 +167,21 @@ test('self command rejects invalid input before update discovery and requires no
   assert.equal(help.status, 0, help.stderr);
   assert.match(help.stdout, /--check/);
 });
+
+
+test('global npm update reports missing owning npm without using another PATH installation', t => {
+  const root = fixture(t), prefix = join(root, 'npm prefix');
+  const app = join(prefix, windows ? 'node_modules/outask' : 'lib/node_modules/outask');
+  appAt(app);
+  if (windows) writeFileSync(join(prefix, 'outask.cmd'), '@echo off\r\nnode "%~dp0%\\node_modules\\outask\\bin\\outask" %*\r\n');
+  else { mkdirSync(join(prefix, 'bin')); symlinkSync(join(app, 'bin/outask'), join(prefix, 'bin/outask')); }
+  const preload = join(root, 'missing-npm.mjs');
+  writeFileSync(preload, `Object.defineProperty(process, 'execPath', { value: ${JSON.stringify(join(root, 'node-without-npm', windows ? 'node.exe' : 'node'))} });`);
+  const before = snapshot(prefix);
+  for (const args of [['update'], ['update', '--check']]) {
+    const result = spawnSync(process.execPath, ['--import', pathToFileURL(preload).href, join(app, 'bin/outask'), ...args], { encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(result.stderr, /npm for the running Node.js is missing/);
+    assert.deepEqual(snapshot(prefix), before);
+  }
+});

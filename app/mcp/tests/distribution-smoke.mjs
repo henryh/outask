@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { basename, delimiter, dirname, join, resolve } from 'node:path';
@@ -402,6 +402,23 @@ try {
     const customMetadata = join(customApplication, 'release.json');
     writeFileSync(customMetadata, JSON.stringify({ ...metadata, bin: customBin }));
     const originalMetadata = readFileSync(join(application, 'release.json'));
+    const pathState = () => windows
+      ? JSON.parse(registry("$k=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment'); try { @{ present=($k.GetValueNames() -contains 'Path'); value=$k.GetValue('Path','',[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); kind=$k.GetValueKind('Path') } | ConvertTo-Json -Compress } finally { $k.Dispose() }"))
+      : Object.fromEntries(['.bashrc', '.bash_profile', '.bash_login', '.profile', '.zprofile', '.zshrc']
+        .map(profile => [profile, existsSync(join(home, profile)) ? readFileSync(join(home, profile)) : null]));
+    const originalPathState = pathState();
+    if (!windows && process.getuid() !== 0) {
+      chmodSync(customParent, 0o555);
+      try {
+        const denied = invoke(process.execPath, [join(customApplication, 'app/bin/tasks'), 'self', 'update'], updateEnv);
+        assert.notEqual(denied.status, 0);
+        assert.match(denied.stderr, /UPDATE_FAILED.*EACCES/);
+        assert.equal(JSON.parse(readFileSync(customMetadata)).version, metadata.version);
+        assert.equal(invoke(process.execPath, [join(customApplication, 'app/bin/tasks'), '--version']).stdout.trim(), `Outask v${metadata.version}`);
+        assert.deepEqual(pathState(), originalPathState);
+      } finally { chmodSync(customParent, 0o755); }
+    }
+
     const customUpdated = invoke(process.execPath, [join(customApplication, 'app/bin/tasks'), 'self', 'update'], { ...updateEnv, PATH: [bin, updateEnv.PATH].join(delimiter) });
     assert.equal(customUpdated.status, 0, customUpdated.stderr || customUpdated.stdout);
     assert.equal(JSON.parse(readFileSync(customMetadata)).version, updateVersion);
@@ -409,6 +426,7 @@ try {
     assert.equal(invoke(process.execPath, [join(customApplication, 'app/bin/tasks'), '--version']).stdout.trim(), `Outask v${updateVersion}`);
     assert.equal(invoke(join(customBin, windows ? 'outask.cmd' : 'outask'), ['--version']).stdout.trim(), `Outask v${updateVersion}`);
     assert.deepEqual(readFileSync(join(application, 'release.json')), originalMetadata);
+    assert.deepEqual(pathState(), originalPathState, 'self update must preserve existing shell profiles and User PATH');
     assert.equal(run(command, ['--version']).trim(), `Outask v${metadata.version}`);
     assert.equal(readFileSync(join(customApplication, 'user-note.txt'), 'utf8'), 'Retain local note');
     assert.equal(readFileSync(config, 'utf8'), configuration);

@@ -249,7 +249,7 @@ Uninstall removes the managed command link; application files, projects and conf
       }
       retireConfig(migration);
       for (const previous of obsolete) retirePayload(previous, managedPayload);
-      const messages = configurePath(bin);
+      const messages = values['update-existing'] ? [] : configurePath(bin);
       for (const message of messages.filter(message => !message.startsWith('Run immediately'))) console.log(message);
       console.log(`Installed Outask at ${destination}.\n\nCommand: outask`);
       for (const message of messages.filter(message => message.startsWith('Run immediately'))) console.log(message);
