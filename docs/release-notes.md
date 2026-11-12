@@ -9,8 +9,7 @@ Outask is a lightweight task tracker for personal projects and your AI harness.
 ## What's new
 
 - Update the running archive or global npm installation with `outask self update` on Linux, macOS and Windows, retaining its installation paths and distribution channel.
-- Check for a newer stable version without installing with `outask self update --check`. See [installation and updates](https://github.com/henryh/outask/blob/v1.8/app/README.md#installation-and-updates) for check results and other installation contexts.
-- Run the macOS installer without Terminal automation, window inspection or automatic window closure.
+- Check stable release availability with `outask self update --check`. See [installation and updates](https://github.com/henryh/outask/blob/v1.8/app/README.md#installation-and-updates) for check results and installation contexts.
 
 ## Install
 

@@ -20,7 +20,6 @@ const runtimeScripts = [
   'get-tasks.mjs',
   'hook.mjs',
   'install-launcher.mjs',
-  'install-finish.ps1',
   'install-migration.mjs',
   'install-path.mjs',
   'install-release.mjs',
@@ -136,7 +135,7 @@ function writeSupport(releaseRoot, version, target, nodeRange) {
     writeFileSync(join(releaseRoot, 'bin', name), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
   }
   if (target === 'windows-x64') {
-    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nset "install_status=%errorlevel%"\r\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0app\\scripts\\install-finish.ps1"\r\nexit /b %install_status%\r\n`);
+    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nexit /b %errorlevel%\r\n`);
   }
   writeFileSync(join(releaseRoot, 'release.json'), JSON.stringify({ version, target }) + '\n');
   if (target === 'linux-x64') {
@@ -180,7 +179,7 @@ nvmGuidance() {
       case "$node_path" in "$NVM_DIR"/versions/node/*/bin/node) ;; *) return 1 ;; esac
       ;;
   esac
-  printf '%s\\n' "NVM: run nvm install 'lts/*' && nvm alias default 'lts/*', then retry." >&2
+  printf '%s\\n' "NVM: run nvm install 'lts/*' && nvm use 'lts/*', then retry." >&2
 }
 installedNvmRoot() {
   local candidate
@@ -206,7 +205,7 @@ nvmRootForNode() {
 runNvmAction() {
   local nvm_root="$1" answer
   provider_action_attempted=false
-  printf '%s\\n' "NVM can install Node.js: nvm install 'lts/*' && nvm alias default 'lts/*'" >&2
+  printf '%s\\n' "NVM can install Node.js: nvm install 'lts/*' && nvm use 'lts/*'" >&2
   if [ ! -t 0 ]; then
     printf '%s\\n' 'Run it in a terminal, then retry.' >&2
     return 1
@@ -219,7 +218,6 @@ runNvmAction() {
     export NVM_DIR
     . "$NVM_DIR/nvm.sh" --no-use || return $?
     nvm install 'lts/*' || return $?
-    nvm alias default 'lts/*' || return $?
     nvm use 'lts/*' || return $?
     hash -r
     return 0
@@ -372,7 +370,7 @@ Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
 
 ## Update and remove
 
-Update to GitHub Latest stable: run \`outask self update\` from any directory; check without installing with \`outask self update --check\`. Requires network access and tar on PATH.
+Update to GitHub Latest stable: run \`outask self update\` from any directory; check stable release availability with \`outask self update --check\`. Requires network access and tar on PATH.
 Uninstall (PowerShell): \`& "$env:LOCALAPPDATA\\Programs\\Outask\\Install.cmd" uninstall\`
 Uninstall (cmd.exe): \`"%LOCALAPPDATA%\\Programs\\Outask\\Install.cmd" uninstall\`
 Uninstall removes the managed launcher; application files, projects and configuration remain.
@@ -414,7 +412,7 @@ Start a new Codex session; use \`/mcp\` to inspect the server.
 
 ## Update and remove
 
-Update to GitHub Latest stable: run \`outask self update\` from any directory; check without installing with \`outask self update --check\`. Requires network access and tar on PATH.
+Update to GitHub Latest stable: run \`outask self update\` from any directory; check stable release availability with \`outask self update --check\`. Requires network access and tar on PATH.
 Uninstall: \`${uninstall}\`
 Uninstall removes the managed command link; application files, projects and configuration remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.

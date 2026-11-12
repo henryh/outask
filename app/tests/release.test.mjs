@@ -539,7 +539,7 @@ test('Finder launcher identifies a missing Node library and preserves its diagno
   assert.equal(existsSync(f.installed), false);
 });
 
-test('Finder launcher gives NVM repair instructions without loading shell profiles', (t) => {
+test('Finder launcher gives NVM repair instructions and preserves shell profiles', (t) => {
   const f = fixture(t, 'macos-arm64');
   const nvmBin = join(f.home, '.nvm/versions/node/v22.23.3/bin');
   const unexpectedNvm = join(f.home, 'unexpected-nvm');
@@ -551,7 +551,7 @@ test('Finder launcher gives NVM repair instructions without loading shell profil
   });
   assert.equal(result.status, 134);
   assert.match(result.stderr, /nvm install 'lts\/\*'/);
-  assert.match(result.stderr, /nvm alias default 'lts\/\*'/);
+  assert.match(result.stderr, /nvm use 'lts\/\*'/);
   assert.equal(result.stderr.match(/nvm install/g)?.length, 1);
   assert.match(result.stderr, /Run it in a terminal/);
   assert.doesNotMatch(result.stderr, /Homebrew can repair/);
@@ -559,7 +559,7 @@ test('Finder launcher gives NVM repair instructions without loading shell profil
   assert.equal(existsSync(f.installed), false);
 });
 
-test('Finder launcher uses installed NVM after confirmation and rechecks Node', async (t) => {
+test('Finder launcher uses installed NVM and preserves its default alias', async (t) => {
   const f = fixture(t, 'macos-arm64');
   const nvmDir = join(f.home, '.nvm');
   const nvmBin = join(nvmDir, 'versions/node/v24.0.0/bin');
@@ -569,10 +569,18 @@ test('Finder launcher uses installed NVM after confirmation and rechecks Node', 
   const nvmAction = join(f.home, 'nvm-installed');
   const nvmUse = join(f.home, 'nvm-used');
   mkdirSync(nvmBin, { recursive: true });
+  const defaultAlias = join(nvmDir, 'alias/default');
+  mkdirSync(dirname(defaultAlias), { recursive: true });
+  writeFileSync(defaultAlias, 'v20.19.0\n');
+  const originalDefault = readFileSync(defaultAlias);
   writeFileSync(join(nvmDir, 'nvm.sh'), `nvm() {
   case "$1" in
-    install) /bin/ln -s "$TEST_NODE_SOURCE" "$TEST_NODE_TARGET"; : > "$TEST_NVM_ACTION" ;;
-    alias) ;;
+    install)
+      /bin/ln -s "$TEST_NODE_SOURCE" "$TEST_NODE_TARGET"
+      : > "$TEST_NVM_ACTION"
+      if [ ! -f "$NVM_DIR/alias/default" ]; then printf '%s\\n' "$2" > "$NVM_DIR/alias/default"; fi
+      ;;
+    alias) printf '%s\\n' "$3" > "$NVM_DIR/alias/default" ;;
     use) export PATH="$TEST_NODE_BIN:$PATH"; : > "$TEST_NVM_USE" ;;
     *) return 64 ;;
   esac
@@ -608,6 +616,7 @@ test('Finder launcher uses installed NVM after confirmation and rechecks Node', 
   assert.doesNotMatch(result.output, /Homebrew|nodejs\.org/);
   assert.equal(existsSync(nvmAction), true);
   assert.equal(existsSync(nvmUse), true);
+  assert.deepEqual(readFileSync(defaultAlias), originalDefault);
   assert.equal(existsSync(unexpectedBrew), false);
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
 });
@@ -773,7 +782,7 @@ test('Finder launcher rejects missing Node and dirname before writing installati
   }
 });
 
-test('macOS installer returns promptly from a real terminal and preserves arguments and exit status without automation', async (t) => {
+test('macOS installer returns promptly from a real terminal and forwards arguments and exit status', async (t) => {
   const f = fixture(t, 'macos-arm64');
   const launcher = join(f.source, 'Install.command');
   const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
