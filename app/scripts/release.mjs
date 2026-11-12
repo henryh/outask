@@ -151,56 +151,6 @@ exec node "$root/app/scripts/install-release.mjs" "$@"
     chmodSync(join(releaseRoot, 'install.sh'), 0o755);
   }
   if (target === 'macos-arm64') {
-    // A final status line preserves even newline-only diagnostics from ps.
-    const sessionProbe = `expected="$1"
-response=$(/bin/ps -p "$expected" -o pid= 2>&1; printf '\\n%s' "$?")
-newline='
-'
-status=\${response##*"$newline"}
-output=\${response%"$newline"*}
-if [ "$status" = 1 ] && [ -z "$output" ]; then
-  printf absent
-elif [ "$status" = 0 ]; then
-  set -f
-  set -- $output
-  if [ "$#" = 1 ] && [ "$1" = "$expected" ]; then printf alive; else printf unknown; fi
-else
-  printf unknown
-fi`;
-    const closeWindow = `on run arguments
-  set installerTTY to item 1 of arguments
-  set sessionPID to item 2 of arguments
-  set sessionEnded to false
-  set query to ${JSON.stringify(sessionProbe)}
-  repeat 20 times
-    try
-      set state to do shell script "/bin/sh -c " & quoted form of query & " probe " & quoted form of sessionPID
-    on error
-      return
-    end try
-    if state is "absent" then
-      set sessionEnded to true
-      exit repeat
-    else if state is not "alive" then
-      return
-    end if
-    delay 0.1
-  end repeat
-  if not sessionEnded then return
-  with timeout of 5 seconds
-    tell application "Terminal"
-      repeat with candidate in windows
-        if (count of tabs of candidate) is 1 then
-          set installerTab to item 1 of tabs of candidate
-          if tty of installerTab is installerTTY then
-            if (busy of installerTab) is false then close candidate saving no
-            return
-          end if
-        end if
-      end repeat
-    end tell
-  end timeout
-end run`;
     writeFileSync(join(releaseRoot, 'Install.command'), `#!/bin/bash
 set -u
 nodeGuidance() {
@@ -385,101 +335,8 @@ runInstaller() {
   done
   node "$root/app/scripts/install-release.mjs" "$@"
 }
-session_pid=''
-session_complete=false
-if [ -t 0 ]; then
-  current_pid=$$
-  session_tty=''
-  for ((depth=0; depth<32; depth++)); do
-    record="$(ps -p "$current_pid" -o ppid= -o tty=)" || break
-    read -r parent_pid process_tty extra <<< "$record"
-    case "$parent_pid" in ''|*[!0-9]*) break ;; esac
-    [ -n "$process_tty" ] || break
-    [ -z "$extra" ] || break
-    if [ -z "$session_tty" ]; then
-      case "$process_tty" in '?'|'??') break ;; esac
-      session_tty="$process_tty"
-    fi
-    if [ "$process_tty" != "$session_tty" ]; then
-      session_complete=true
-      break
-    fi
-    session_pid="$current_pid"
-    [ "$parent_pid" -gt 0 ] || break
-    current_pid="$parent_pid"
-  done
-fi
-auto_close=false
-if [ -t 0 ] && [ "\${TERM_PROGRAM:-}" = Apple_Terminal ] && command -v osascript >/dev/null 2>&1; then
-  terminal_tty="$(tty)"
-  # Finder submits a command ending in exit; a normal shell invocation stays open.
-  auto_close="$(osascript - "$terminal_tty" <<'APPLESCRIPT'
-on run arguments
-  set installerTTY to item 1 of arguments
-  tell application "Terminal"
-    repeat with windowIndex from 1 to count of windows
-      repeat with tabIndex from 1 to count of tabs of window windowIndex
-        if tty of tab tabIndex of window windowIndex is installerTTY then
-          set screenText to get contents of tab tabIndex of window windowIndex
-          return my isClosingLaunch(screenText)
-        end if
-      end repeat
-    end repeat
-  end tell
-  return false
-end run
-
-on isClosingLaunch(screenText)
-  set launchText to ""
-  set launchLines to paragraphs of screenText
-  repeat with lineIndex from (count of launchLines) to 1 by -1
-    set launchLine to item lineIndex of launchLines
-    repeat while launchLine ends with space or launchLine ends with tab
-      if (count of characters of launchLine) is 1 then
-        set launchLine to ""
-      else
-        set launchLine to text 1 thru -2 of launchLine
-      end if
-    end repeat
-    if launchLine is not "" then
-      if launchText is "" and not (launchLine ends with "; exit;" or launchLine ends with "; exit") then return false
-      set launchText to launchLine & launchText
-      if launchText contains "Install.command" then return true
-    else if launchText is not "" then
-      return false
-    end if
-  end repeat
-  return false
-end isClosingLaunch
-APPLESCRIPT
-  )" || auto_close=false
-fi
 runInstaller "$@"
-status=$?
-if [ "$auto_close" = true ]; then
-  if [ "$status" -eq 0 ]; then
-    printf 'Press any key to finish.\\n'
-  else
-    printf '\\nInstallation failed. Review the messages above.\\nPress any key to finish.\\n'
-  fi
-  pressed=false
-  IFS= read -r -s -n 1 answer && pressed=true
-  if "$pressed" && "$session_complete" && [ "$status" -eq 0 ] && [ "\${TERM_PROGRAM:-}" = Apple_Terminal ] && [ -x /usr/bin/osascript ]; then
-    terminal_tty="$(tty)"
-    # The outer same-tty shell must end; a short-lived manual wrapper is insufficient.
-    node --input-type=module - "$terminal_tty" "$session_pid" <<'NODE'
-import { spawn } from 'node:child_process';
-const script = ${JSON.stringify(closeWindow)};
-const fallback = () => console.error('Automatic window closure unavailable.');
-try {
-  const worker = spawn('/usr/bin/osascript', ['-e', script, ...process.argv.slice(2)], { detached: true, stdio: 'ignore' });
-  worker.on('error', fallback);
-  worker.unref();
-} catch { fallback(); }
-NODE
-  fi
-fi
-exit "$status"
+exit "$?"
 `, { mode: 0o755 });
   }
   chmodSync(join(releaseRoot, 'bin/tasks'), 0o755);
