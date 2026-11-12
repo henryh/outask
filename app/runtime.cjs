@@ -1,4 +1,4 @@
-// Keep the preflight parseable on old Node versions and derive bounds from the manifest.
+// Keep preflight parseable before checking the manifest's Node.js bounds.
 const range = require('./package.json').engines.node;
 const current = process.versions.node.split('.').map(Number);
 const supported = range.split(' || ').some(function (branch) {

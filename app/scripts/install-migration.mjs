@@ -31,8 +31,7 @@ export function legacyConfig(env = process.env) {
   return { source: path, target };
 }
 
-// Delete only a confirmed managed payload. Unrecognised files stay in place;
-// their presence must never turn an old application directory into trash.
+// Delete confirmed managed payload files and retain other directory contents.
 export function retirePayload(path, payload) {
   for (const name of payload) rmSync(join(path, name), { recursive: true, force: true });
   if (readdirSync(path).length === 0) rmdirSync(path);
@@ -57,7 +56,7 @@ export function retireConfig(migration) {
     const staged = `${migration.target}.outask-${randomUUID()}`;
     try {
       cpSync(migration.source, staged, { errorOnExist: true, force: false });
-      // Publish complete bytes without overwriting a registry created meanwhile.
+      // Publish complete bytes only if the registry destination is still available.
       try { linkSync(staged, migration.target); } catch (error) {
         if (error.code !== 'EEXIST') throw error;
       }

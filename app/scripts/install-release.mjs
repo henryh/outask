@@ -11,7 +11,7 @@ import { legacyLocations, legacyConfig, obsoleteInstalls, retireConfig, retirePa
 
 const windows = process.platform === 'win32';
 // Node 22's native recursive copy can misplace UTF-8 Windows paths. A filter
-// selects its JavaScript traversal without excluding any files or changing links.
+// selects JavaScript traversal while preserving the complete file and link payload.
 const copyOptions = { recursive: true, verbatimSymlinks: true, ...(windows ? { filter: () => true } : {}) };
 const defaults = installLocations();
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -69,7 +69,7 @@ try {
     console.log(`Outask installer (${platform})
 Usage: ${target === 'windows-x64' ? './Install.cmd (PowerShell), Install.cmd (cmd.exe)' : `./${publicInstallers[target]}`} [install|update|uninstall] [--bin-dir <directory>] [--release-root <parent-directory>]
 Requires Node.js 22.23.3 or later on PATH. Open a new terminal after installation.
-${target === 'windows-x64' ? 'Before first using this Windows writer generation, finish writes and close all previous CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.\n' : ''}Application: ${application}
+${target === 'windows-x64' ? 'Use one Windows CLI/MCP/HTTP writer generation at a time. Finish writes and close sessions from other generations before starting this version.\n' : ''}Application: ${application}
 Command: outask
 Install from the extracted application directory. Update downloads GitHub Latest stable; tar and network access are required.
 Options change the command directory and application parent; reuse them for update/uninstall.
@@ -82,8 +82,7 @@ Uninstall removes the managed command link; application files, projects and conf
     const defaultRoot = defaults.releases;
     const requestedRoot = canonical(resolve(values['release-root'] ?? defaultRoot));
     const oldDefaults = legacyLocations().slice(0, 2).map(canonical);
-    // Old packaged updaters explicitly pass their former default directories.
-    // Recognise those defaults while preserving genuinely custom locations.
+    // Map task-tracker application roots to the platform destination; preserve custom roots.
     const releases = !values['update-existing'] && oldDefaults.includes(requestedRoot) ? canonical(defaultRoot) : requestedRoot;
     if (!managed(root)) throw new Error('INVALID_RELEASE: invalid release metadata or application');
     const releaseTarget = JSON.parse(readFileSync(join(root, 'release.json'), 'utf8')).target;
@@ -242,7 +241,7 @@ Uninstall removes the managed command link; application files, projects and conf
           throw error;
         }
       } finally {
-        // Retain a backup if an OS error prevents rollback, rather than deleting it.
+        // Retain recovery files when an OS error prevents rollback.
         if (committed || !rollbackFailed) rmSync(work, { recursive: true, force: true });
         else console.error(`Recovery files retained at ${work}`);
         if (linkWork && !rollbackFailed) rmSync(linkWork, { recursive: true, force: true });

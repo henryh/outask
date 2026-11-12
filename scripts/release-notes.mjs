@@ -65,7 +65,7 @@ export function releaseNotes(releaseVersion, packageVersion, repo, selected, val
   const installCommands = [...install.matchAll(/```[^\n]*\n([\s\S]*?)```/g)]
     .flatMap((match) => match[1].trim().split('\n'))
     .map((line) => line.trim().replace(/\s+# PowerShell$|\s+& rem cmd\.exe$/g, ''));
-  // Recovery validates the original approved notes without changing their commands.
+  // Recovery validates approved note bytes and commands.
   const expected = selected.includes('windows-x64')
     ? [['./install.sh', './Install.command', './Install.cmd', 'Install.cmd'], ['./install.sh', './install.cmd', 'install.cmd']]
     : [['./install.sh', './Install.command'], ['./install.sh']];

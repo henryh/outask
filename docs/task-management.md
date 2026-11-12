@@ -11,7 +11,7 @@ owns required fields. Do not import other project stores or reset the backlog.
 - Every task requires `scope`, nonempty `acceptance` and `blockers`.
 - Done requires `completed_at`. Only blockers still in Active prevent starting.
 - For standalone backlog creation or correction, save and validate the records with refreshed `tasks/.task-tracker.json` on the current branch. Stop there; creating or switching branches, staging, committing and starting implementation require separate user authorisation.
-- During authorised task delivery or Git recording, commit changed stores with refreshed `tasks/.task-tracker.json`. The tracker never stages or commits files.
+- During authorised task delivery or Git recording, commit changed stores with refreshed `tasks/.task-tracker.json`.
 
 During authorised task delivery, use `task-<id>-<slug>` and preserve corrections there. Record acceptance, set
 `completed_at` and close on that branch before the final push. Branch-local done

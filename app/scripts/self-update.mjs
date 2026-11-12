@@ -13,10 +13,10 @@ const windows = process.platform === 'win32';
 const usage = 'Usage: outask self update [--check]';
 const help = `${usage}
 Update the running Outask installation to its channel's latest stable version.
-  --check    Check availability without installing
+  --check    Check stable release availability (read only)
   --help, -h Show this help
 Managed archives use GitHub Latest; global npm installs use their npm registry.
-Other installation contexts receive instructions without automatic changes.
+Source checkouts, local npm/npx and unrecognised installations receive update instructions.
 Check exit codes: 0 current/newer, 10 update available, 2 unsupported, 1 failure.
 Restart existing MCP/HTTP sessions to load the updated version.
 `;

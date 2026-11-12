@@ -18,7 +18,7 @@ function stringBytes(value, ceiling) {
 }
 
 // Count escaped UTF-8 and indentation before JSON.stringify can allocate output.
-// An explicit stack also bounds deeply nested input without recursive traversal.
+// An explicit stack bounds traversal of deeply nested input.
 export function jsonBytes(value, indent = 2, ceiling = responseBytes) {
   const pending = [{ value, depth: 0 }];
   let bytes = 0;

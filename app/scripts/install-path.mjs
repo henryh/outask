@@ -28,8 +28,7 @@ export function configurePath(bin, { env = process.env, platform = process.platf
   }
   // Literal quoting also protects shell pattern characters in custom paths.
   const block = `# Outask command path\ncase ":\${PATH-}:" in\n  *:${quote(bin)}:*) ;;\n  *) ${setting} ;;\nesac\n`;
-  // A shell change must not leave the application's old generated paths in
-  // another shell's existing startup files. Only complete managed blocks count.
+  // Update complete managed PATH blocks across shell startup files.
   const candidates = ['.bashrc', '.bash_profile', '.bash_login', '.profile', '.zprofile', '.zshrc'].map(name => join(home, name));
   if (env.ZDOTDIR !== undefined) candidates.push(join(resolve(env.ZDOTDIR), '.zprofile'), join(resolve(env.ZDOTDIR), '.zshrc'));
   for (const profile of candidates) {

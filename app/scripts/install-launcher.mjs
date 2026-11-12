@@ -14,7 +14,7 @@ export function installLocations() {
 }
 
 export function windowsLauncher(entry) {
-  // ASCII batch text survives legacy console code pages; Node decodes the path.
+  // ASCII batch text supports Windows console code pages; Node decodes the path.
   const encoded = Buffer.from(entry, 'utf8').toString('base64');
   const bootstrap = `const p=Buffer.from('${encoded}','base64').toString('utf8');process.argv.splice(1,0,p);import(require('node:url').pathToFileURL(p).href).catch(e=>{console.error(e);process.exitCode=1});`;
   return `@echo off\r\nrem Outask managed launcher\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js 22.23.3 or later and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode -e "${bootstrap}" -- %*\r\nexit /b %errorlevel%\r\n`;

@@ -342,7 +342,7 @@ exit "$?"
     writeFileSync(join(releaseRoot, 'README.md'), `# Outask v${version} (Windows x64)
 
 Requires native Windows x64 and installed Node.js ${nodeRange} on PATH.
-Before first using this writer generation, finish active writes and close all previous CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.
+Use one Windows CLI/MCP/HTTP writer generation at a time. Finish writes and close sessions from other generations before starting this version.
 Extract the archive, open the extracted application directory in PowerShell or cmd.exe, then run:
 
 PowerShell: \`./Install.cmd\`

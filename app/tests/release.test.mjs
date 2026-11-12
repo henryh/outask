@@ -163,7 +163,7 @@ test('each archive README and installer help describe only their destination pla
   for (const [target, platform] of Object.entries(platforms)) {
     const f = fixture(t, target);
     const readme = readFileSync(join(f.source, 'README.md'), 'utf8');
-    // Metadata, rather than the host OS, must determine cross-built archive help.
+    // Archive metadata determines cross-built installer help.
     const help = ok(f.install('--help'));
     assert.ok(readme.startsWith(`# Outask v${releaseVersion} (${platform.name})\n`));
     assert.ok(readme.trimEnd().split('\n').length < 200, target);
@@ -280,14 +280,13 @@ test('download install, repeat, update and uninstall preserve project data and s
 test('managed upgrades replace the previous root installers and preserve user data and unknown files', (t) => {
   for (const target of Object.keys(installerEntries)) {
     const f = fixture(t, target);
-    // Reconstruct the previous managed layout without depending on an old download.
+    // Construct a managed application with root-level installer files.
     cpSync(f.source, f.installed, { recursive: true });
     rmSync(join(f.installed, installerEntries[target]));
     const oldInstallers = ['install.mjs', 'install-path.mjs', 'install-launcher.mjs', 'install.sh',
       ...(target === 'macos-arm64' ? ['Install.command'] : target === 'windows-x64' ? ['install.cmd'] : [])];
     for (const name of oldInstallers) writeFileSync(join(f.installed, name), `Previous managed ${name}\n`);
-    // The current hook fixture imports install-launcher; keep that runtime
-    // dependency while reconstructing the former root-installer layout.
+    // Preserve the hook fixture's install-launcher import in the root-installer layout.
     for (const helper of ['install-release.mjs', 'install-path.mjs']) {
       rmSync(join(f.installed, 'app/scripts', helper), { force: true });
     }
@@ -438,7 +437,7 @@ test('a legacy packaged updater migrates its default root, registry and command 
   const settings = '{"projects":{},"unknown":{"preserved":[1,2]}}\n';
   writeFileSync(oldConfig, settings);
   const env = { ...f.env, XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, TASK_TRACKER_CONFIG: undefined };
-  // This is the exact directory-forwarding behaviour of the old updater.
+  // Supply the task-tracker application parent explicitly.
   ok(run(process.execPath, [internalInstaller(f.source), 'install', '--bin-dir', f.bin, '--release-root', oldRoot], { env }));
   for (const name of ['outask', 'tasks']) {
     assert.equal(readlinkSync(join(f.bin, name)), join(f.installed, 'app/bin/tasks'));
