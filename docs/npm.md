@@ -32,8 +32,11 @@ Configure your MCP client to run `outask mcp`. Tool calls select your repository
 ## Update or remove
 
 ```sh
-npm update -g outask
+outask self update --check
+outask self update
 npm uninstall -g outask
 ```
+
+`--check` only checks the configured npm registry: exit 0 means current/newer, 10 means an update is available, 2 means an unsupported installation context, and 1 means failure. It leaves application/project files unchanged; npm may write cache/logs. The update delegates to npm from the running Node.js installation, preserves this global installation's prefix and registry, and does not elevate privileges. `npm update -g outask` remains available directly. Local project dependencies and npx invocations receive guidance instead of modifying a global installation. Restart existing MCP sessions to load an updated version.
 
 Uninstall removes the npm package and its commands; project tasks, skills, configuration and cache remain. See [installation and updates](https://github.com/henryh/outask/blob/main/app/README.md#installation-and-updates) for lifecycle details.

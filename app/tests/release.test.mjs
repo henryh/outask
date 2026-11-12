@@ -186,7 +186,7 @@ test('each archive README and installer help describe only their destination pla
     assert.match(readme, /^outask list(?: --format table)?$/m);
     assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/mcp/README.md`));
     assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/README.md`));
-    assert.ok(readme.includes(`./${installerEntries[target]} update`));
+    assert.ok(readme.includes('outask self update'));
     assert.match(help, /\[--bin-dir <directory>\] \[--release-root <parent-directory>\]/);
     if (target === 'windows-x64') {
       assert.match(readme, /PowerShell: `\.\/Install\.cmd`/);

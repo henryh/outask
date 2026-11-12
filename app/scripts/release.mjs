@@ -30,6 +30,7 @@ const runtimeScripts = [
   'output.mjs',
   'schema.mjs',
   'search-tasks.mjs',
+  'self-update.mjs',
   'task-write-input.mjs',
   'transition-task.mjs',
   'update-task.mjs',
@@ -513,7 +514,7 @@ Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
 
 ## Update and remove
 
-Update to GitHub Latest stable: run \`./Install.cmd update\` (PowerShell) or \`Install.cmd update\` (cmd.exe) from the installed Outask directory. Requires network access and tar on PATH.
+Update to GitHub Latest stable: run \`outask self update\` from any directory; check without installing with \`outask self update --check\`. Requires network access and tar on PATH.
 Uninstall (PowerShell): \`& "$env:LOCALAPPDATA\\Programs\\Outask\\Install.cmd" uninstall\`
 Uninstall (cmd.exe): \`"%LOCALAPPDATA%\\Programs\\Outask\\Install.cmd" uninstall\`
 Uninstall removes the managed launcher; application files, projects and configuration remain.
@@ -555,7 +556,7 @@ Start a new Codex session; use \`/mcp\` to inspect the server.
 
 ## Update and remove
 
-Update to GitHub Latest stable: run \`./${installer} update\` from the installed Outask directory. Requires network access and tar on PATH.
+Update to GitHub Latest stable: run \`outask self update\` from any directory; check without installing with \`outask self update --check\`. Requires network access and tar on PATH.
 Uninstall: \`${uninstall}\`
 Uninstall removes the managed command link; application files, projects and configuration remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.

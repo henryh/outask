@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { basename, delimiter, dirname, join, resolve } from 'node:path';
@@ -10,6 +10,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { projectLockPath } from '../../src/project-lock.mjs';
 import { distributionVersion } from '../../src/version.mjs';
+import { windowsLauncher } from '../../scripts/install-launcher.mjs';
 import { hostTarget } from '../../../scripts/release-config.mjs';
 import { isolateRegistry, isolateUserHome } from '../../tests/helpers/registry-isolation.mjs';
 
@@ -375,28 +376,73 @@ try {
   const updateEnv = { ...env, OUTASK_UPDATE_FIXTURE: updateFixture,
     NODE_OPTIONS: `${env.NODE_OPTIONS || ''} --import=${pathToFileURL(fileURLToPath(new URL('../../tests/helpers/latest-fetch.mjs', import.meta.url))).href}`.trim() };
   const updateInstaller = join(releases, name, installerName);
+  const selfUpdates = process.env.OUTASK_SELF_UPDATE_TESTS === '1';
+  const invokeUpdate = () => selfUpdates ? invoke(command, ['self', 'update'], updateEnv) : invoke(updateInstaller, ['update'], updateEnv);
+  if (selfUpdates) {
+    const beforeCheck = readFileSync(join(application, 'release.json'));
+    const checked = invoke(command, ['self', 'update', '--check'], updateEnv);
+    assert.equal(checked.status, 10, checked.stderr || checked.stdout);
+    assert.match(checked.stdout, /Update available/);
+    assert.deepEqual(readFileSync(join(application, 'release.json')), beforeCheck);
+    assert.equal(run(command, ['--version']).trim(), `Outask v${metadata.version}`);
+  }
+  if (selfUpdates) {
+    // A second installation outside the defaults must update itself, even while
+    // another installation supplies the commands on PATH.
+    const customParent = join(temporary, 'custom releases 東京');
+    const customApplication = join(customParent, name);
+    const customBin = join(temporary, 'custom commands 東京');
+    cpSync(application, customApplication, { recursive: true, verbatimSymlinks: true, filter: () => true });
+    mkdirSync(customBin);
+    for (const alias of ['outask', 'tasks']) {
+      const path = join(customBin, windows ? `${alias}.cmd` : alias);
+      if (windows) writeFileSync(path, windowsLauncher(join(customApplication, 'app/bin/tasks')));
+      else symlinkSync(join(customApplication, 'app/bin/tasks'), path);
+    }
+    const customMetadata = join(customApplication, 'release.json');
+    writeFileSync(customMetadata, JSON.stringify({ ...metadata, bin: customBin }));
+    const originalMetadata = readFileSync(join(application, 'release.json'));
+    const customUpdated = invoke(process.execPath, [join(customApplication, 'app/bin/tasks'), 'self', 'update'], { ...updateEnv, PATH: [bin, updateEnv.PATH].join(delimiter) });
+    assert.equal(customUpdated.status, 0, customUpdated.stderr || customUpdated.stdout);
+    assert.equal(JSON.parse(readFileSync(customMetadata)).version, updateVersion);
+    assert.equal(JSON.parse(readFileSync(customMetadata)).bin, customBin);
+    assert.equal(invoke(process.execPath, [join(customApplication, 'app/bin/tasks'), '--version']).stdout.trim(), `Outask v${updateVersion}`);
+    assert.equal(invoke(join(customBin, windows ? 'outask.cmd' : 'outask'), ['--version']).stdout.trim(), `Outask v${updateVersion}`);
+    assert.deepEqual(readFileSync(join(application, 'release.json')), originalMetadata);
+    assert.equal(run(command, ['--version']).trim(), `Outask v${metadata.version}`);
+    assert.equal(readFileSync(join(customApplication, 'user-note.txt'), 'utf8'), 'Retain local note');
+    assert.equal(readFileSync(config, 'utf8'), configuration);
+    rmSync(customParent, { recursive: true, force: true });
+    rmSync(customBin, { recursive: true, force: true });
+  }
   const candidateEntry = join(source, 'app/bin/tasks');
   const validEntry = readFileSync(candidateEntry);
   writeFileSync(candidateEntry, "throw new Error('fixture startup failure');\n");
   run('tar', ['-czf', latestArchive, '-C', downloads, archiveDirectory]);
-  const rejectedInstall = invoke(updateInstaller, ['update'], updateEnv);
+  const rejectedInstall = invokeUpdate();
   assert.notEqual(rejectedInstall.status, 0);
   assert.match(rejectedInstall.stderr, /UPDATE_FAILED.*install latest release/);
   assert.equal(run(command, ['--version']).trim(), `Outask v${metadata.version}`);
   writeFileSync(candidateEntry, validEntry);
   run('tar', ['-czf', latestArchive, '-C', downloads, archiveDirectory]);
-  const updateResult = invoke(updateInstaller, ['update'], updateEnv);
+  const updateResult = invokeUpdate();
   assert.equal(updateResult.status, 0, updateResult.stderr || updateResult.stdout);
   assert.match(updateResult.stdout, /Updated to Outask v99.0.1/);
-  const current = invoke(updateInstaller, ['update'], updateEnv);
+  const current = invokeUpdate();
   assert.equal(current.status, 0, current.stderr);
   assert.match(current.stdout, /already current/);
+  if (selfUpdates) assert.equal(invoke(command, ['self', 'update', '--check'], updateEnv).status, 0);
   for (const failure of [true, 'download']) {
     writeLatest(failure);
-    const failedUpdate = invoke(updateInstaller, ['update'], updateEnv);
+    const failedUpdate = invokeUpdate();
     assert.notEqual(failedUpdate.status, 0);
     assert.match(failedUpdate.stderr, /UPDATE_FAILED.*HTTP 503/);
     assert.equal(run(command, ['--version']).trim(), `Outask v${updateVersion}`);
+    if (selfUpdates) {
+      const checked = invoke(command, ['self', 'update', '--check'], updateEnv);
+      // Download failures do not affect a metadata-only availability check.
+      assert.equal(checked.status, failure === true ? 1 : 10, checked.stderr || checked.stdout);
+    }
   }
   const updatedInstall = join(releases, process.platform === 'linux' ? 'outask' : 'Outask');
   assert.deepEqual(persistentPaths.map(path => statSync(path).ino), persistentIds,

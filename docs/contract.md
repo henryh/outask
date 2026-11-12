@@ -28,6 +28,8 @@ unrecognised sibling files are preserved. Conflicting registries stop migration.
 
 npm installations use npm's global package directory and command entries for application files. They use the same default Outask configuration, cache and coordination paths. Native npm install/update/uninstall owns the program lifecycle; npm uninstall preserves configuration, cache, skills and project records. Archive installer lifecycle commands do not manage npm installations. See the [npm guide](npm.md).
 
+`outask self update` is a CLI-only application lifecycle operation, independent of project selection and task mutations. It updates the running managed archive through the packaged updater or the running global npm package through its owning npm/prefix/registry. Archive installation records the command directory as `bin` in installed `release.json`; existing archives can resolve their owned commands through PATH. It preserves newer installed versions and does not switch distribution channels. `--check` performs version lookup without installing or modifying application/project files (npm may write cache/logs): exit 0 current/newer, 10 update available, 2 unsupported context, 1 failure. Source checkouts, local npm/npx and unknown contexts receive guidance. See [installation and updates](../app/README.md#installation-and-updates).
+
 Necessary external integrations are POSIX links for both commands in
 `~/.local/bin`, existing managed shell PATH blocks (including `ZDOTDIR`), and
 Windows user PATH pointing to the root's `commands/` directory. Installation

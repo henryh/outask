@@ -12,7 +12,9 @@ Keep the checkout; remove its command with `node app/scripts/install-cli.mjs uni
 
 ## Installation and updates
 
-For npm installations, use `npm install -g outask`, `npm update -g outask` and `npm uninstall -g outask`. See the [npm quick start](../docs/npm.md) for CLI and MCP use. The paths and installer commands below describe archive installations; see the [footprint and migration rules](../docs/contract.md#product-identity-and-installation-footprint). Open a new terminal after installation and restart an editor with an old PATH.
+Run `outask self update` to update an installed archive or global npm installation on Linux, macOS or Windows. Run `outask self update --check` to check without installing. Both commands work outside a project directory; `tasks self update` is equivalent. Archive updates use GitHub Latest stable; npm updates use the configured registry and the running installation's prefix. See the [npm quick start](../docs/npm.md) and [footprint rules](../docs/contract.md#product-identity-and-installation-footprint). Open a new terminal after installation and restart an editor with an old PATH.
+
+`--check` exits with 0 when current or newer than stable, 10 when an update is available, 2 when this installation context cannot be checked automatically, and 1 on failure. Checks leave application and project files unchanged; npm may write its normal cache/logs. Source checkouts, local npm/npx and unknown installations receive guidance instead of automatic updates. Existing versions newer than stable are retained.
 
 | Platform | Installed application | Command |
 | --- | --- | --- |
@@ -30,12 +32,11 @@ Double-click `Install.command` or run `./Install.command`. If macOS blocks this
 unsigned launcher, use [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445)
 for a release you trust. Keep Gatekeeper enabled.
 
-Before switching installation layouts, finish writes, close previous sessions, remove old command links with that installation's original installer and refresh explicit client/hook references. From the installed Outask directory, update to GitHub Latest stable with `./install.sh update` on Linux, `./Install.command update` on macOS, `./Install.cmd update` in PowerShell or `Install.cmd update` in cmd.exe. Requires network access and tar on PATH. An already-current installation reports no change; a failed update preserves the working installation.
+Before switching installation layouts, finish writes, close previous sessions, remove old command links with that installation's original installer and refresh explicit client/hook references. Archive updates require network access and tar on PATH; a failed archive update preserves the working installation. Global npm updates require npm from the running Node.js installation and retain npm's own failure handling. Permission failures report an error without automatic privilege escalation.
 
 Let existing MCP/HTTP sessions and active writes finish normally. Existing sessions may retain their loaded version; fresh launches use the update and `outask --version` reports `Outask v<version>`.
 Managed files are replaced; user files, tasks and configuration remain. Resolve
-an unrelated `tasks` collision explicitly. Custom installations must reuse the
-same `--bin-dir` and `--release-root` when updating or removing the command.
+an unrelated `tasks` collision explicitly. The self updater retains custom paths. For an older archive without a recorded command directory, keep its command directory on PATH. Installer update/uninstall actions remain available; reuse the original `--bin-dir` and `--release-root` when invoking them directly.
 
 From the installed application's directory, remove the command with
 `./install.sh uninstall` on Linux, `./Install.command uninstall` on macOS,

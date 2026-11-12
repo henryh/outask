@@ -32,7 +32,12 @@ function dependencies() {
   }
 }
 
-function tests() {
+function regressionFiles() {
+  return readdirSync(join(root, 'app/tests/regression')).filter(name => name.endsWith('.test.mjs')).sort()
+    .map(name => join('app/tests/regression', name));
+}
+
+function tests(regression = false) {
   const home = mkdtempSync(join(tmpdir(), 'outask-tests-home-'));
   const env = { ...process.env, HOME: home, USERPROFILE: process.platform === 'win32' ? home : process.env.USERPROFILE,
     PATH: process.platform === 'win32' ? process.env.PATH : [dirname(process.execPath), '/usr/local/bin', '/usr/bin', '/bin'].join(':'),
@@ -42,6 +47,7 @@ function tests() {
     for (const [label, directory] of [['Core', 'app/tests'], ['MCP', 'app/mcp/tests']]) {
       const files = readdirSync(join(root, directory)).filter((name) => name.endsWith('.test.mjs')).sort()
         .map((name) => join(directory, name));
+      if (regression && label === 'Core') files.push(...regressionFiles());
       const output = run(`${label} tests`, process.execPath, ['--test', '--test-reporter=tap', ...files], env);
       const count = output.match(/^# tests (\d+)$/m)?.[1];
       console.log(`${label} tests: PASS${count ? ` (${count} tests)` : ''}`);
@@ -65,7 +71,7 @@ function distribution() {
 }
 
 function npmSmoke(artifact) {
-  process.stdout.write(run('npm installed CLI/MCP lifecycle', process.execPath, ['app/mcp/tests/npm-smoke.mjs', artifact]));
+  process.stdout.write(run('npm installed CLI/MCP lifecycle', process.execPath, ['app/mcp/tests/npm-smoke.mjs', artifact], acceptanceEnv()));
 }
 
 function npmDistribution() {
@@ -95,9 +101,13 @@ async function npmDownloaded() {
 }
 
 function smoke(archive) {
-  const evidence = run('Installed CLI/MCP smoke', process.execPath, ['app/mcp/tests/distribution-smoke.mjs', archive]);
+  const evidence = run('Installed CLI/MCP smoke', process.execPath, ['app/mcp/tests/distribution-smoke.mjs', archive], acceptanceEnv());
   process.stdout.write(evidence);
   console.log('Installed CLI/MCP smoke: PASS (shared storage/validation, dependency diagnostics, update/uninstall, data preservation)');
+}
+
+function acceptanceEnv() {
+  return { ...process.env, OUTASK_SELF_UPDATE_TESTS: ['regression', 'archive', 'downloaded', 'npm-archive', 'npm-downloaded'].includes(process.argv[2]) ? '1' : undefined };
 }
 
 function downloaded() {
@@ -120,11 +130,15 @@ function downloaded() {
 
 try {
   const mode = process.argv[2];
-  if (process.argv.length > 3 || (mode !== undefined && !['dependencies', 'test', 'distribution', 'archive', 'downloaded', 'npm', 'npm-archive', 'npm-downloaded'].includes(mode))) {
-    throw new Error('Usage: node scripts/ci.mjs [dependencies|test|distribution|archive|downloaded|npm|npm-archive|npm-downloaded]');
+  if (process.argv.length > 3 || (mode !== undefined && !['dependencies', 'test', 'regression', 'distribution', 'archive', 'downloaded', 'npm', 'npm-archive', 'npm-downloaded'].includes(mode))) {
+    throw new Error('Usage: node scripts/ci.mjs [dependencies|test|regression|distribution|archive|downloaded|npm|npm-archive|npm-downloaded]');
   }
   if (mode === undefined || mode === 'dependencies') dependencies();
   if (mode === undefined || mode === 'test') tests();
+  if (mode === 'regression') { tests(true); distribution(); npmDistribution(); }
+  if (mode === 'archive') {
+    process.stdout.write(run('Self-update regression tests', process.execPath, ['--test', ...regressionFiles()]));
+  }
   if (mode === undefined || mode === 'distribution') distribution();
   if (mode === 'archive') smoke(archivePath(hostTarget()));
   if (mode === 'downloaded') downloaded();
