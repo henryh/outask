@@ -417,11 +417,11 @@ if [ -t 0 ] && [ "\${TERM_PROGRAM:-}" = Apple_Terminal ] && command -v osascript
 on run arguments
   set installerTTY to item 1 of arguments
   tell application "Terminal"
-    repeat with candidate in windows
-      repeat with candidateTab in tabs of candidate
-        if tty of candidateTab is installerTTY then
-          set terminalTab to contents of candidateTab
-          return my isClosingLaunch(contents of terminalTab as text)
+    repeat with windowIndex from 1 to count of windows
+      repeat with tabIndex from 1 to count of tabs of window windowIndex
+        if tty of tab tabIndex of window windowIndex is installerTTY then
+          set screenText to get contents of tab tabIndex of window windowIndex
+          return my isClosingLaunch(screenText)
         end if
       end repeat
     end repeat

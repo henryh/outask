@@ -845,48 +845,64 @@ test('Terminal launch detection compiles and handles wrapped commands and persis
   ]) assert.equal(ok(run('/usr/bin/osascript', ['-e', script, screen])).trim(), expected, screen);
 });
 
-test('Terminal launch detection reads nested tab references through the complete generated probe', { skip: process.platform !== 'darwin' }, (t) => {
+test('Terminal launch detection reads real Terminal tabs in an authorised GUI session', { skip: process.platform !== 'darwin' }, (t) => {
+  if (process.env.OUTASK_TERMINAL_UI_TESTS !== '1') {
+    t.skip('Set OUTASK_TERMINAL_UI_TESTS=1 in a GUI session with Terminal automation already authorised; hosted headless CI only compiles the native probe');
+    return;
+  }
   const f = fixture(t, 'macos-arm64');
   const launcher = readFileSync(join(f.source, 'Install.command'), 'utf8');
   const probe = launcher.split("<<'APPLESCRIPT'\n")[1].split('\nAPPLESCRIPT')[0];
-  // Script objects supply Terminal's object hierarchy without opening GUI tabs.
-  // Repeat variables still reference list items, as they do in Terminal.
-  const terminalFixtureScript = `script unrelatedTab
-  property tty : "/dev/other"
-  property contents : "Install.command ; exit;"
-end script
-script matchingTab
-  property tty : "/dev/installer"
-  property contents : ""
-end script
-script firstWindow
-  property tabs : {}
-end script
-script secondWindow
-  property tabs : {}
-end script
-script terminalFixture
-  property windows : {}
-end script
-set contents of matchingTab to item 2 of arguments
-set tabs of firstWindow to {unrelatedTab}
-set tabs of secondWindow to {matchingTab}
-set windows of terminalFixture to {firstWindow, secondWindow}
-`;
-  const script = probe.replace('  set installerTTY to item 1 of arguments', `${terminalFixtureScript}  set installerTTY to item 1 of arguments`)
-    .replace('tell application "Terminal"', 'tell terminalFixture');
-  const original = script.replace('set terminalTab to contents of candidateTab\n          return my isClosingLaunch(contents of terminalTab as text)',
-    'return my isClosingLaunch(contents of candidateTab as text)');
-  assert.notEqual(original, script);
-  const reproduced = run('/usr/bin/osascript', ['-e', original, '/dev/installer', '% ./Install.command ; exit;']);
-  assert.notEqual(reproduced.status, 0, reproduced.stdout);
-  assert.match(reproduced.stderr, /-1700/);
-  for (const [tty, screen, expected] of [
-    ['/dev/installer', '% /Users/person/Install.command ; exit;', 'true'],
-    ['/dev/installer', '% ./Install.command', 'false'],
-    ['/dev/installer', '% echo unrelated ; exit;', 'false'],
-    ['/dev/missing', '% /Users/person/Install.command ; exit;', 'false'],
-  ]) assert.equal(ok(run('/usr/bin/osascript', ['-e', script, tty, screen])).trim(), expected, `${tty}: ${screen}`);
+  const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
+  for (const [screen, expected] of [['% /tmp/Install.command ; exit;', 'true'], ['% ./Install.command', 'false']]) {
+    const stop = join(f.home, `stop-${expected}`);
+    const command = join(f.home, `screen-${expected}.sh`);
+    t.after(() => writeFileSync(stop, 'stop\n'));
+    writeFileSync(command, `#!/bin/sh\nprintf '%s\\n' ${quote('\x1b[2J\x1b[H' + screen)}\nwhile [ ! -e ${quote(stop)} ]; do sleep 0.1; done\n`, { mode: 0o755 });
+    const create = `with timeout of 5 seconds
+  tell application "Terminal"
+    set createdTab to do script ${JSON.stringify(quote(command))}
+    set createdTTY to tty of createdTab
+    repeat with windowIndex from 1 to count of windows
+      repeat with tabIndex from 1 to count of tabs of window windowIndex
+        if tty of tab tabIndex of window windowIndex is createdTTY then
+          return (id of window windowIndex as text) & linefeed & createdTTY
+        end if
+      end repeat
+    end repeat
+    error "Cannot identify the owned Terminal window"
+  end tell
+end timeout`;
+    const [windowID, tty] = ok(run('/usr/bin/osascript', ['-e', create], { timeout: 10000 })).trim().split('\n');
+    assert.match(windowID, /^\d+$/);
+    assert.match(tty, /^\/dev\//);
+    try {
+      const deadline = Date.now() + 10000;
+      let actual;
+      do {
+        actual = ok(run('/usr/bin/osascript', ['-e', probe, tty], { timeout: 6000 })).trim();
+        if (actual === expected) break;
+      } while (Date.now() < deadline);
+      assert.equal(actual, expected, `real Terminal screen: ${screen}`);
+      assert.equal(ok(run('/usr/bin/osascript', ['-e', probe, '/dev/outask-missing-tty'], { timeout: 6000 })).trim(), 'false');
+    } finally {
+      writeFileSync(stop, 'stop\n');
+      const cleanup = `with timeout of 5 seconds
+  tell application "Terminal"
+    repeat 50 times
+      if not (exists window id ${windowID}) then return
+      if not busy of tab 1 of window id ${windowID} then
+        close window id ${windowID} saving no
+        return
+      end if
+      delay 0.1
+    end repeat
+    error "Owned Terminal fixture did not finish; retained window ${windowID}"
+  end tell
+end timeout`;
+      ok(run('/usr/bin/osascript', ['-e', cleanup], { timeout: 10000 }));
+    }
+  }
 });
 
 test('window closure process query distinguishes absence from permissions, errors and malformed results', (t) => {

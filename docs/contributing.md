@@ -99,6 +99,14 @@ substitute. Before push, review affected platform tests for isolation, prior
 contracts and assumptions about the host. Keep diagnostics about ambient state
 separate from assertions about the selected executable or archive.
 
+Run the real Terminal read check on macOS in a GUI session with Terminal automation already authorised:
+
+```sh
+OUTASK_TERMINAL_UI_TESTS=1 node --test --test-name-pattern='Terminal launch detection' app/tests/release.test.mjs
+```
+
+The GUI check creates and closes its own fixture windows. Without that opt-in, native checks compile the generated AppleScript and test the text parser; they do not establish that reading a real Terminal tab works.
+
 On Linux/macOS, with each required Node version:
 
 ```sh
