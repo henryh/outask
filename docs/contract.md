@@ -264,7 +264,7 @@ and batch. `auto` uses a current generation or scans and requests a refresh;
 `indexed` also returns correct JSON when unavailable, with `CACHE_FALLBACK`.
 List/detail/blocker acceleration follows source freshness checks.
 Every task-data read supports core `noCache`, CLI/scripts `--no-cache`, MCP
-`no_cache`, HTTP `no-cache=true`. It overrides mode and reads authoritative JSON directly. Each new shared read must retain a tested JSON-only path.
+`no_cache`, HTTP `no-cache=true`. It overrides mode and reads authoritative JSON directly. Cache bypass skips cache opening, building and refresh. Each new shared read must retain a tested JSON-only path.
 Cache results, ordering, validation and errors must match authoritative reads.
 
 Cache support uses built-in `node:sqlite`; failure to initialise acceleration

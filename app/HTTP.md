@@ -60,7 +60,7 @@ Search and batch `limit` defaults to 10 (1–50); batch counts missing IDs too.
 URL-encode `next_cursor` as `cursor` with unchanged query/IDs, fields and
 selectors. Changed inputs produce `INVALID_CURSOR`. Each page reflects the current task files.
 
-All `/tasks` routes accept `no-cache=true|false`. True reads authoritative JSON directly. Cache acceleration failures preserve JSON results and add a bounded
+All `/tasks` routes accept `no-cache=true|false`. True reads authoritative JSON and skips cache opening, building and refresh. Cache acceleration failures preserve JSON results and add a bounded
 HTTP `Warning` containing `CACHE_UNAVAILABLE` or `CACHE_FALLBACK`.
 See the [shared contract](../docs/contract.md) for search/cache semantics.
 
