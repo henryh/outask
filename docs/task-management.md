@@ -10,10 +10,10 @@ owns required fields. Do not import other project stores or reset the backlog.
 - Active: `pending`, `in_progress`, `review`. Done: `done`.
 - Every task requires `scope`, nonempty `acceptance` and `blockers`.
 - Done requires `completed_at`. Only blockers still in Active prevent starting.
-- Validate and commit changed stores with refreshed `tasks/.task-tracker.json`.
-  The tracker never stages or commits files.
+- For standalone backlog creation or correction, save and validate the records with refreshed `tasks/.task-tracker.json` on the current branch. Stop there; creating or switching branches, staging, committing and starting implementation require separate user authorisation.
+- During authorised task delivery or Git recording, commit changed stores with refreshed `tasks/.task-tracker.json`. The tracker never stages or commits files.
 
-Use `task-<id>-<slug>` and preserve corrections there. Record acceptance, set
+During authorised task delivery, use `task-<id>-<slug>` and preserve corrections there. Record acceptance, set
 `completed_at` and close on that branch before the final push. Branch-local done
 means candidate acceptance; status on `main` owns delivered completion. Rework
 returns to review and removes `completed_at` until affected gates pass again.
