@@ -442,5 +442,41 @@
     ],
     "notes": "Planning only; implementation is not started. Preserve project-specific selection policy in consumers; this next-task operation implements the explicitly requested oldest-ID rule.",
     "updated_at": "2026-11-10T16:11:49.340Z"
+  },
+  {
+    "id": 36,
+    "title": "Add installation-aware CLI self updates and non-mutating update checks",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Add outask self update and outask self update --check without changing outask update task-mutation semantics. Detect the running installation and update it through its owning mechanism: reuse the existing release updater for managed archives on Linux, macOS and Windows, and delegate global npm installations to npm in the correct installation context. Preserve custom installation paths, npm prefix/registry and the permanent tasks alias. For source checkouts, local npm/npx contexts and unknown installations, provide precise context-appropriate guidance without modifying Git checkouts, unrelated installations or silently switching distribution channels. --check reports availability without installing or changing application/project files, with installation-aware version sources and a documented result usable by future repository/store distributions; implementing new repositories, stores or a generalized provider framework is outside scope. Add dedicated update/check automated coverage that runs only in regression and release verification.",
+    "acceptance": [
+      "outask self update and tasks self update are discoverable in help and work outside a project directory; outask update <id> retains existing task-update behavior. Report the current version, selected installation/update mechanism and resulting version or already-current outcome.",
+      "Managed archive installations update through the existing packaged updater on Linux x64, macOS arm64 and Windows x64, including custom application and command directories. Update only the running installation when multiple installations exist; preserve project records, configuration and existing archive failure-recovery guarantees.",
+      "Global npm installations delegate to npm for the selected installation's prefix and registry, without converting to an archive installation, touching another Node/npm installation or automatically escalating privileges. Handle supported native Windows and POSIX npm launch mechanisms and report permission, dependency and registry failures clearly.",
+      "Source checkout, local npm/npx and unrecognized installation contexts receive accurate update guidance for their actual context; no automatic Git operations or replacement of package-manager-owned files outside the owning mechanism. Existing managed installations remain usable without reinstalling merely to identify their installation type.",
+      "--check resolves update availability without installing or modifying application/project files. Distinguish a newer stable version, already current/newer installed version, unavailable/unsupported check context and lookup failure; document output and exit semantics for automation. Choose the applicable distribution version source and respect registry configuration. Do not downgrade a newer installed version implicitly.",
+      "Preserve user data and permanent aliases across successful and failed updates. Explain that fresh launches use the updated version and existing MCP/HTTP processes may require restart; do not forcibly stop sessions. Cover Windows replacement constraints in native acceptance.",
+      "Add meaningful dedicated automated update and --check coverage for all supported native operating systems and installation contexts: newer/current versions, non-mutating checks, failed network/download/registry/permissions where applicable, custom paths/prefixes, multiple installations, data preservation and guidance-only contexts. Reuse existing archive/npm lifecycle fixtures and gates where suitable.",
+      "Configure the dedicated update/check automated suite to run only for explicit regression verification and release verification, not ordinary fast/unit checks or routine non-regression CI. Document its invocation and verify both gate inclusion and exclusion; retain applicable existing repository acceptance requirements.",
+      "Update CLI help and owning installation/npm/shared-contract documentation with short commands, mechanism selection, check behavior, guidance-only contexts and session handling. Demonstrate commands against installed archive/npm artifacts and record native-platform regression/release evidence under the repository delivery policy."
+    ],
+    "values": {
+      "goal": "Make the installed Outask CLI straightforward to maintain while preserving installation ownership and repository-local user data.",
+      "value": "Users update the running installation or check update availability through one short CLI command instead of locating platform-specific installer scripts.",
+      "observable_result": "Installed archive and global npm users can run outask self update; users can check availability without installation, and unsupported automatic-update contexts receive actionable guidance.",
+      "verification": "Exercise installed archive/npm artifacts on supported native hosts with controlled newer/current/failing version sources, verify --check leaves application/project files unchanged, and inspect regression/release-only suite wiring."
+    },
+    "sources": [
+      "Owner-approved discussion: installation-aware outask self update for all OS/install types and outask self update --check.",
+      "Owner requirement: automated update/check tests must run only during regression and release verification.",
+      "Existing archive update task 7 and npm lifecycle task 19; Homebrew publication task 20 is separate."
+    ],
+    "notes": [
+      "Backlog creation only; implementation has not started.",
+      "Future application-store/repository publication motivates check support, but adding those distribution channels is outside this task.",
+      "Reuse existing update mechanisms; explicit installation metadata is an implementation option, not a mandatory new manifest contract."
+    ],
+    "updated_at": "2026-11-12T15:38:06.565Z"
   }
 ]
