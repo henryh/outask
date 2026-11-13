@@ -24,34 +24,6 @@
     "updated_at": "2026-10-28T09:36:51.755Z"
   },
   {
-    "id": 12,
-    "title": "Remove installed application files, global configuration and caches during uninstall",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Change the standard uninstall flow so removing Outask deletes managed commands, confirmed installed application copies, application-owned default global/user configuration and application caches when present. Cover packaged installers on Linux x64, macOS arm64 and Windows x64 and source-checkout uninstall. Preserve project/skill task records and configuration, source checkouts, arbitrary explicitly selected configuration files and unrelated user files. Rename old environment variables to OUTASK_CONFIG, OUTASK_RELEASE_DIR and OUTASK_HTTP_TOKEN. Remove project selection by configured name and projects_root lookup from CLI/MCP and configuration; retain cwd/explicit path selection and slow_query_ms as the only supported global setting. Align help, documentation, focused checks and native distribution gates.",
-    "acceptance": [
-      "For each supported installation/uninstall route, inventory the application-owned installation, global configuration and cache paths actually created or used, including configured locations, and make standard uninstall remove those artifacts together with the managed tasks command.",
-      "Verify an install -> use/configure -> uninstall scenario in an isolated user environment: installed application files, application-owned global configuration and any generated caches are absent afterward.",
-      "Verify project task records and configuration, configuration inside skills, source checkout contents and unrelated neighboring files remain unchanged after uninstall.",
-      "Verify uninstall succeeds when optional configuration or cache paths are absent and that existing protection against removing an unrelated command remains effective.",
-      "Update focused installer/distribution checks and uninstall help/documentation to reflect complete application cleanup and retained project/skill data; verify supported platform behavior through the project's native distribution gates.",
-      "Explicit --config / OUTASK_CONFIG files at arbitrary locations survive uninstall; default application/XDG settings and caches are removed.",
-      "CLI/MCP accept only current-directory or explicit-path project selection; --project/project names and projects_root lookup are removed. Only slow_query_ms remains a supported global setting; unknown user JSON fields remain preserved.",
-      "No old-product environment variable names remain in application runtime, tooling, documentation or tests."
-    ],
-    "values": "Goal: keep project tasks in readable repository-local JSON usable without the tracker (docs/product.md). User value: uninstall leaves no installed application, global configuration or cache behind while retaining the user's project and skill data. Immediate observable result: a completed standard uninstall cleans the application-owned machine/user footprint. Verification: install and exercise Outask in an isolated user environment, uninstall it, assert the application-owned paths are absent and compare retained project/skill files with their pre-uninstall contents.",
-    "updated_at": "2026-11-13T09:24:35.522Z",
-    "notes": [
-      "Started on task-12-uninstall-cleanup. Baseline: CLI and release suites passed (47 tests).",
-      "Footprint inventory: archive payload in platform application root or --release-root/Outask (Linux: outask), aliases in platform command directory or --bin-dir; legacy payload roots from install-migration.mjs. Default global config is applicationRoot/config.json, XDG_CONFIG_HOME/outask/config.json overrides it; legacy registry is XDG_CONFIG_HOME or HOME/.config/task-tracker/config.json, sometimes a migration symlink/hard link. TASK_TRACKER_CONFIG and runtime --config may select arbitrary files. Caches use applicationRoot/cache or XDG_CACHE_HOME/outask/cache. PATH/profile settings and fixed writer coordination namespace have separate existing preservation requirements. npm lifecycle currently preserves global state and is separate from the task's named archive/source routes.",
-      "Pending owner clarification: should arbitrary explicitly selected configuration files be removed, or should cleanup be limited to standard application/XDG locations? Project/skill configuration must remain in either case. Payload cleanup implementation and focused verification can proceed independently.",
-      "Owner correction: replace TASK_TRACKER_CONFIG with OUTASK_CONFIG throughout runtime, help, documentation and tests. Audit found one other old-prefix variable, the release test input TASK_TRACKER_RELEASE_DIR; rename it OUTASK_RELEASE_DIR. The owner requested explanation only for projects/projects_root and unspecified extra settings; no removal of those settings is authorized.",
-      "Extended old-name audit also found TASKS_HTTP_TOKEN. Renamed it OUTASK_HTTP_TOKEN in HTTP runtime, guide and tests; no old-prefix environment variable references remain in application/tooling/docs (historical task notes retain the recorded correction).",
-      "Owner resolved cleanup boundary: delete only default configuration locations, preserve arbitrary explicitly selected files. Owner also authorized removing project-name selection and projects_root lookup; only slow_query_ms remains a supported global setting. Continue the original uninstall task with these corrections on the same branch."
-    ]
-  },
-  {
     "id": 13,
     "title": "Add a Windows MSI distribution",
     "status": "pending",

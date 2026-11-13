@@ -617,5 +617,34 @@
     ],
     "updated_at": "2026-11-13T04:33:10.877Z",
     "completed_at": "2026-11-13"
+  },
+  {
+    "id": 12,
+    "title": "Remove installed application files, global configuration and caches during uninstall",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Change the standard uninstall flow so removing Outask deletes managed commands, confirmed installed application copies, application-owned default global/user configuration and application caches when present. Cover packaged installers on Linux x64, macOS arm64 and Windows x64 and source-checkout uninstall. Preserve project/skill task records and configuration, source checkouts, arbitrary explicitly selected configuration files and unrelated user files. Rename old environment variables to OUTASK_CONFIG, OUTASK_RELEASE_DIR and OUTASK_HTTP_TOKEN. Remove project selection by configured name and projects_root lookup from CLI/MCP and configuration; retain cwd/explicit path selection and slow_query_ms as the only supported global setting. Align help, documentation, focused checks and native distribution gates.",
+    "acceptance": [
+      "For each supported installation/uninstall route, inventory the application-owned installation, global configuration and cache paths actually created or used, including configured locations, and make standard uninstall remove those artifacts together with the managed tasks command.",
+      "Verify an install -> use/configure -> uninstall scenario in an isolated user environment: installed application files, application-owned global configuration and any generated caches are absent afterward.",
+      "Verify project task records and configuration, configuration inside skills, source checkout contents and unrelated neighboring files remain unchanged after uninstall.",
+      "Verify uninstall succeeds when optional configuration or cache paths are absent and that existing protection against removing an unrelated command remains effective.",
+      "Update focused installer/distribution checks and uninstall help/documentation to reflect complete application cleanup and retained project/skill data; verify supported platform behavior through the project's native distribution gates.",
+      "Explicit --config / OUTASK_CONFIG files at arbitrary locations survive uninstall; default application/XDG settings and caches are removed.",
+      "CLI/MCP accept only current-directory or explicit-path project selection; --project/project names and projects_root lookup are removed. Only slow_query_ms remains a supported global setting; unknown user JSON fields remain preserved.",
+      "No old-product environment variable names remain in application runtime, tooling, documentation or tests."
+    ],
+    "values": "Goal: preserve project-owned readable JSON and coordinated CLI/MCP/HTTP operations (docs/product.md). Immediate user value: archive/source uninstall removes managed application payloads and default global settings/caches while retaining arbitrary settings, project/skill data, source checkouts and unrelated files. Owner-approved simplification: select projects by cwd/explicit path, with slow_query_ms as the only supported global setting and OUTASK-prefixed environment variables. Verification at the user boundary: install/use/configure/uninstall an isolated real archive; assert managed payload/default settings/generated cache absence and byte-for-byte retained data, alongside focused path-selection/configuration tests.",
+    "updated_at": "2026-11-13T09:38:57.276Z",
+    "notes": [
+      "Accepted candidate: task-12-uninstall-cleanup, implementation c84e5d2, based on unchanged origin/main 8d0822b; release 1.9.0 / v1.9 with exact notes in docs/release-notes.md. Owner corrections are incorporated in scope/acceptance. Branch-local done is candidate acceptance, not delivered completion on main.",
+      "Cleanup inventory: metadata/package-confirmed payloads under selected application parent and known migration roots; managed outask/tasks aliases; default applicationRoot/config.json, XDG_CONFIG_HOME/outask/config.json, default/XDG task-tracker/config.json; applicationRoot/cache and XDG_CACHE_HOME/outask/cache. Explicit arbitrary config files, source/project/skill data, unknown neighboring files, PATH/profile settings and fixed writer coordination inodes remain. Directory symlinks are not traversed. npm's native lifecycle remains separate and preserves global state.",
+      "Independent feature review PASS at c84e5d2: cleanup, symlink/copy boundaries, command ownership, path-only selection, environment renames, packaging, Windows self-deleting wrapper and docs inspected; no required fixes. Documentation/value gates PASS: supported commands/settings/cleanup documented, retained data verified at installed user boundary, exact release candidate/version/lockfile/notes validator PASS.",
+      "QA PASS: make ci exited 0 on Linux x64 / Node 24.21.0 (348 core, 18 MCP, archive and npm lifecycle); make regression exited 0 (359 core including self-update regressions, 18 MCP, archive/self-update and npm lifecycle). Node 22.23.3 make ci-dependencies and make test-distribution also exited 0. Real installed cache generation, complete uninstall of defaults/payload, retained project/skill/custom files, absent optional paths, repeated source/archive uninstall, directory aliases and unrelated command protection are covered.",
+      "Native evidence: Linux x64, Node 24.21.0 regression Outask 1.9 archive SHA256 0a118381050404f554ac01890b3f16e47ff5b870b51586ca450d817f44849b74; Node 22.23.3 archive SHA256 a2c7baf6b4589ca0e53ba9582071096f742685cd9b35bc2130dd1d4c770cef9a. npm outask@1.9.0 artifact SHA256 8f7c1b9b779b9b101803da70960b55cfe4f3ae8859da812dd94e644f3903d2ca passed on both runtimes.",
+      "Required remaining delivery boundary: separately approved task-branch push/draft PR, all native hosted PR/archive/npm gates (macOS/Windows contracts reviewed, not locally executed), ready transition only after success, owner merge. Published release/archive/npm download checks are read-only post-merge verification. No push, PR creation, merge or publication is authorized yet."
+    ],
+    "completed_at": "2026-11-13T09:38:44.847Z"
   }
 ]
