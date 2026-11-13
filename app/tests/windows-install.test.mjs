@@ -14,23 +14,30 @@ import { test } from 'node:test';
 import { windowsLauncher, launcherEntry } from '../scripts/install-launcher.mjs';
 import { configurePath } from '../scripts/install-path.mjs';
 
-test('only a cmd /c console without a persistent shell waits after installation', { skip: process.platform !== 'win32' }, () => {
-  const helper = fileURLToPath(new URL('../scripts/install-finish.ps1', import.meta.url));
-  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `
-. $env:OUTASK_FINISH_HELPER
-$closing = @{ Name = 'cmd.exe'; CommandLine = 'cmd.exe /c "Install.cmd"'; ProcessId = 10 }
-$persistent = @{ Name = 'cmd.exe'; CommandLine = 'cmd.exe /k'; ProcessId = 10 }
-@(
-  (Test-ClosingConsole @(10, 20) 20 $closing),
-  (Test-ClosingConsole @(10, 20, 30) 20 $closing),
-  (Test-ClosingConsole @(10, 20) 20 $persistent),
-  (Test-ClosingConsole @(10, 30) 20 $closing),
-  (Test-ClosingConsole @() 20 $closing)
-) | ConvertTo-Json -Compress
-`], { env: { ...process.env, OUTASK_FINISH_HELPER: helper }, encoding: 'utf8', timeout: 10000 });
-  assert.ifError(result.error);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [true, false, false, false, false]);
+test('Windows packaged installer forwards arguments and exit status', { skip: process.platform !== 'win32' }, (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'outask-windows-wrapper-'));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const builder = fileURLToPath(new URL('../scripts/release.mjs', import.meta.url));
+  const built = spawnSync(process.execPath, [builder, '--target', 'windows-x64', '--out-dir', root], { encoding: 'utf8', timeout: 60000 });
+  assert.ifError(built.error);
+  assert.equal(built.status, 0, built.stderr);
+  const version = distributionVersion(JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version);
+  const archive = join(root, `Outask-${version}-windows-x64.tar.gz`);
+  const unpacked = spawnSync('tar', ['-xzf', archive, '-C', root], { encoding: 'utf8', timeout: 60000 });
+  assert.ifError(unpacked.error);
+  assert.equal(unpacked.status, 0, unpacked.stderr);
+  const source = join(root, 'Outask');
+  assert.equal(existsSync(join(source, 'app/scripts/install-finish.ps1')), false);
+  const installer = join(source, 'app/scripts/install-release.mjs');
+  for (const [action, status] of [['install', 0], ['update', 7], ['uninstall', 0]]) {
+    writeFileSync(installer, `console.log(JSON.stringify(process.argv.slice(2))); process.exit(${status});\n`);
+    const result = spawnSync('cmd.exe', ['/d', '/s', '/c', `""${join(source, 'Install.cmd')}" ${action} --release-root "custom releases""`], {
+      encoding: 'utf8', timeout: 10000, windowsVerbatimArguments: true,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, status, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), [action, '--release-root', 'custom releases']);
+  }
 });
 
 test('managed Windows launchers preserve spaces, Unicode and literal percent signs', () => {

@@ -53,7 +53,7 @@ test('bare invocation gives a brief command guide without preparing a project an
   const result = success(cli([], options));
   assert.equal(result.stderr, '');
   const names = [...result.stdout.matchAll(/^  ([\w-]+)\s+\S.+$/gm)].map((match) => match[1]);
-  assert.deepEqual(names.sort(), ['list', 'search', 'get', 'get-many', 'deps', 'validate', 'schema', 'create', 'update', 'transition', 'hook', 'mcp'].sort());
+  assert.deepEqual(names.sort(), ['list', 'search', 'get', 'get-many', 'deps', 'validate', 'schema', 'create', 'update', 'transition', 'hook', 'self', 'mcp'].sort());
   assert.match(result.stdout, /project directory/);
   assert.match(result.stdout, /outask <command> --help/);
   assert.match(result.stdout, /outask --help/);

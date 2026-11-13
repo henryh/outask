@@ -11,7 +11,7 @@ import { legacyLocations, legacyConfig, obsoleteInstalls, retireConfig, retirePa
 
 const windows = process.platform === 'win32';
 // Node 22's native recursive copy can misplace UTF-8 Windows paths. A filter
-// selects its JavaScript traversal without excluding any files or changing links.
+// selects JavaScript traversal while preserving the complete file and link payload.
 const copyOptions = { recursive: true, verbatimSymlinks: true, ...(windows ? { filter: () => true } : {}) };
 const defaults = installLocations();
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -57,6 +57,7 @@ function managed(path) {
 try {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: {
     'bin-dir': { type: 'string' }, 'release-root': { type: 'string' }, help: { type: 'boolean', short: 'h' },
+    'update-existing': { type: 'boolean' },
   } });
   if (values.help) {
     const metadata = join(root, 'release.json');
@@ -68,7 +69,7 @@ try {
     console.log(`Outask installer (${platform})
 Usage: ${target === 'windows-x64' ? './Install.cmd (PowerShell), Install.cmd (cmd.exe)' : `./${publicInstallers[target]}`} [install|update|uninstall] [--bin-dir <directory>] [--release-root <parent-directory>]
 Requires Node.js 22.23.3 or later on PATH. Open a new terminal after installation.
-${target === 'windows-x64' ? 'Before first using this Windows writer generation, finish writes and close all previous CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.\n' : ''}Application: ${application}
+${target === 'windows-x64' ? 'Use one Windows CLI/MCP/HTTP writer generation at a time. Finish writes and close sessions from other generations before starting this version.\n' : ''}Application: ${application}
 Command: outask
 Install from the extracted application directory. Update downloads GitHub Latest stable; tar and network access are required.
 Options change the command directory and application parent; reuse them for update/uninstall.
@@ -81,15 +82,17 @@ Uninstall removes the managed command link; application files, projects and conf
     const defaultRoot = defaults.releases;
     const requestedRoot = canonical(resolve(values['release-root'] ?? defaultRoot));
     const oldDefaults = legacyLocations().slice(0, 2).map(canonical);
-    // Old packaged updaters explicitly pass their former default directories.
-    // Recognise those defaults while preserving genuinely custom locations.
-    const releases = oldDefaults.includes(requestedRoot) ? canonical(defaultRoot) : requestedRoot;
+    // Map task-tracker application roots to the platform destination; preserve custom roots.
+    const releases = !values['update-existing'] && oldDefaults.includes(requestedRoot) ? canonical(defaultRoot) : requestedRoot;
     if (!managed(root)) throw new Error('INVALID_RELEASE: invalid release metadata or application');
     const releaseTarget = JSON.parse(readFileSync(join(root, 'release.json'), 'utf8')).target;
     const payload = ['app', 'bin', publicInstallers[releaseTarget], 'release.json', 'README.md'];
     const destination = join(releases, basename(defaults.destination));
+    if (values['update-existing'] && (positionals[0] !== 'install' || !managed(destination))) {
+      throw new Error('NOT_INSTALLED: update-existing requires an existing managed installation');
+    }
     const releaseRoots = [releases, legacyRoot, ...legacyLocations().map(canonical)];
-    const migration = positionals[0] === 'uninstall' ? undefined : legacyConfig();
+    const migration = positionals[0] === 'uninstall' || values['update-existing'] ? undefined : legacyConfig();
     if (positionals[0] !== 'uninstall' && migration && inspect(migration.target)
       && !readFileSync(migration.source).equals(readFileSync(migration.target))) {
       throw new Error(`CONFIG_CONFLICT: ${migration.source} and ${migration.target} differ; reconcile the registries before migrating`);
@@ -133,10 +136,10 @@ Uninstall removes the managed command link; application files, projects and conf
       await updateRelease({ destination: installed, bin, releases });
     } else {
       if (windows) console.log('Windows coordination: before first using this writer generation, finish active writes and close all prior CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.');
-      const obsolete = obsoleteInstalls(releaseRoots, destination, managed);
+      const obsolete = values['update-existing'] ? [] : obsoleteInstalls(releaseRoots, destination, managed);
       accessSync(join(root, 'app/bin/tasks'), constants.X_OK);
       await import('../cli.mjs');
-      for (const part of (process.env.PATH ?? '').split(delimiter)) {
+      for (const part of values['update-existing'] ? [] : (process.env.PATH ?? '').split(delimiter)) {
         for (const name of windows ? commandNames.flatMap((name) => ['.cmd', '.exe', '.bat', '.com', '.ps1', ''].map((extension) => name + extension)) : commandNames) {
           const candidate = resolve(part || '.', name);
           if (executable(candidate) && !targets.includes(canonical(candidate)) && !owned(candidate)) throw new Error(`COMMAND_EXISTS: ${candidate} is already on PATH; resolve the collision before installing`);
@@ -160,6 +163,10 @@ Uninstall removes the managed command link; application files, projects and conf
         for (const name of payload) {
           if (inspect(join(root, name))) cpSync(join(root, name), join(staged, name), copyOptions);
         }
+        // The CLI must retain custom command locations, including Windows launchers.
+        const metadataPath = join(staged, 'release.json');
+        const installedMetadata = JSON.parse(readFileSync(metadataPath, 'utf8'));
+        writeFileSync(metadataPath, JSON.stringify({ ...installedMetadata, bin }) + '\n');
         const check = spawnSync(process.execPath, [join(staged, 'app/bin/tasks'), '--help'], { encoding: 'utf8', timeout: 60000 });
         if (check.error) throw check.error;
         if (check.status !== 0) {
@@ -234,14 +241,14 @@ Uninstall removes the managed command link; application files, projects and conf
           throw error;
         }
       } finally {
-        // Retain a backup if an OS error prevents rollback, rather than deleting it.
+        // Retain recovery files when an OS error prevents rollback.
         if (committed || !rollbackFailed) rmSync(work, { recursive: true, force: true });
         else console.error(`Recovery files retained at ${work}`);
         if (linkWork && !rollbackFailed) rmSync(linkWork, { recursive: true, force: true });
       }
       retireConfig(migration);
       for (const previous of obsolete) retirePayload(previous, managedPayload);
-      const messages = configurePath(bin);
+      const messages = values['update-existing'] ? [] : configurePath(bin);
       for (const message of messages.filter(message => !message.startsWith('Run immediately'))) console.log(message);
       console.log(`Installed Outask at ${destination}.\n\nCommand: outask`);
       for (const message of messages.filter(message => message.startsWith('Run immediately'))) console.log(message);

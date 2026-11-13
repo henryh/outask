@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { spawnSync } from 'node:child_process';
+import { compareVersions } from '../src/version.mjs';
 
 const repository = 'henryh/outask';
 export const latestReleaseUrl = `https://api.github.com/repos/${repository}/releases/latest`;
@@ -34,7 +35,7 @@ function run(args) {
   return result.stdout;
 }
 
-export async function updateRelease({ destination, bin, releases, fetchRelease = fetch, target = updateTarget(), log = console.log }) {
+export async function updateRelease({ destination, bin, releases, check = false, fetchRelease = fetch, target = updateTarget(), log = console.log }) {
   let work;
   let stage = 'resolve latest release';
   try {
@@ -45,9 +46,15 @@ export async function updateRelease({ destination, bin, releases, fetchRelease =
     };
     const asset = latestAsset(await (await request(latestReleaseUrl)).json(), target);
     const installed = JSON.parse(readFileSync(join(destination, 'release.json'), 'utf8'));
-    if (installed.version === asset.version && installed.target === target) {
-      log(`Outask v${asset.version} is already current.`);
-      return;
+    if (installed.target !== target) throw new Error('Installed archive target differs from the native host');
+    const available = compareVersions(installed.version, asset.version) < 0;
+    if (!available) {
+      log(`Outask v${installed.version} is already current${compareVersions(installed.version, asset.version) > 0 ? ` (newer than stable v${asset.version})` : ''}.`);
+      return { available: false, current: installed.version, latest: asset.version };
+    }
+    if (check) {
+      log(`Update available: Outask v${installed.version} -> v${asset.version}.`);
+      return { available: true, current: installed.version, latest: asset.version };
     }
     work = mkdtempSync(join(tmpdir(), 'outask-update-'));
     const archive = join(work, asset.name);
@@ -71,9 +78,10 @@ export async function updateRelease({ destination, bin, releases, fetchRelease =
     if (metadata.version !== asset.version || metadata.target !== target) throw new Error('Archive metadata differs from GitHub Latest');
     stage = 'install latest release';
     // The installer stages and verifies its payload before replacing the working copy.
-    const output = run([process.execPath, join(source, 'app/scripts/install-release.mjs'), 'install', '--bin-dir', bin, '--release-root', releases]);
+    const output = run([process.execPath, join(source, 'app/scripts/install-release.mjs'), 'install', '--bin-dir', bin, '--release-root', releases, '--update-existing']);
     log(output.trim());
     log(`Updated to Outask v${asset.version}.`);
+    return { available: true, current: installed.version, latest: asset.version };
   } catch (error) {
     throw new Error(`UPDATE_FAILED: could not ${stage}: ${error.message}. Check network access, tar and directory permissions, then retry update.`);
   } finally {

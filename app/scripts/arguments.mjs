@@ -26,9 +26,9 @@ export function parseSchema(values, tokens = []) {
 }
 
 export const projectHelp = `Omit project-path to use the current working directory, or supply one directory explicitly.
-Project operations prepare missing service metadata; reads require task stores.
-Mutations create standard stores when needed; no other directories are searched.
-Use --schema-path for a project-relative schema; automatic selection uses tasks/task-schema.json, then legacy docs/task-schema.json.
+Project operations prepare missing service metadata.
+Mutations create standard stores when needed.
+Use --schema-path for a project-relative schema; automatic selection uses tasks/task-schema.json, then docs/task-schema.json.
 `;
 
 export function parseProject(positionals, usage, withId = false) {

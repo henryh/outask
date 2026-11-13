@@ -33,6 +33,7 @@ const commandGuide = `  list       List tasks
   update     Update a task
   transition Change a task's status
   hook       Install or remove pre-commit validation
+  self       Update Outask or check for updates
   mcp        Start the MCP adapter`;
 const guide = `Usage: outask <command> [options]
 
@@ -108,6 +109,11 @@ export async function main(args) {
         if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
         fail('ADAPTER_NOT_INSTALLED', 'HTTP release integration is unfinished; use a source checkout');
       }
+    }
+    if (name === 'self') {
+      const self = await import('./scripts/self-update.mjs');
+      await self.main(rest);
+      return;
     }
     if (!Object.hasOwn(commands, name)) fail('INVALID_INPUT', `unknown command ${name}; use outask --help`);
     const command = commands[name];

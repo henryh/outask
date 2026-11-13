@@ -23,7 +23,7 @@ const selection = {
   project: text.optional().describe('Configured project name; exclusive with project_path.'),
   project_path: text.optional().describe('Project directory; defaults to server working directory.'),
   config: text.optional().describe('Name registry path; otherwise TASK_TRACKER_CONFIG or the Outask default registry.'),
-  schema_path: text.optional().describe('Project-relative task schema; overrides automatic default/legacy selection.'),
+  schema_path: text.optional().describe('Project-relative task schema; overrides selection of tasks/task-schema.json or docs/task-schema.json.'),
 };
 const reading = {
   stores: z.array(text).optional().describe('Store names; ["all"] includes retained history. Exclusive with group.'),

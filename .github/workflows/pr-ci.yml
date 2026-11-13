@@ -67,8 +67,8 @@ jobs:
         run: make ci-dependencies
       - name: Native shell profile installation
         run: node --test app/tests/install-path.test.mjs
-      - name: Native installer completion and Terminal launch detection
-        run: node --test --test-name-pattern='successful packaged|Terminal launch detection' app/tests/release.test.mjs
+      - name: Native installer completion
+        run: node --test --test-name-pattern='successful packaged|macOS packaged installer' app/tests/release.test.mjs
       - name: Documented macOS checksum verification
         run: node --test app/tests/checksum-docs.test.mjs
       - name: Native macOS archive and installed CLI/MCP

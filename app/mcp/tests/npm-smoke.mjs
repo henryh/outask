@@ -33,7 +33,7 @@ let server;
 let client;
 let previousClient;
 
-function run(command, args, cwd = temporary) {
+function run(command, args, cwd = temporary, expected = 0) {
   if (process.platform === 'win32' && command === 'npm') {
     args = [join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'), ...args];
     command = process.execPath;
@@ -44,7 +44,7 @@ function run(command, args, cwd = temporary) {
     child.stdout.on('data', (data) => { stdout += data; });
     child.stderr.on('data', (data) => { stderr += data; });
     child.on('error', reject);
-    child.on('close', (code) => code === 0 ? resolveRun(stdout) : reject(new Error(`${command} ${args.join(' ')}: ${code}\n${stderr}\n${stdout}`)));
+    child.on('close', (code) => code === expected ? resolveRun(stdout) : reject(new Error(`${command} ${args.join(' ')}: ${code}\n${stderr}\n${stdout}`)));
   });
 }
 
@@ -104,14 +104,21 @@ try {
 
   const bytes = readFileSync(artifact);
   let tarball;
+  let registryFailure = false;
+  let downloadFailure = false;
+  let registryLatest = manifest.version;
+  let downloads = 0;
   server = createServer((request, response) => {
+    if (registryFailure) { response.writeHead(503); response.end('{}'); return; }
     if (request.url === '/artifact.tgz') {
+      downloads++;
+      if (downloadFailure) { response.writeHead(503); response.end('{}'); return; }
       response.writeHead(200, { 'content-type': 'application/octet-stream' }); response.end(bytes); return;
     }
     if (decodeURIComponent(request.url.split('?')[0]) === `/${manifest.name}`) {
       response.writeHead(200, { 'content-type': 'application/json' });
-      response.end(JSON.stringify({ name: manifest.name, 'dist-tags': { latest: manifest.version }, versions: {
-        [manifest.version]: { ...manifest, dist: { tarball, integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}` } },
+      response.end(JSON.stringify({ name: manifest.name, 'dist-tags': { latest: registryLatest }, versions: {
+        [registryLatest]: { ...manifest, version: registryLatest, dist: { tarball, integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}` } },
       } })); return;
     }
     response.writeHead(404); response.end('{}');
@@ -119,7 +126,43 @@ try {
   await new Promise((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
   const registry = `http://127.0.0.1:${server.address().port}`;
   tarball = `${registry}/artifact.tgz`;
-  await run('npm', ['update', '-g', manifest.name, '--prefix', prefix, '--registry', registry, '--ignore-scripts', '--no-audit', '--no-fund']);
+  if (process.env.OUTASK_SELF_UPDATE_TESTS === '1') {
+    const otherPrefix = join(temporary, 'other npm prefix 東京');
+    await run('npm', ['install', '-g', '--prefix', otherPrefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', join(extracted, 'package', oldArtifact)]);
+    const otherPackage = join(otherPrefix, process.platform === 'win32' ? 'node_modules' : 'lib/node_modules', manifest.name, 'package.json');
+    const otherBefore = readFileSync(otherPackage);
+    // An environment-selected prefix must not redirect the running instance.
+    env.npm_config_prefix = otherPrefix;
+    writeFileSync(npmrc, `registry=${registry}\n`);
+    const before = readFileSync(join(dirname(dirname(oldEntry)), 'package.json'));
+    const checked = await run(process.execPath, [oldEntry, 'self', 'update', '--check'], project, 10);
+    assert.match(checked, /Update available.*v0.0.* -> v/);
+    assert.deepEqual(readFileSync(join(dirname(dirname(oldEntry)), 'package.json')), before);
+    registryFailure = true;
+    await assert.rejects(run(process.execPath, [oldEntry, 'self', 'update', '--check']), /UPDATE_FAILED/);
+    assert.equal((await commandVersion('outask')).trim(), 'Outask v0.0');
+    registryFailure = false;
+    downloadFailure = true;
+    await assert.rejects(run(process.execPath, [oldEntry, 'self', 'update'], project), /UPDATE_FAILED/);
+    assert.deepEqual(readFileSync(join(dirname(dirname(oldEntry)), 'package.json')), before);
+    assert.equal((await commandVersion('outask')).trim(), 'Outask v0.0');
+    downloadFailure = false;
+    const updated = await run(process.execPath, [oldEntry, 'self', 'update'], project);
+    assert.match(updated, /Updated to Outask v/);
+    assert.match(await run(process.execPath, [oldEntry, 'self', 'update', '--check']), /already current/);
+    assert.match(await run(process.execPath, [oldEntry, 'self', 'update']), /already current/);
+    registryLatest = old.version;
+    const downloadsBefore = downloads;
+    assert.match(await run(process.execPath, [oldEntry, 'self', 'update', '--check']), /newer than stable/);
+    assert.match(await run(process.execPath, [oldEntry, 'self', 'update']), /newer than stable/);
+    assert.equal(downloads, downloadsBefore, 'a newer installation must not download an older package');
+    assert.deepEqual(readFileSync(otherPackage), otherBefore, 'the other global npm prefix must remain unchanged');
+    delete env.npm_config_prefix;
+    registryLatest = manifest.version;
+
+  } else {
+    await run('npm', ['update', '-g', manifest.name, '--prefix', prefix, '--registry', registry, '--ignore-scripts', '--no-audit', '--no-fund']);
+  }
   assert.deepEqual(readFileSync(join(project, 'tasks/active.json')), previousRecords);
   assert.equal(readFileSync(config, 'utf8'), '{}\n');
   assert.equal(readFileSync(skill, 'utf8'), 'preserve skill\n');

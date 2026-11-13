@@ -24,17 +24,10 @@ function ok(result) {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout;
 }
-function windowWorker(launcher) {
-  return JSON.parse(launcher.match(/^const script = (".+");$/m)[1]);
-}
-
-function terminal(command, interaction, env) {
+function terminal(command, interactions, env) {
   const args = process.platform === 'darwin'
     ? ['-q', '/dev/null', '/bin/sh', '-c', command]
     : ['-q', '-e', '-c', command, '/dev/null'];
-  const interactions = Array.isArray(interaction)
-    ? interaction
-    : [{ prompt: 'Press any key', input: interaction }];
   return new Promise((resolveTerminal, reject) => {
     const child = spawn('script', args, { env, timeout: 10000 });
     let output = '';
@@ -170,7 +163,7 @@ test('each archive README and installer help describe only their destination pla
   for (const [target, platform] of Object.entries(platforms)) {
     const f = fixture(t, target);
     const readme = readFileSync(join(f.source, 'README.md'), 'utf8');
-    // Metadata, rather than the host OS, must determine cross-built archive help.
+    // Archive metadata determines cross-built installer help.
     const help = ok(f.install('--help'));
     assert.ok(readme.startsWith(`# Outask v${releaseVersion} (${platform.name})\n`));
     assert.ok(readme.trimEnd().split('\n').length < 200, target);
@@ -186,7 +179,7 @@ test('each archive README and installer help describe only their destination pla
     assert.match(readme, /^outask list(?: --format table)?$/m);
     assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/mcp/README.md`));
     assert.ok(readme.includes(`https://github.com/henryh/outask/blob/v${releaseVersion}/app/README.md`));
-    assert.ok(readme.includes(`./${installerEntries[target]} update`));
+    assert.ok(readme.includes('outask self update'));
     assert.match(help, /\[--bin-dir <directory>\] \[--release-root <parent-directory>\]/);
     if (target === 'windows-x64') {
       assert.match(readme, /PowerShell: `\.\/Install\.cmd`/);
@@ -287,14 +280,13 @@ test('download install, repeat, update and uninstall preserve project data and s
 test('managed upgrades replace the previous root installers and preserve user data and unknown files', (t) => {
   for (const target of Object.keys(installerEntries)) {
     const f = fixture(t, target);
-    // Reconstruct the previous managed layout without depending on an old download.
+    // Construct a managed application with root-level installer files.
     cpSync(f.source, f.installed, { recursive: true });
     rmSync(join(f.installed, installerEntries[target]));
     const oldInstallers = ['install.mjs', 'install-path.mjs', 'install-launcher.mjs', 'install.sh',
       ...(target === 'macos-arm64' ? ['Install.command'] : target === 'windows-x64' ? ['install.cmd'] : [])];
     for (const name of oldInstallers) writeFileSync(join(f.installed, name), `Previous managed ${name}\n`);
-    // The current hook fixture imports install-launcher; keep that runtime
-    // dependency while reconstructing the former root-installer layout.
+    // Preserve the hook fixture's install-launcher import in the root-installer layout.
     for (const helper of ['install-release.mjs', 'install-path.mjs']) {
       rmSync(join(f.installed, 'app/scripts', helper), { force: true });
     }
@@ -445,7 +437,7 @@ test('a legacy packaged updater migrates its default root, registry and command 
   const settings = '{"projects":{},"unknown":{"preserved":[1,2]}}\n';
   writeFileSync(oldConfig, settings);
   const env = { ...f.env, XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, TASK_TRACKER_CONFIG: undefined };
-  // This is the exact directory-forwarding behaviour of the old updater.
+  // Supply the task-tracker application parent explicitly.
   ok(run(process.execPath, [internalInstaller(f.source), 'install', '--bin-dir', f.bin, '--release-root', oldRoot], { env }));
   for (const name of ['outask', 'tasks']) {
     assert.equal(readlinkSync(join(f.bin, name)), join(f.installed, 'app/bin/tasks'));
@@ -546,7 +538,7 @@ test('Finder launcher identifies a missing Node library and preserves its diagno
   assert.equal(existsSync(f.installed), false);
 });
 
-test('Finder launcher gives NVM repair instructions without loading shell profiles', (t) => {
+test('Finder launcher gives NVM repair instructions and preserves shell profiles', (t) => {
   const f = fixture(t, 'macos-arm64');
   const nvmBin = join(f.home, '.nvm/versions/node/v22.23.3/bin');
   const unexpectedNvm = join(f.home, 'unexpected-nvm');
@@ -558,7 +550,7 @@ test('Finder launcher gives NVM repair instructions without loading shell profil
   });
   assert.equal(result.status, 134);
   assert.match(result.stderr, /nvm install 'lts\/\*'/);
-  assert.match(result.stderr, /nvm alias default 'lts\/\*'/);
+  assert.match(result.stderr, /nvm use 'lts\/\*'/);
   assert.equal(result.stderr.match(/nvm install/g)?.length, 1);
   assert.match(result.stderr, /Run it in a terminal/);
   assert.doesNotMatch(result.stderr, /Homebrew can repair/);
@@ -566,7 +558,7 @@ test('Finder launcher gives NVM repair instructions without loading shell profil
   assert.equal(existsSync(f.installed), false);
 });
 
-test('Finder launcher uses installed NVM after confirmation and rechecks Node', async (t) => {
+test('Finder launcher uses installed NVM and preserves its default alias', async (t) => {
   const f = fixture(t, 'macos-arm64');
   const nvmDir = join(f.home, '.nvm');
   const nvmBin = join(nvmDir, 'versions/node/v24.0.0/bin');
@@ -576,10 +568,18 @@ test('Finder launcher uses installed NVM after confirmation and rechecks Node', 
   const nvmAction = join(f.home, 'nvm-installed');
   const nvmUse = join(f.home, 'nvm-used');
   mkdirSync(nvmBin, { recursive: true });
+  const defaultAlias = join(nvmDir, 'alias/default');
+  mkdirSync(dirname(defaultAlias), { recursive: true });
+  writeFileSync(defaultAlias, 'v20.19.0\n');
+  const originalDefault = readFileSync(defaultAlias);
   writeFileSync(join(nvmDir, 'nvm.sh'), `nvm() {
   case "$1" in
-    install) /bin/ln -s "$TEST_NODE_SOURCE" "$TEST_NODE_TARGET"; : > "$TEST_NVM_ACTION" ;;
-    alias) ;;
+    install)
+      /bin/ln -s "$TEST_NODE_SOURCE" "$TEST_NODE_TARGET"
+      : > "$TEST_NVM_ACTION"
+      if [ ! -f "$NVM_DIR/alias/default" ]; then printf '%s\\n' "$2" > "$NVM_DIR/alias/default"; fi
+      ;;
+    alias) printf '%s\\n' "$3" > "$NVM_DIR/alias/default" ;;
     use) export PATH="$TEST_NODE_BIN:$PATH"; : > "$TEST_NVM_USE" ;;
     *) return 64 ;;
   esac
@@ -615,6 +615,7 @@ test('Finder launcher uses installed NVM after confirmation and rechecks Node', 
   assert.doesNotMatch(result.output, /Homebrew|nodejs\.org/);
   assert.equal(existsSync(nvmAction), true);
   assert.equal(existsSync(nvmUse), true);
+  assert.deepEqual(readFileSync(defaultAlias), originalDefault);
   assert.equal(existsSync(unexpectedBrew), false);
   assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
 });
@@ -780,145 +781,19 @@ test('Finder launcher rejects missing Node and dirname before writing installati
   }
 });
 
-test('persistent terminals do not pause and preserve terminal state and failed diagnostics', async (t) => {
+test('macOS packaged installer forwards arguments, diagnostics and exit status', (t) => {
   const f = fixture(t, 'macos-arm64');
   const launcher = join(f.source, 'Install.command');
-  const quoted = "'" + launcher.replaceAll("'", "'\\''") + "'";
-  const command = `saved=$(stty -g); ${quoted}; result=$?; if [ "$(stty -g)" = "$saved" ]; then echo TTY_RESTORED; fi; echo WRAPPER_STATUS:$result`;
-  const env = { ...f.env, TERM_PROGRAM: 'OutaskTest' };
-  for (const status of [0, 1]) {
-    writeFileSync(internalInstaller(f.source), `console.log('INSTALL_RESULT_${status}'); process.exit(${status});\n`);
-    const result = await terminal(command, 'x', env);
-    assert.equal(result.status, 0, result.output);
-    assert.match(result.output, /TTY_RESTORED/);
-    assert.match(result.output, new RegExp(`WRAPPER_STATUS:${status}`));
-    assert.match(result.output, new RegExp(`INSTALL_RESULT_${status}`));
-    assert.doesNotMatch(result.output, /Press any key|Cmd\+W/);
-  }
-  if (process.platform === 'darwin') {
-    const script = windowWorker(readFileSync(launcher, 'utf8'));
-    const path = join(f.home, 'close.applescript');
-    writeFileSync(path, script);
-    ok(run('/usr/bin/osacompile', ['-o', join(f.home, 'close.scpt'), path]));
-  }
-});
-
-test('auto-closing Terminal launches wait for one key, while persistent and unknown contexts finish', async (t) => {
-  const f = fixture(t, 'macos-arm64');
-  const launcher = join(f.source, 'Install.command');
-  const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
-  const probe = join(f.tools, 'osascript');
-  // Substitute Terminal's GUI response; the generated wrapper and TTY are real.
-  for (const response of ['true', 'false', 'unavailable']) {
-    writeFileSync(probe, `#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' '${response}'\n`, { mode: 0o755 });
-    for (const status of [0, 7]) {
-      writeFileSync(internalInstaller(f.source), `console.log('INSTALL_RESULT'); process.exit(${status});\n`);
-      const result = await terminal(`saved=$(stty -g); ${quote(launcher)}; result=$?; [ "$(stty -g)" = "$saved" ] && echo TTY_RESTORED; echo STATUS:$result`,
-        response === 'true' ? 'x' : [], { ...f.env, TERM_PROGRAM: 'Apple_Terminal' });
-      assert.equal(result.status, 0, result.output);
-      assert.match(result.output, new RegExp(`STATUS:${status}`));
-      assert.match(result.output, /TTY_RESTORED/);
-      assert.doesNotMatch(result.output, /Cmd\+W/);
-      assert.equal(result.output.includes('Press any key to finish.'), response === 'true', result.output);
-      if (response === 'true' && status !== 0) assert.match(result.output, /Installation failed/);
+  for (const [action, status] of [['install', 0], ['update', 7], ['uninstall', 0]]) {
+    const args = [action, '--release-root', join(f.home, 'custom releases 東京')];
+    writeFileSync(internalInstaller(f.source), `console.log(JSON.stringify(process.argv.slice(2))); console.error('INSTALL_DIAGNOSTIC'); process.exit(${status});\n`);
+    for (const [command, commandArgs] of [[launcher, args], ['/bin/sh', [launcher, ...args]]]) {
+      const result = run(command, commandArgs, { env: { ...f.env, TERM_PROGRAM: 'Apple_Terminal' }, timeout: 10000 });
+      assert.equal(result.status, status, result.stderr || result.stdout);
+      assert.deepEqual(JSON.parse(result.stdout), args);
+      assert.equal(result.stderr.trim(), 'INSTALL_DIAGNOSTIC');
     }
   }
-});
-
-test('Terminal launch detection compiles and handles wrapped commands and persistent prompts', { skip: process.platform !== 'darwin' }, (t) => {
-  const f = fixture(t, 'macos-arm64');
-  const launcher = readFileSync(join(f.source, 'Install.command'), 'utf8');
-  const probe = launcher.split("<<'APPLESCRIPT'\n")[1].split('\nAPPLESCRIPT')[0];
-  const path = join(f.home, 'probe.applescript');
-  writeFileSync(path, probe);
-  ok(run('/usr/bin/osacompile', ['-o', join(f.home, 'probe.scpt'), path]));
-  const handler = probe.slice(probe.indexOf('on isClosingLaunch('));
-  const script = `${handler}\non run arguments\nreturn isClosingLaunch(item 1 of arguments)\nend run`;
-  for (const [screen, expected] of [
-    ['/Users/person/My\\ Downloads/Install.command ; exit;\n\n', 'true'],
-    ['% /Users/person/My\\ Downloads/Install.command\n ; exit;   \n   ', 'true'],
-    ['% /Users/person/Install.command\n', 'false'],
-    ['% /Users/person/Install.command ; exit;\n% ./Install.command\n', 'false'],
-    ['% echo unrelated ; exit;', 'false'],
-  ]) assert.equal(ok(run('/usr/bin/osascript', ['-e', script, screen])).trim(), expected, screen);
-});
-
-test('window closure process query distinguishes absence from permissions, errors and malformed results', (t) => {
-  const f = fixture(t, 'macos-arm64');
-  const launcher = readFileSync(join(f.source, 'Install.command'), 'utf8');
-  const query = JSON.parse(windowWorker(launcher).match(/^  set query to (".+")$/m)[1]);
-  const probe = (script, pid) => ok(run('/bin/sh', ['-c', script, 'probe', String(pid)]));
-  assert.equal(probe(query, process.pid), 'alive');
-  const exited = ok(run('/bin/sh', ['-c', 'printf "%s" "$$"']));
-  assert.equal(probe(query, exited), 'absent');
-  const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
-  const ps = join(f.home, 'query ps');
-  for (const { status, out = '', err = '' } of [
-    { status: 1, err: 'Operation not permitted\n' },
-    { status: 1, err: '\n' },
-    { status: 2 },
-    { status: 0, out: 'not-a-pid\n' },
-    { status: 0, out: `${process.pid}\n`, err: 'query warning\n' },
-  ]) {
-    writeFileSync(ps, `#!/bin/sh\nprintf '%s' ${quote(out)}\nprintf '%s' ${quote(err)} >&2\nexit ${status}\n`, { mode: 0o755 });
-    assert.equal(probe(query.replace('/bin/ps', quote(ps)), process.pid), 'unknown');
-  }
-});
-
-test('window worker detaches from a real terminal and spawn errors remain nonfatal', async (t) => {
-  const f = fixture(t, 'macos-arm64');
-  const launcher = readFileSync(join(f.source, 'Install.command'), 'utf8');
-  const source = launcher.split("<<'NODE'\n")[1].split('\nNODE')[0];
-  const report = join(f.home, "worker's result.json");
-  // Substitute only the GUI program with a Node process to observe detachment.
-  const observer = `const fs = require('node:fs');
-const ps = require('node:child_process').spawnSync('/bin/ps', ['-p', String(process.pid), '-o', 'tty='], { encoding: 'utf8' });
-const report = process.argv[1];
-fs.writeFileSync(report + '.tmp', JSON.stringify({ tty: ps.stdout.trim(), status: ps.status, inputTTY: !!process.stdin.isTTY, outputTTY: !!process.stdout.isTTY, argument: process.argv[2] }));
-fs.renameSync(report + '.tmp', report);`;
-  const observed = source.replace(/^const script = .+;$/m, `const script = ${JSON.stringify(observer)};`)
-    .replace("'/usr/bin/osascript'", 'process.execPath')
-    + `\nimport { spawnSync } from 'node:child_process';\nconsole.log('PARENT_TTY:' + spawnSync('/bin/ps', ['-p', String(process.pid), '-o', 'tty='], { encoding: 'utf8' }).stdout.trim());`;
-  const path = join(f.home, 'observe-worker.mjs');
-  writeFileSync(path, observed);
-  const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
-  const result = await terminal(`node ${quote(path)} ${quote(report)} ${quote('structured argument')}`, '', f.env);
-  assert.equal(result.status, 0, result.output);
-  assert.match(result.output, /PARENT_TTY:\S+/);
-  assert.doesNotMatch(result.output, /PARENT_TTY:\?+/);
-  const deadline = Date.now() + 5000;
-  while (!existsSync(report) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 20));
-  const evidence = JSON.parse(readFileSync(report, 'utf8'));
-  assert.equal(evidence.status, 0);
-  assert.match(evidence.tty, /^\?{1,2}$/);
-  assert.equal(evidence.inputTTY, false);
-  assert.equal(evidence.outputTTY, false);
-  assert.equal(evidence.argument, 'structured argument');
-  const failed = run(process.execPath, ['--input-type=module', '-'], {
-    input: source.replace("'/usr/bin/osascript'", "'/unavailable-Outask-window-worker'"), env: f.env,
-  });
-  ok(failed);
-  assert.match(failed.stderr, /Automatic window closure unavailable/);
-  assert.doesNotMatch(failed.stderr, /Cmd\+W/);
-});
-
-test('a manual wrapper ending does not authorise closure while its Terminal session shell lives', async (t) => {
-  const f = fixture(t, 'macos-arm64');
-  const launcher = join(f.source, 'Install.command');
-  writeFileSync(internalInstaller(f.source), 'process.exit(0);\n');
-  const hook = join(f.home, 'observe-session.bash');
-  const trace = join(f.home, 'session.pid');
-  const wrapper = join(f.home, 'wrapper.pid');
-  // Observe the generated Bash launcher's guard without changing production code.
-  writeFileSync(hook, `trap 'if [ "\${session_complete-false}" = true ]; then printf "%s\\n" "\${session_pid-}" > "$SESSION_TRACE"; fi' DEBUG\n`);
-  const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
-  const inner = `echo $$ > "$WRAPPER_PID"; ${quote(launcher)}; true`;
-  const command = `session=$$; sh -c ${quote(inner)}; wrapper=$(cat "$WRAPPER_PID"); if ! kill -0 "$wrapper" 2>/dev/null; then echo WRAPPER_ENDED; fi; if kill -0 "$session"; then echo SESSION_ALIVE; fi; echo EXPECTED_SESSION:$session`;
-  const result = await terminal(command, 'x', { ...f.env, TERM_PROGRAM: 'OutaskTest', BASH_ENV: hook, SESSION_TRACE: trace, WRAPPER_PID: wrapper });
-  assert.equal(result.status, 0, result.output);
-  assert.match(result.output, /WRAPPER_ENDED/);
-  assert.match(result.output, /SESSION_ALIVE/);
-  assert.equal(readFileSync(trace, 'utf8').trim(), result.output.match(/EXPECTED_SESSION:(\d+)/)[1]);
 });
 
 test('macOS directory selection recognises its stable destination and previous default root', (t) => {

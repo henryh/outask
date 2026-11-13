@@ -119,7 +119,7 @@ test('all command help and positional errors describe the shared project contrac
     assert.equal(help.status, 0, help.stderr);
     assert.match(help.stdout, /\[project-path\]/);
     assert.match(help.stdout, /current working directory/);
-    assert.match(help.stdout, /no other directories are searched/);
+    assert.match(help.stdout, /supply one directory explicitly/);
     const invalid = run(name, [root, root, ...args], { cwd: root });
     assert.equal(invalid.status, 1);
     assert.equal(invalid.stdout, '');

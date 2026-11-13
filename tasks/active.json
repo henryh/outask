@@ -442,5 +442,41 @@
     ],
     "notes": "Planning only; implementation is not started. Preserve project-specific selection policy in consumers; this next-task operation implements the explicitly requested oldest-ID rule.",
     "updated_at": "2026-11-10T16:11:49.340Z"
+  },
+  {
+    "id": 35,
+    "title": "Ship a project HTTP API command with project environment configuration and optional token authentication",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Make the existing outask http command a supported installed command for serving one selected project's read-only HTTP API. Ship the adapter in npm packages and release archives, expose discoverable help, and preserve current-directory, positional path, --project-path, registered --project, --config and --schema-path selection. Load only the selected project's root .env for API settings, even when invoked elsewhere, with precedence CLI options > process environment > project .env > defaults. Support --port/TASKS_HTTP_PORT and --host/TASKS_HTTP_HOST; retain default port 4318, port 0 for an available port, and default host 127.0.0.1, with explicit 0.0.0.0 binding for remote clients. Make TASKS_HTTP_TOKEN optional: absent or empty means open access; a configured nonempty valid token requires Authorization: Bearer authentication. Open mode permits any browser origin; protected mode retains explicit --allow-origin restrictions and preflight support. Preserve shared read routes, results, boundaries and freshness while updating owning contracts and operator documentation. HTTPS deployment, system-service installation, HTTP mutations and Work Origin coordination are outside scope.",
+    "acceptance": [
+      "From an installed npm package and release archive, outask http starts without a source checkout or manual dependency setup; outask --help and outask http --help discover the command and its options. Preserve the permanent tasks command alias and applicable project/schema selectors.",
+      "Resolve the project before loading its root .env; invocation from another directory reads the selected project's file, never a caller or ancestor project's file. Missing .env is allowed. Parse settings as data without executing shell commands; unrelated keys do not alter other Outask commands. Configuration precedence is CLI > process environment > project .env > defaults, including explicitly empty token settings.",
+      "--port and TASKS_HTTP_PORT select the port; default is 4318 and 0 requests an available port. --host and TASKS_HTTP_HOST select the listen address; default is 127.0.0.1 and explicit 0.0.0.0 supports connections from other machines. Invalid configuration and occupied ports fail clearly without silently selecting another port. Startup reports the actual listen address/port and authentication mode without revealing secrets.",
+      "Missing or empty TASKS_HTTP_TOKEN enables reads without credentials. A nonempty token preserves the existing 32–512 URL-safe-character contract and requires Bearer authentication for all data routes: correct token succeeds and missing, malformed or incorrect credentials receive 401. Invalid configured tokens stop startup rather than falling back to open access. Token values are not printed in help, startup output, logs or errors; restart applies token changes and invalidates the old token.",
+      "Open mode permits requests from any browser origin, with working CORS/preflight and no cookie credentials. Protected mode preserves exact repeatable --allow-origin configuration, rejects disallowed origins and requires the token on actual reads; valid preflight can omit it and never exposes task data.",
+      "One process remains bound to one startup-selected project/schema; requests cannot switch project, registry or schema. Separate processes can serve two projects on distinct ports with independent .env settings and tokens. Existing HTTP reads, shared JSON shapes, pagination, response limits, filesystem boundaries and visibility of subsequent CLI/manual JSON changes remain aligned; HTTP writes remain unavailable.",
+      "Verify actual installed-command startup from npm and archive payloads, independent projects and environment files, configuration precedence, open/protected requests, token replacement after restart, CORS, remote binding, invalid/occupied ports, and stop/restart releasing the port. Run focused CLI/HTTP/packaging regression checks and applicable repository checks.",
+      "Update app/HTTP.md, command help and owning product/shared-contract/distribution documentation to replace source-only and mandatory-token descriptions, document settings and precedence, and show open/protected startup, browser access and existing HTTPS proxy usage. Do not store real tokens or runtime .env contents in task records or Git."
+    ],
+    "values": {
+      "goal": "Let developers and external clients read repository-local project tasks through the same Outask operations without requiring a source checkout.",
+      "value": "An operator starts a selected project's API with one installed command, keeps per-project settings in .env, and chooses open or application-token-protected access.",
+      "observable_result": "Two installed Outask processes serve distinct projects on configured ports; external and browser clients can read according to each process's authentication settings.",
+      "verification": "Install built npm/archive artifacts, start two project APIs with independent .env files, override one port on the command line, and exercise open reads, protected reads/401 responses, browser CORS and stop/restart."
+    },
+    "sources": [
+      "Owner-approved proposal in this conversation: create a simple installed project API command with CLI/.env port, optional application token, host configuration and open-mode CORS.",
+      "app/HTTP.md and app/http.mjs: existing read-only routes, loopback binding, mandatory TASKS_HTTP_TOKEN and protected CORS contract.",
+      "app/cli.mjs and app/scripts/release.mjs: existing http dispatch and missing release payload integration.",
+      "Historical HTTP guide in Git commits 76716f5 and a605972: source-only release integration and existing startup/project-selection behavior."
+    ],
+    "notes": [
+      "Approved for backlog creation only; implementation has not been started.",
+      "Task 33 owns new unblocked/next-task read operations and remains separate; this task does not depend on them.",
+      "This is the existing project read-only HTTP adapter, not the separately planned Outask Server/Work Origin coordinator; no Work Origin dependency is required."
+    ],
+    "updated_at": "2026-11-11T08:38:17.928Z"
   }
 ]

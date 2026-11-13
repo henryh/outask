@@ -1,11 +1,11 @@
 # Tracker contract
 
-For planned optional coordination, see the [Work Origin delivery contract](work-origin.md). It does not change the currently implemented behavior below.
+Planned coordination is defined in the [Work Origin delivery contract](work-origin.md).
 
 Core/standalone operations own storage, validation and write coordination. CLI,
 MCP and read-only HTTP adapt their inputs and outputs to those operations.
 Shared reads belong in all four interfaces; writes belong in core/standalone,
-CLI and MCP. HTTP has no mutations or validation endpoint. Packaged releases
+CLI and MCP. Packaged releases
 contain CLI/MCP; HTTP is available from a source checkout. See the
 [operator commands](../app/README.md), [MCP guide](../app/mcp/README.md) and
 [HTTP guide](../app/HTTP.md) for transport-specific usage.
@@ -13,55 +13,43 @@ contain CLI/MCP; HTTP is available from a source checkout. See the
 ## Product identity and installation footprint
 
 Outask is the displayed product name; `outask` is the command and service
-identifier. `tasks` is a permanent equivalent command without
-deprecation warnings. Task fields, operation names, routes, `tasks/` and the
-project metadata/recovery filenames retain their existing contracts.
+identifier. `tasks` is a permanent equivalent command.
 
 The permanent default roots are `~/.local/share/outask` on Linux,
 `~/Library/Application Support/Outask` on macOS, and
 `%LOCALAPPDATA%\Programs\Outask` on Windows. Application files, default
-`config.json` and disposable `cache/` live there without version directories.
+`config.json` and disposable `cache/` live in these roots.
 Updates stage and back up only managed program files beside that root. The
 root, registry, cache and coordination inodes stay in place; successful updates
-remove staging and backups. Confirmed old managed payloads are retired after success;
-unrecognised sibling files are preserved. Conflicting registries stop migration.
+remove staging and backups. Installation cleanup covers managed application directories selected for migration and preserves unrecognised sibling files. Conflicting registries stop migration.
 
-npm installations use npm's global package directory and command entries for application files. They use the same default Outask configuration, cache and coordination paths. Native npm install/update/uninstall owns the program lifecycle; npm uninstall preserves configuration, cache, skills and project records. Archive installer lifecycle commands do not manage npm installations. See the [npm guide](npm.md).
+npm installations use npm's global package directory and command entries for application files. They use the same default Outask configuration, cache and coordination paths. Native npm install/update/uninstall owns the program lifecycle; npm uninstall preserves configuration, cache, skills and project records. See the [npm guide](npm.md).
+
+`outask self update` manages the running CLI installation from any directory. It updates managed archives through the packaged updater and global npm packages through their owning npm/prefix/registry. Archive installation records the command directory as `bin` in installed `release.json`; commands can also be resolved through PATH. Updates retain the installation's distribution channel and newer installed versions. `--check` queries version availability and preserves application/project files (npm may write cache/logs): exit 0 current/newer, 10 update available, 2 unsupported context, 1 failure. Source checkouts, local npm/npx and unrecognised contexts receive update guidance. See [installation and updates](../app/README.md#installation-and-updates).
 
 Necessary external integrations are POSIX links for both commands in
 `~/.local/bin`, existing managed shell PATH blocks (including `ZDOTDIR`), and
 Windows user PATH pointing to the root's `commands/` directory. Installation
-consolidates complete generated PATH blocks without changing other shell code.
-Managed obsolete payloads are identified by release metadata and package ownership
-inside the known application parents, without depending on a retired product
-spelling. Old program paths are removed. Refresh explicit client/hook references
+consolidates its generated PATH blocks and preserves other shell code.
+Managed source payloads are identified by release metadata and package ownership inside the known application parents. Refresh explicit client/hook references
 when changing layouts; remove an installed hook with its original command first.
 Explicit `--bin-dir`, `--release-root`, `--config`, `TASK_TRACKER_CONFIG` and XDG
 paths remain supported choices. Modified hooks require manual integration.
 
 Writer coordination uses the fixed POSIX `/var/tmp/task-tracker-locks-<uid>`
 namespace and Windows `<OS-user-home>/AppData/Local/Programs/Outask/locks`,
-independently of HOME/cache/config/temp overrides. This release changes the
-Windows coordination generation: finish active writes and close all previous
-CLI/MCP/HTTP sessions before starting the new writers. Run one generation only.
+independently of HOME/cache/config/temp overrides. Before changing coordination locations or protocol generations, finish active writes and close CLI/MCP/HTTP sessions. Start upgraded writers together on one generation.
 Compatible updates within that generation preserve running sessions. Never
 unlink or relocate live coordination files. Retirement requires all affected
 writers to finish and close before coordinated migration and restart.
-Old disposable cache generations may remain dormant for loaded old readers;
-new processes rebuild under the Outask root or explicit XDG cache location.
-Remove dormant caches only after those readers/refresh workers close.
+Loaded readers retain their cache paths; fresh processes use the Outask root or explicit XDG cache location. Clear a cache after its readers and refresh workers close.
 
 CLI/MCP/HTTP launchers set the Node process title to `outask`; MCP metadata and
-the HTTP `Server` header report `outask`. Linux native acceptance checks the
-running process title through `ps`. OS executable-image names (for example
+the HTTP `Server` header report `outask`. OS executable-image names (for example
 `node.exe` on Windows), client-chosen connection labels and wrapper processes
-remain controlled by the OS/client; metadata does not rename those labels.
-Lifecycle acceptance uses isolated user/config/cache/temp paths, and Windows
-registry operations use a test-owned key through a test-only Node preload.
-Test clients close before only their fixture coordination files are removed.
+are controlled by the OS/client.
 
-Core entry points take a project path and return values without printing or
-exiting. Their options follow the shared rules below:
+Core entry points take a project path and return values; adapters handle output and exit status. Their options follow the shared rules below:
 
 | Module under `app/src/` | Operations |
 | --- | --- |
@@ -75,10 +63,7 @@ exiting. Their options follow the shared rules below:
 
 Each operation selects one existing project directory. CLI/MCP support the
 current directory, an explicit path or a configured name; HTTP fixes selection
-at startup. Requests never aggregate projects or follow references to select
-another project. Core APIs require an explicit project path. Relative paths
-resolve from the caller's directory. There is no ancestor search, nested scan,
-worktree heuristic or prompt; select the exact worktree.
+at startup. Core APIs require an explicit project path. Relative paths resolve from the caller's directory. Select the exact project or worktree directory.
 
 Standalone scripts use path-only selection: non-ID commands accept zero or one
 project path; ID commands accept an ID alone or a project path followed by ID.
@@ -90,21 +75,15 @@ same working directory and environment.
 Global configuration precedence is explicit `--config`, `TASK_TRACKER_CONFIG`,
 then the platform Outask application root's `config.json`. An explicit
 `XDG_CONFIG_HOME` selects `$XDG_CONFIG_HOME/outask/config.json` instead.
-An existing legacy `task-tracker/config.json` remains readable when the new
-registry is absent; installation copies it byte-for-byte into the canonical
-root and retains the legacy filename as a link for loaded old clients. POSIX
+The `task-tracker/config.json` path supplies configuration when the canonical registry is absent; installation copies it byte-for-byte into the canonical root and links the source filename for running clients. POSIX
 uses a symlink; Windows uses a hard link, which is refreshed after each update.
-A Windows filesystem that cannot link the registry stops migration without
-deleting either settings copy; explicitly select an external registry when
-needed. Conflicting old/new registries require reconciliation before
-installation. Explicit config replaces the default;
-no registry is created automatically. `projects_root` and `projects` mappings
+A Windows registry-link failure preserves both settings copies; explicitly select an external registry when needed. Reconcile conflicting registries before installation. Explicit config selects the registry path. `projects_root` and `projects` mappings
 use absolute paths. Names select immediate children or explicit mappings,
 allow hyphens and reject traversal. Different real directories for one name
 fail with `AMBIGUOUS_PROJECT`; aliases of one directory are equivalent.
 Explicit paths bypass registry entries. Global config also owns non-negative
 integer `slow_query_ms` (default `150`), including for standalone search.
-Project task rules never come from global config.
+Define task rules in the project schema.
 
 ## Implemented read configuration
 
@@ -114,13 +93,13 @@ explicit selector chooses one: core `schemaPath`, CLI/scripts/HTTP startup
 `--schema-path`, MCP `schema_path`. Explicit paths must exist, stay inside the
 project and name a regular file through ordinary directories. Schema files and
 all their path components must not be symlinks, including automatic candidates.
-Selection never moves or rewrites schemas or records.
+Selection preserves schema and record files.
 
-Without a schema, `active.json` supplies Active statuses `pending`,
+The default schema assigns `active.json` the Active statuses `pending`,
 `in_progress`, `review`; existing optional `done.json` (`done`) and
 `archive.json` (`cancelled`) supply history. Files live directly in `tasks/`.
 A configured `stores` object declares basenames, allowed statuses and optional
-`validate: false`; discovery does not recurse. An explicit `groups` mapping
+`validate: false`; discovery reads files directly in `tasks/`. An explicit `groups` mapping
 replaces inference: every declared status must occur exactly once across
 `Active`, `Done`, `Archive`, with no undeclared statuses. Empty groups are valid.
 Without it, standard statuses retain their groups and other statuses in
@@ -139,7 +118,7 @@ empty when there is no schema or task JSON, and valid service metadata has no
 evidence of previous task storage. List/search/batch return no tasks, count
 returns `0`, and individual lookups return `TASK_NOT_FOUND`. Missing standard
 files are skipped by full validation; missing configured custom files remain
-errors. There is no search elsewhere for missing storage.
+errors.
 
 `tasks/.task-tracker.json` is reserved service metadata, excluded from discovery
 and forbidden as a task store. After safe project/schema selection, operations
@@ -149,22 +128,19 @@ not prepare projects. Reads preserve task bytes and do not refresh existing
 service metadata or inspect it for blocker eligibility. Missing metadata is
 uncertified; successful validation or writes establish its fingerprints/counter.
 
-Selected read stores must be arrays of objects with positive safe-integer IDs, non-empty title and effective status strings and no duplicate IDs across selected files. Declared statuses are checked unless `validate: false`. Even exempt stores need this read structure; schemas cannot waive the ID/title minimum. Minimum-field read errors identify the source file, zero-based record index and first missing/incompatible field with a correction to make. See [connecting an existing project](outask-skill.md#connect-an-existing-project) for explicit schemas and approved corrections that preserve existing data. Every present `updated_at` must be canonical UTC milliseconds; legacy absence is valid. Reads preserve unknown fields and do not validate unselected history or all project-required fields. Blocker inspection additionally checks examined blocker fields. A successful read is not a full validation verdict.
+Selected read stores must be arrays of objects with positive safe-integer IDs, non-empty title and effective status strings and no duplicate IDs across selected files. Declared statuses are checked unless `validate: false`. Even exempt stores need this read structure; schemas cannot waive the ID/title minimum. Minimum-field read errors identify the source file, zero-based record index and first missing/incompatible field with a correction to make. See [connecting an existing project](outask-skill.md#connect-an-existing-project) for explicit schemas and approved corrections that preserve existing data. Every present `updated_at` must be canonical UTC milliseconds; a missing `updated_at` is valid. Reads preserve unknown fields and do not validate unselected history or all project-required fields. Blocker inspection additionally checks examined blocker fields. A successful read is not a full validation verdict.
 
 ## Records and project rules
 
 Read and ordinary validation require `id`, `title` and an effective `status`. Only an absent status is inferred: without a schema, `active.json` supplies `pending` and `done.json` supplies `done`. Other stores have no implicit fallback. With a schema, each store containing status-less tasks needs an explicit `missing_status` naming one of its allowed statuses. Fallbacks cannot be `in_progress`, `review` or any configured `working_statuses` value. Explicit blank, null, wrong-type and undeclared values retain their existing validation rules. Inference supplies the same status for reads, filters, groups, search, counts and blocker checks; it never edits records or schemas. Full-validation exemptions remain as described below.
 
-Standard creation adds omitted `priority: "medium"` and `blockers: []`; schema `format: "minimal"` omits those defaults. Both stamp tracker-owned `updated_at`. Title is required; omitted status defaults to `pending` or configured `default_status`; omitted ID is allocated. A configured default must name a declared status. Legacy records remain valid without adding missing defaults. Unknown fields, IDs, records and readable source formatting must be preserved.
+Standard creation adds omitted `priority: "medium"` and `blockers: []`; schema `format: "minimal"` omits those defaults. Both stamp tracker-owned `updated_at`. Title is required; omitted status defaults to `pending` or configured `default_status`; omitted ID is allocated. A configured default must name a declared status. Unknown fields, IDs, records and readable source formatting must be preserved.
 
 `Active` means current work, `Done` completed work, `Archive` retained cancelled
 or deleted work. Review is optional; standard working statuses are
 `in_progress` and `review`. Schema `working_statuses` replaces that set with
 an array of declared Active statuses, including an empty array. Active
-membership alone does not mean work has started. Projects own their workflow
-and additional fields; the tracker does not choose work or assess content.
-External links and fields such as `type` or `parent` are passive data, without
-hierarchy traversal, target validation or enforced dependencies.
+includes pending and working tasks. Projects own their workflow and additional fields. External links and fields such as `type` or `parent` are stored as project data.
 
 Full validation scans all configured/discovered retained stores and checks
 project-wide ID uniqueness. Exempt stores need readable object arrays, usable
@@ -172,8 +148,7 @@ IDs and valid present timestamps, while other record rules are skipped.
 Normal stores check title/status, declared statuses, optional standard priority,
 blocker structure and project rules. Only configured, non-exempt Active records
 participate in cycle validation. Inactive/absent blocker IDs need no lookup.
-Unknown retained stores receive ordinary field/ID checks without being assumed
-Active. Invalid data is never certified or rewritten to fit the schema.
+Unknown retained stores receive ordinary field/ID checks. Invalid task data yields validation errors and remains intact.
 
 Global and per-store `required_fields` require present values other than null,
 blank strings or empty arrays; zero, false and objects are valid. Typed `fields`
@@ -190,7 +165,7 @@ rules in stores add to global rules rather than overriding them:
 | `min_items` | Minimum array length |
 
 `date` accepts a parseable date string; `timestamp` requires canonical UTC
-millisecond form. Legacy `plan.required_for_statuses` requires a non-empty
+millisecond form. `plan.required_for_statuses` requires a non-empty
 `techdesign` string and non-empty `stages` array of non-empty strings. Mutations
 validate the complete resulting record against its final destination; patches
 need not resupply retained fields but cannot remove required fields. New tasks
@@ -202,7 +177,7 @@ Shared limits apply across interfaces and output formats:
 
 | Resource | Limit |
 | --- | --- |
-| List/search/batch page | Default 10, permitted 1–50; no unlimited mode |
+| List/search/batch page | Default 10, permitted 1–50 |
 | Authoritative project sources | 128 MiB total per source pass, including applicable schema/stores |
 | Caller input, adapter requests, service metadata | Separate 8 MiB budgets |
 | UTF-8 response, including metadata/diagnostics | 32 KiB |
@@ -210,7 +185,7 @@ Shared limits apply across interfaces and output formats:
 Source budgets are enforced during bounded reads before parsing. Store arrays
 are decoded incrementally for validation/indexing/writes; selections and sorts
 may retain selected records. Inputs must be valid UTF-8: malformed encoding or
-JSON fails with `INVALID_JSON` rather than repairing bytes. Limits never alter
+JSON fails with `INVALID_JSON`. Limits never alter
 source files or cause unselected history to be read.
 
 Responses stop between complete records and continue after the actual returned
@@ -235,23 +210,21 @@ Exact case-sensitive status filters prevent substring matches. Other string or
 object filters use case-insensitive substring matching; numbers/booleans match
 exactly and arrays match any member. Repeated filters combine with AND; requested
 IDs combine with OR. Filtering and sorting precede pagination. Priority sorts
-`high`, `medium`, `low`, treating missing/unrecognised values as medium without
-rewriting them. Other sorts compare numbers numerically and strings in UTF-16
+`high`, `medium`, `low`, treating missing/unrecognised values as medium and preserving stored values. Other sorts compare numbers numerically and strings in UTF-16
 order; missing/null values are last ascending. Descending reverses the primary
 order; ties always use ascending ID. Mixed numeric/non-numeric relative order
 is unspecified and uses authoritative JSON regardless of cache availability.
-Custom priority scales have no implemented configuration.
 
 List JSON contains `tasks`, `total`, `offset`, `limit`, `stores`, `fields`,
 `hasMore`, `nextOffset`; total counts matches before pagination. The last page
 has `hasMore: false`, `nextOffset: null`; offsets beyond the end return an empty
 page. Get returns the projected object or `TASK_NOT_FOUND`; count returns a
-number without projecting task contents. Human list continuations retain all
+numeric match total. Human list continuations retain all
 selectors, filters, fields, sorting and formats with safe quoting. CLI uses
 `outask list`; standalone uses Node from PATH and a script path relative to cwd.
 
 CLI list defaults to a compact table; `--full` selects all fields and defaults
-to text without cell truncation. Explicit `--format text|table|json` overrides
+to text showing complete field values. Explicit `--format text|table|json` overrides
 that default; `--full` with `--fields` or `--format ids` fails. List/get/search/
 batch support text/table/json/ids; tables default to 60-character cells, changed
 with `--max-width`. Blocker inspection and validation support text/json.
@@ -284,15 +257,14 @@ Missing, stale, corrupt or incompatible caches fall back to authoritative JSON;
 refreshes are deduplicated per project, recoverably locked and atomically
 published. Failure retains the previous complete generation without making it
 eligible against changed sources. CLI/standalone refreshes detach; persistent
-adapters/core schedule them in-process. HTTP exposes no index-build operation.
+adapters/core schedule them in-process.
 
 Project `search.mode` is `scan` (default), `auto` or `indexed`, governing search
 and batch. `auto` uses a current generation or scans and requests a refresh;
 `indexed` also returns correct JSON when unavailable, with `CACHE_FALLBACK`.
-This setting does not disable correctness-gated list/detail/blocker acceleration.
+List/detail/blocker acceleration follows source freshness checks.
 Every task-data read supports core `noCache`, CLI/scripts `--no-cache`, MCP
-`no_cache`, HTTP `no-cache=true`. It overrides mode and never opens, builds or
-refreshes the cache. Each new shared read must retain a tested JSON-only path.
+`no_cache`, HTTP `no-cache=true`. It overrides mode and reads authoritative JSON directly. Cache bypass skips cache opening, building and refresh. Each new shared read must retain a tested JSON-only path.
 Cache results, ordering, validation and errors must match authoritative reads.
 
 Cache support uses built-in `node:sqlite`; failure to initialise acceleration
@@ -300,7 +272,7 @@ uses JSON and bounded `CACHE_UNAVAILABLE` advisory metadata. A request probes
 or schedules a failing cache path at most once. Core uses `onAdvisory`, CLI
 stderr, MCP a text content item, HTTP a `Warning` header. Search scans exceeding
 global `slow_query_ms` add bounded `SLOW_SCAN` advisories with `elapsed_ms` and
-index guidance; these are absent below threshold and for indexed results.
+index guidance.
 Advisories count toward the response budget and may shorten pages.
 
 ## Local blockers
@@ -309,7 +281,7 @@ A task is blocked exactly when its `blockers` intersect current Active IDs.
 Load Active once per operation; never fetch inactive/unknown targets, separate
 history or external projects for eligibility. Failed Active reads are errors.
 Omitted blockers act as empty arrays; examined values must be arrays of positive
-safe-integer IDs. Duplicates collapse in results without editing stored arrays.
+safe-integer IDs. Results deduplicate blocker IDs and preserve stored arrays.
 
 Creating or moving into a working status rechecks this intersection under the
 writer lock, including through generic updates. Every Active ID participates,
@@ -352,28 +324,21 @@ exceptions and process death release the OS lock; a retained file is not evidenc
 of ownership. Never remove/replace coordination files while tracker processes
 may run. Optional cleanup requires all that user's tracker processes to stop.
 Ordinary compatible upgrades preserve persistent MCP/HTTP sessions and in-flight
-writes; do not terminate them or force an immediate reconnect. Sessions may keep
-their old loaded code until their launching client restarts them normally; fresh
+writes. Sessions use their loaded code until their launching client restarts them normally; fresh
 launches use the updated installation. Only an incompatible coordination-protocol
 migration requires arranging for affected clients to close old sessions after
-active writes finish before new-protocol writers start. Legacy
-`tasks/.task-tracker.json.lock` fails closed and is never automatically deleted; remove it only after stopping old presence-lock writers,
-then restart upgraded writers together. Absence alone does not prove old writers
-stopped. See [upgrade commands](../app/README.md#project-locks-and-upgrades).
+active writes finish before upgraded writers start. A `tasks/.task-tracker.json.lock` causes `PROJECT_BUSY`. Confirm that its writers have stopped before clearing it, then restart upgraded writers together. See [upgrade commands](../app/README.md#project-locks-and-upgrades).
 
 These guarantees exclude arbitrary editors, cross-user/host/network-filesystem
 writers, atomic snapshots across concurrent completed moves and power-loss
 durability. Detected changes between source checks fail with `PROJECT_CHANGED`;
 an arbitrary editor can still race the last check/rename.
 
-Creation and actual mutations stamp canonical ISO UTC millisecond `updated_at`, strictly later than the prior date: max(current clock, prior + 1 ms). No-ops preserve record/service bytes; changing store at the same status is a mutation. Legacy absence gains a date on its first actual change. An actual change also persists the effective/final status on a status-less legacy record; equal updates and same-store transitions remain no-ops and leave status absent. The maximum supported date is readable/no-op-safe but cannot advance (`TIMESTAMP_EXHAUSTED`). Callers cannot supply, patch or remove this field. Manual editors must advance existing dates; reads/validation neither infer changes nor bulk-stamp records.
+Creation and actual mutations stamp canonical ISO UTC millisecond `updated_at`, strictly later than the prior date: max(current clock, prior + 1 ms). No-ops preserve record/service bytes; changing store at the same status is a mutation. An actual change also persists the effective/final status on a record with a missing status; equal updates and same-store transitions remain no-ops and leave status absent. The maximum supported date is readable/no-op-safe but cannot advance (`TIMESTAMP_EXHAUSTED`). Callers cannot supply, patch or remove this field. Manual editors must advance existing dates; reads/validation neither infer changes nor bulk-stamp records.
 
 Optional `ifUpdatedAt` (CLI `--if-updated-at`) compares the exact stored date
 under lock after recovery, even for no-ops. Missing/different dates yield
-`TRANSITION_CONFLICT`; malformed expected dates are `INVALID_INPUT`. Without a
-condition, changes use current state. The date is not a content hash: replacing
-content from an earlier read should supply its date, then reread/reconcile on
-conflict. There is no `from`/source-status precondition.
+`TRANSITION_CONFLICT`; malformed expected dates are `INVALID_INPUT`. Unconditional changes use current state. When replacing content from a read, supply its observed date, then reread and reconcile on conflict.
 
 CLI/script creation and updates accept one JSON object from `--json` or UTF-8
 `--input <file|->`, plus standard `--title`, `--status`, `--priority`,
@@ -385,10 +350,8 @@ JSON only. Inline/file/stdin input shares the 8 MiB caller-input budget.
 
 ### Creation and ID allocation
 
-IDs are unique across all retained stores, including exempt/unconfigured history;
-there is no cross-project allocator. Automatic IDs exceed the observed maximum
-and stored counter. Unused explicit lower IDs are allowed without lowering the
-counter; higher IDs advance it. Automatic exhaustion is `ID_EXHAUSTED`; an unused
+IDs are unique across the project's retained stores, including exempt/unconfigured history. Automatic IDs exceed the observed maximum
+and stored counter. Unused explicit lower IDs leave the counter unchanged; higher IDs advance it. Automatic exhaustion is `ID_EXHAUSTED`; an unused
 explicit safe-integer ID remains possible.
 
 Service state stores non-negative safe-integer `counter`, `validated.counter`
@@ -478,14 +441,13 @@ the crashed process has stopped. See [recovery commands](../app/README.md#status
 
 `inspectSchema`/`materialiseSchema` return the complete editable selected schema;
 CLI `schema`, MCP `inspect_schema`/`materialise_schema`, HTTP `GET /schema` share
-selection and JSON. Inspection needs no stores and performs normal preparation.
+selection and JSON. Inspection performs normal project preparation.
 Materialisation validates existing retained stores, checks budgets and uses the
 writer lock/atomic replacement. Existing schema requires explicit replacement
 (`FILE_EXISTS` otherwise). Failure preserves schema/task bytes. Empty projects
-may obtain a skeleton without stores; full validation still needs a retained
-store. Materialisation does not certify new service fingerprints.
+may obtain a skeleton; full validation needs a retained store. Run `outask validate` after materialisation to certify service fingerprints.
 
-No-schema output includes standard stores/groups even if history is absent,
+Default schema output includes standard stores/groups,
 standard creation format, pending default and working statuses. Configured data
 and extensions survive. Inferred groups include declared statuses only.
 Expansion adds defaults only when they preserve existing semantics: undeclared
@@ -493,10 +455,7 @@ pending or defaults outside Active stay implicit; undeclared working statuses
 are omitted. Custom unmapped statuses still require explicit groups.
 
 `outask hook --install|--remove` explicitly manages an optional POSIX pre-commit
-hook using the shared validator. It validates working-tree bytes, not the Git
-index, and can refresh working-tree metadata without staging it. Thus valid
-working data may hide invalid staged data, and invalid unstaged data can block
-a valid staged snapshot. Operators review and stage exact bytes themselves.
+hook using the shared validator. It validates working-tree bytes and can refresh working-tree metadata. A staged snapshot can differ from the working-tree validation input. Operators review and stage exact bytes themselves.
 
 Automatic installation requires the selected Git root and an internal hook
 directory. Nested projects, shared/external hooks and existing linked worktrees
@@ -504,16 +463,13 @@ receive manual integration instructions. Installed hooks reject other working
 trees, including later-created ones; manual shared hooks select the invoking
 root. Existing/modified hooks, symlinks and non-executable files are preserved;
 only an exact generated hook is recognised for repeat installation/removal.
-Ordinary task operations never install hooks, stage/commit/ignore files or edit
-project instructions/skills. Do not ignore the service file; this repository's
-[delivery rules](../AGENTS.md) require tracking it with task changes.
+Track the service file with task changes under this repository's [delivery rules](../AGENTS.md).
 
 ## Errors
 
-Core throws errors with a `code` property without printing/exiting. CLI/scripts
+Core throws errors with a `code` property. Task CLI/scripts
 exit 0 on success, including blocked/cyclic inspection results, and 1 on errors
-with empty stdout and `CODE: message` on stderr. JSON errors identify the source
-without echoing its contents. Adapters preserve shared meanings:
+with empty stdout and `CODE: message` on stderr. JSON errors identify the source. Adapters preserve shared meanings:
 
 | Code | Meaning |
 | --- | --- |

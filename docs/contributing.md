@@ -86,6 +86,8 @@ merge approval alone never authorises other remote actions.
 
 ## Native distribution acceptance
 
+Run `make regression` (native Windows: `node scripts/ci.mjs regression`) for full core/MCP and native archive/npm regression, including CLI self updates and non-mutating update checks. Install locked dependencies first. Dedicated self-update tests live in `app/tests/regression/`; ordinary `make test`, `make ci` and distribution smoke omit them. Release archive/download and npm artifact/download acceptance enable the installed self-update scenarios; release archive acceptance also runs the dedicated tests. Existing installer/npm lifecycle smoke remains in ordinary CI.
+
 PR CI covers Linux x64, native macOS arm64 and native Windows x64. Linux runs the
 core/MCP suites; all platforms install locked dependencies, audit them and accept
 an installed archive with Node.js 22.23.3 and 24. Release jobs accept the actual

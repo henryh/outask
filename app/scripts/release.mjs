@@ -20,7 +20,6 @@ const runtimeScripts = [
   'get-tasks.mjs',
   'hook.mjs',
   'install-launcher.mjs',
-  'install-finish.ps1',
   'install-migration.mjs',
   'install-path.mjs',
   'install-release.mjs',
@@ -30,6 +29,7 @@ const runtimeScripts = [
   'output.mjs',
   'schema.mjs',
   'search-tasks.mjs',
+  'self-update.mjs',
   'task-write-input.mjs',
   'transition-task.mjs',
   'update-task.mjs',
@@ -135,7 +135,7 @@ function writeSupport(releaseRoot, version, target, nodeRange) {
     writeFileSync(join(releaseRoot, 'bin', name), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
   }
   if (target === 'windows-x64') {
-    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nset "install_status=%errorlevel%"\r\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0app\\scripts\\install-finish.ps1"\r\nexit /b %install_status%\r\n`);
+    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nexit /b %errorlevel%\r\n`);
   }
   writeFileSync(join(releaseRoot, 'release.json'), JSON.stringify({ version, target }) + '\n');
   if (target === 'linux-x64') {
@@ -150,56 +150,6 @@ exec node "$root/app/scripts/install-release.mjs" "$@"
     chmodSync(join(releaseRoot, 'install.sh'), 0o755);
   }
   if (target === 'macos-arm64') {
-    // A final status line preserves even newline-only diagnostics from ps.
-    const sessionProbe = `expected="$1"
-response=$(/bin/ps -p "$expected" -o pid= 2>&1; printf '\\n%s' "$?")
-newline='
-'
-status=\${response##*"$newline"}
-output=\${response%"$newline"*}
-if [ "$status" = 1 ] && [ -z "$output" ]; then
-  printf absent
-elif [ "$status" = 0 ]; then
-  set -f
-  set -- $output
-  if [ "$#" = 1 ] && [ "$1" = "$expected" ]; then printf alive; else printf unknown; fi
-else
-  printf unknown
-fi`;
-    const closeWindow = `on run arguments
-  set installerTTY to item 1 of arguments
-  set sessionPID to item 2 of arguments
-  set sessionEnded to false
-  set query to ${JSON.stringify(sessionProbe)}
-  repeat 20 times
-    try
-      set state to do shell script "/bin/sh -c " & quoted form of query & " probe " & quoted form of sessionPID
-    on error
-      return
-    end try
-    if state is "absent" then
-      set sessionEnded to true
-      exit repeat
-    else if state is not "alive" then
-      return
-    end if
-    delay 0.1
-  end repeat
-  if not sessionEnded then return
-  with timeout of 5 seconds
-    tell application "Terminal"
-      repeat with candidate in windows
-        if (count of tabs of candidate) is 1 then
-          set installerTab to item 1 of tabs of candidate
-          if tty of installerTab is installerTTY then
-            if (busy of installerTab) is false then close candidate saving no
-            return
-          end if
-        end if
-      end repeat
-    end tell
-  end timeout
-end run`;
     writeFileSync(join(releaseRoot, 'Install.command'), `#!/bin/bash
 set -u
 nodeGuidance() {
@@ -229,7 +179,7 @@ nvmGuidance() {
       case "$node_path" in "$NVM_DIR"/versions/node/*/bin/node) ;; *) return 1 ;; esac
       ;;
   esac
-  printf '%s\\n' "NVM: run nvm install 'lts/*' && nvm alias default 'lts/*', then retry." >&2
+  printf '%s\\n' "NVM: run nvm install 'lts/*' && nvm use 'lts/*', then retry." >&2
 }
 installedNvmRoot() {
   local candidate
@@ -255,7 +205,7 @@ nvmRootForNode() {
 runNvmAction() {
   local nvm_root="$1" answer
   provider_action_attempted=false
-  printf '%s\\n' "NVM can install Node.js: nvm install 'lts/*' && nvm alias default 'lts/*'" >&2
+  printf '%s\\n' "NVM can install Node.js: nvm install 'lts/*' && nvm use 'lts/*'" >&2
   if [ ! -t 0 ]; then
     printf '%s\\n' 'Run it in a terminal, then retry.' >&2
     return 1
@@ -268,7 +218,6 @@ runNvmAction() {
     export NVM_DIR
     . "$NVM_DIR/nvm.sh" --no-use || return $?
     nvm install 'lts/*' || return $?
-    nvm alias default 'lts/*' || return $?
     nvm use 'lts/*' || return $?
     hash -r
     return 0
@@ -384,100 +333,8 @@ runInstaller() {
   done
   node "$root/app/scripts/install-release.mjs" "$@"
 }
-session_pid=''
-session_complete=false
-if [ -t 0 ]; then
-  current_pid=$$
-  session_tty=''
-  for ((depth=0; depth<32; depth++)); do
-    record="$(ps -p "$current_pid" -o ppid= -o tty=)" || break
-    read -r parent_pid process_tty extra <<< "$record"
-    case "$parent_pid" in ''|*[!0-9]*) break ;; esac
-    [ -n "$process_tty" ] || break
-    [ -z "$extra" ] || break
-    if [ -z "$session_tty" ]; then
-      case "$process_tty" in '?'|'??') break ;; esac
-      session_tty="$process_tty"
-    fi
-    if [ "$process_tty" != "$session_tty" ]; then
-      session_complete=true
-      break
-    fi
-    session_pid="$current_pid"
-    [ "$parent_pid" -gt 0 ] || break
-    current_pid="$parent_pid"
-  done
-fi
-auto_close=false
-if [ -t 0 ] && [ "\${TERM_PROGRAM:-}" = Apple_Terminal ] && command -v osascript >/dev/null 2>&1; then
-  terminal_tty="$(tty)"
-  # Finder submits a command ending in exit; a normal shell invocation stays open.
-  auto_close="$(osascript - "$terminal_tty" <<'APPLESCRIPT'
-on run arguments
-  set installerTTY to item 1 of arguments
-  tell application "Terminal"
-    repeat with candidate in windows
-      repeat with candidateTab in tabs of candidate
-        if tty of candidateTab is installerTTY then
-          return my isClosingLaunch(contents of candidateTab as text)
-        end if
-      end repeat
-    end repeat
-  end tell
-  return false
-end run
-
-on isClosingLaunch(screenText)
-  set launchText to ""
-  set launchLines to paragraphs of screenText
-  repeat with lineIndex from (count of launchLines) to 1 by -1
-    set launchLine to item lineIndex of launchLines
-    repeat while launchLine ends with space or launchLine ends with tab
-      if (count of characters of launchLine) is 1 then
-        set launchLine to ""
-      else
-        set launchLine to text 1 thru -2 of launchLine
-      end if
-    end repeat
-    if launchLine is not "" then
-      if launchText is "" and not (launchLine ends with "; exit;" or launchLine ends with "; exit") then return false
-      set launchText to launchLine & launchText
-      if launchText contains "Install.command" then return true
-    else if launchText is not "" then
-      return false
-    end if
-  end repeat
-  return false
-end isClosingLaunch
-APPLESCRIPT
-  )" || auto_close=false
-fi
 runInstaller "$@"
-status=$?
-if [ "$auto_close" = true ]; then
-  if [ "$status" -eq 0 ]; then
-    printf 'Press any key to finish.\\n'
-  else
-    printf '\\nInstallation failed. Review the messages above.\\nPress any key to finish.\\n'
-  fi
-  pressed=false
-  IFS= read -r -s -n 1 answer && pressed=true
-  if "$pressed" && "$session_complete" && [ "$status" -eq 0 ] && [ "\${TERM_PROGRAM:-}" = Apple_Terminal ] && [ -x /usr/bin/osascript ]; then
-    terminal_tty="$(tty)"
-    # The outer same-tty shell must end; a short-lived manual wrapper is insufficient.
-    node --input-type=module - "$terminal_tty" "$session_pid" <<'NODE'
-import { spawn } from 'node:child_process';
-const script = ${JSON.stringify(closeWindow)};
-const fallback = () => console.error('Automatic window closure unavailable.');
-try {
-  const worker = spawn('/usr/bin/osascript', ['-e', script, ...process.argv.slice(2)], { detached: true, stdio: 'ignore' });
-  worker.on('error', fallback);
-  worker.unref();
-} catch { fallback(); }
-NODE
-  fi
-fi
-exit "$status"
+exit "$?"
 `, { mode: 0o755 });
   }
   chmodSync(join(releaseRoot, 'bin/tasks'), 0o755);
@@ -485,7 +342,7 @@ exit "$status"
     writeFileSync(join(releaseRoot, 'README.md'), `# Outask v${version} (Windows x64)
 
 Requires native Windows x64 and installed Node.js ${nodeRange} on PATH.
-Before first using this writer generation, finish active writes and close all previous CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.
+Use one Windows CLI/MCP/HTTP writer generation at a time. Finish writes and close sessions from other generations before starting this version.
 Extract the archive, open the extracted application directory in PowerShell or cmd.exe, then run:
 
 PowerShell: \`./Install.cmd\`
@@ -513,7 +370,7 @@ Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
 
 ## Update and remove
 
-Update to GitHub Latest stable: run \`./Install.cmd update\` (PowerShell) or \`Install.cmd update\` (cmd.exe) from the installed Outask directory. Requires network access and tar on PATH.
+Update to GitHub Latest stable: run \`outask self update\` from any directory; check stable release availability with \`outask self update --check\`. Requires network access and tar on PATH.
 Uninstall (PowerShell): \`& "$env:LOCALAPPDATA\\Programs\\Outask\\Install.cmd" uninstall\`
 Uninstall (cmd.exe): \`"%LOCALAPPDATA%\\Programs\\Outask\\Install.cmd" uninstall\`
 Uninstall removes the managed launcher; application files, projects and configuration remain.
@@ -555,7 +412,7 @@ Start a new Codex session; use \`/mcp\` to inspect the server.
 
 ## Update and remove
 
-Update to GitHub Latest stable: run \`./${installer} update\` from the installed Outask directory. Requires network access and tar on PATH.
+Update to GitHub Latest stable: run \`outask self update\` from any directory; check stable release availability with \`outask self update --check\`. Requires network access and tar on PATH.
 Uninstall: \`${uninstall}\`
 Uninstall removes the managed command link; application files, projects and configuration remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.

@@ -4,7 +4,7 @@ Install with the [CLI quick start](../../README.md#install-the-cli).
 Requires Node.js 22.23.3 or later and a trusted local stdio client. Release
 archives and the [npm package](../../docs/npm.md) include the adapter and its dependencies.
 
-For custom or legacy records, follow [existing-project setup](../../docs/outask-skill.md#connect-an-existing-project) before changing data.
+For an existing project's records, follow [project setup](../../docs/outask-skill.md#connect-an-existing-project) before changing data.
 
 ## Codex on Linux/macOS
 
@@ -79,9 +79,8 @@ Remove the entry and stop its process to disconnect the adapter.
 
 ## Compatible updates
 
-Run `npm update -g outask` for an npm installation, or the new archive's installer for an archive installation, while existing sessions remain connected. Let
-active writes finish; do not kill MCP processes or force an immediate reconnect.
-Existing sessions may use their old loaded version until the launching client
+Run `outask self update` while existing sessions remain connected. Let active writes finish normally.
+Existing sessions use their loaded version until the launching client
 restarts them in its normal lifecycle. Verify `outask --version` and a fresh MCP
 connection with a task read to check the updated installation independently.
 See [project locks and upgrades](../README.md#project-locks-and-upgrades)
@@ -89,7 +88,7 @@ for coordination-file cleanup and incompatible protocol migrations.
 
 ## Tools and selection
 
-Select a project in each tool call. `outask mcp` takes no project flags. Supply
+Select a project in each tool call. Supply
 an absolute `project_path` when the client's working directory is unknown, or
 use `project` for a configured name. They are mutually exclusive; neither means
 the server's current directory. `config` selects the global registry and
@@ -116,10 +115,7 @@ validation and stale-edit checks. See the [operator cookbook](../README.md)
 for patching and recovery, and the [shared contract](../../docs/contract.md)
 for data semantics and bounds.
 
-The process runs with your filesystem permissions. Project selection routes
-operations; it does not restrict access. Configure only trusted clients.
-Stdout carries MCP messages; launch diagnostics go to stderr. There is no HTTP
-listener or client configuration written by Outask.
+The process runs with your filesystem permissions. Configure trusted clients and use project selection to route operations. Stdout carries MCP messages; launch diagnostics go to stderr.
 
 ## Source checkout
 
