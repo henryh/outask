@@ -26,7 +26,7 @@
   {
     "id": 12,
     "title": "Remove installed application files, global configuration and caches during uninstall",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "medium",
     "blockers": [],
     "scope": "Change the standard uninstall flow so removing Outask deletes the managed tasks command, installed application copies, application-owned global/user configuration and application caches, when present. Cover the supported packaged installers on Linux x64, macOS arm64 and Windows x64 and the documented source-checkout uninstall route where applicable. Preserve task records and configuration inside projects and skills, source checkouts and unrelated user files. Update affected uninstall help, messages and documentation to describe the resulting behavior.",
@@ -38,7 +38,7 @@
       "Update focused installer/distribution checks and uninstall help/documentation to reflect complete application cleanup and retained project/skill data; verify supported platform behavior through the project's native distribution gates."
     ],
     "values": "Goal: keep project tasks in readable repository-local JSON usable without the tracker (docs/product.md). User value: uninstall leaves no installed application, global configuration or cache behind while retaining the user's project and skill data. Immediate observable result: a completed standard uninstall cleans the application-owned machine/user footprint. Verification: install and exercise Outask in an isolated user environment, uninstall it, assert the application-owned paths are absent and compare retained project/skill files with their pre-uninstall contents.",
-    "updated_at": "2026-10-28T09:36:51.785Z"
+    "updated_at": "2026-11-13T08:59:14.549Z"
   },
   {
     "id": 13,
