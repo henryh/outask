@@ -41,7 +41,7 @@ function tests(regression = false) {
   const home = mkdtempSync(join(tmpdir(), 'outask-tests-home-'));
   const env = { ...process.env, HOME: home, USERPROFILE: process.platform === 'win32' ? home : process.env.USERPROFILE,
     PATH: process.platform === 'win32' ? process.env.PATH : [dirname(process.execPath), '/usr/local/bin', '/usr/bin', '/bin'].join(':'),
-    LOCALAPPDATA: join(home, 'AppData/Local'), XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'), ZDOTDIR: undefined, TASK_TRACKER_CONFIG: undefined };
+    LOCALAPPDATA: join(home, 'AppData/Local'), XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'), ZDOTDIR: undefined, OUTASK_CONFIG: undefined };
   mkdirSync(env.LOCALAPPDATA, { recursive: true });
   try {
     for (const [label, directory] of [['Core', 'app/tests'], ['MCP', 'app/mcp/tests']]) {

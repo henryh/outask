@@ -36,7 +36,9 @@ test('installed CLI handles field rules, full lifecycle and readable diffs witho
   writeStore(root, 'done.json', []);
   writeStore(root, 'archive.json', []);
   const bin = join(root, 'bin');
-  const env = { ...process.env, PATH: `${bin}:${dirname(process.execPath)}` };
+  const env = { ...process.env, HOME: root, USERPROFILE: root, LOCALAPPDATA: join(root, 'AppData/Local'),
+    XDG_CONFIG_HOME: join(root, '.config'), XDG_CACHE_HOME: join(root, '.cache'), OUTASK_CONFIG: undefined,
+    PATH: `${bin}:${dirname(process.execPath)}` };
   success(execute(process.execPath, [installer, 'install', '--bin-dir', bin], { env }));
   const installed = (args, input) => execute(join(bin, 'tasks'), args, { cwd: root, env, input });
   const git = (...args) => success(execute('git', args, { cwd: root }));
@@ -106,8 +108,8 @@ test('write selection, custom transitions and external validation use CLI contra
   });
   writeStore(root, 'done.json', []);
   const registry = join(root, 'registry.json');
-  writeFileSync(registry, JSON.stringify({ projects: { selected: root } }));
-  const created = json(cli(root, ['create', '--project', 'selected', '--config', registry, '--title', 'Custom']));
+  writeFileSync(registry, JSON.stringify({ slow_query_ms: 0 }));
+  const created = json(cli(root, ['create', '--project-path', root, '--config', registry, '--title', 'Custom']));
   const id = String(created.id);
   rejected(root, ['transition', id, '--status', 'in_progress'], 'INVALID_INPUT');
   assert.equal(json(cli(root, ['transition', '--project-path', root, id, '--status', 'doing'])).status, 'doing');

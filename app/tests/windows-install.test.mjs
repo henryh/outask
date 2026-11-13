@@ -30,7 +30,9 @@ test('Windows packaged installer forwards arguments and exit status', { skip: pr
   assert.equal(existsSync(join(source, 'app/scripts/install-finish.ps1')), false);
   const installer = join(source, 'app/scripts/install-release.mjs');
   for (const [action, status] of [['install', 0], ['update', 7], ['uninstall', 0]]) {
-    writeFileSync(installer, `console.log(JSON.stringify(process.argv.slice(2))); process.exit(${status});\n`);
+    const removeWrapper = action === 'uninstall'
+      ? `import { unlinkSync } from 'node:fs'; unlinkSync(new URL('../../Install.cmd', import.meta.url));` : '';
+    writeFileSync(installer, `${removeWrapper}console.log(JSON.stringify(process.argv.slice(2))); process.exit(${status});\n`);
     const result = spawnSync('cmd.exe', ['/d', '/s', '/c', `""${join(source, 'Install.cmd')}" ${action} --release-root "custom releases""`], {
       encoding: 'utf8', timeout: 10000, windowsVerbatimArguments: true,
     });

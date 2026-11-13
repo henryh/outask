@@ -23,6 +23,8 @@ Updates stage and back up only managed program files beside that root. The
 root, registry, cache and coordination inodes stay in place; successful updates
 remove staging and backups. Installation cleanup covers managed application directories selected for migration and preserves unrecognised sibling files. Conflicting registries stop migration.
 
+Archive and source-checkout uninstall remove managed commands, confirmed installed payloads, default application/XDG global configuration, migrated legacy settings and application caches. Explicit configuration at arbitrary paths, project/skill data, source checkouts and unrelated files remain. Cleanup never traverses user-managed directory symlinks into external settings/cache data. Existing PATH/profile settings and fixed writer coordination files remain.
+
 npm installations use npm's global package directory and command entries for application files. They use the same default Outask configuration, cache and coordination paths. Native npm install/update/uninstall owns the program lifecycle; npm uninstall preserves configuration, cache, skills and project records. See the [npm guide](npm.md).
 
 `outask self update` manages the running CLI installation from any directory. It updates managed archives through the packaged updater and global npm packages through their owning npm/prefix/registry. Archive installation records the command directory as `bin` in installed `release.json`; commands can also be resolved through PATH. Updates retain the installation's distribution channel and newer installed versions. `--check` queries version availability and preserves application/project files (npm may write cache/logs): exit 0 current/newer, 10 update available, 2 unsupported context, 1 failure. Source checkouts, local npm/npx and unrecognised contexts receive update guidance. See [installation and updates](../app/README.md#installation-and-updates).
@@ -33,7 +35,7 @@ Windows user PATH pointing to the root's `commands/` directory. Installation
 consolidates its generated PATH blocks and preserves other shell code.
 Managed source payloads are identified by release metadata and package ownership inside the known application parents. Refresh explicit client/hook references
 when changing layouts; remove an installed hook with its original command first.
-Explicit `--bin-dir`, `--release-root`, `--config`, `TASK_TRACKER_CONFIG` and XDG
+Explicit `--bin-dir`, `--release-root`, `--config`, `OUTASK_CONFIG` and XDG
 paths remain supported choices. Modified hooks require manual integration.
 
 Writer coordination uses the fixed POSIX `/var/tmp/task-tracker-locks-<uid>`
@@ -62,7 +64,7 @@ Core entry points take a project path and return values; adapters handle output 
 ## Project selection
 
 Each operation selects one existing project directory. CLI/MCP support the
-current directory, an explicit path or a configured name; HTTP fixes selection
+current directory or an explicit path; HTTP fixes selection
 at startup. Core APIs require an explicit project path. Relative paths resolve from the caller's directory. Select the exact project or worktree directory.
 
 Standalone scripts use path-only selection: non-ID commands accept zero or one
@@ -72,17 +74,15 @@ form. Missing IDs, extra positionals and combined/repeated selectors fail with
 `INVALID_INPUT`. Continuations retain the original selector and require the
 same working directory and environment.
 
-Global configuration precedence is explicit `--config`, `TASK_TRACKER_CONFIG`,
+Global configuration precedence is explicit `--config`, `OUTASK_CONFIG`,
 then the platform Outask application root's `config.json`. An explicit
 `XDG_CONFIG_HOME` selects `$XDG_CONFIG_HOME/outask/config.json` instead.
-The `task-tracker/config.json` path supplies configuration when the canonical registry is absent; installation copies it byte-for-byte into the canonical root and links the source filename for running clients. POSIX
+The `task-tracker/config.json` path supplies configuration when the canonical configuration is absent; installation copies it byte-for-byte into the canonical root and links the source filename for running clients. POSIX
 uses a symlink; Windows uses a hard link, which is refreshed after each update.
-A Windows registry-link failure preserves both settings copies; explicitly select an external registry when needed. Reconcile conflicting registries before installation. Explicit config selects the registry path. `projects_root` and `projects` mappings
-use absolute paths. Names select immediate children or explicit mappings,
-allow hyphens and reject traversal. Different real directories for one name
-fail with `AMBIGUOUS_PROJECT`; aliases of one directory are equivalent.
-Explicit paths bypass registry entries. Global config also owns non-negative
-integer `slow_query_ms` (default `150`), including for standalone search.
+A Windows configuration-link failure preserves both settings copies; explicitly select an external configuration file when needed. Reconcile conflicting configuration files before installation. Explicit config selects the program configuration path. Global configuration
+supports only the non-negative integer `slow_query_ms` (default `150`), including
+for standalone search. Unknown configuration fields are preserved and ignored;
+configuration does not map names or search for projects.
 Define task rules in the project schema.
 
 ## Implemented read configuration
@@ -474,7 +474,7 @@ with empty stdout and `CODE: message` on stderr. JSON errors identify the source
 | Code | Meaning |
 | --- | --- |
 | `INVALID_INPUT`, `INVALID_CURSOR` | Bad inputs or continuation selectors |
-| `PROJECT_NOT_FOUND`, `AMBIGUOUS_PROJECT` | Missing or ambiguously named project |
+| `PROJECT_NOT_FOUND` | Missing project directory |
 | `READ_ERROR`, `INVALID_JSON` | Unreadable source or invalid JSON/UTF-8 |
 | `INVALID_CONFIG`, `INVALID_STORE`, `INVALID_SERVICE` | Invalid schema, record/store or metadata |
 | `INPUT_TOO_LARGE`, `OUTPUT_TOO_LARGE` | Applicable input/response budget exceeded |

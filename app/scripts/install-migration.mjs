@@ -14,10 +14,10 @@ export function legacyConfig(env = process.env) {
   const home = env.HOME || homedir();
   const path = join(env.XDG_CONFIG_HOME || join(home, '.config'), 'task-tracker/config.json');
   // An explicitly selected registry is never moved by an application install.
-  if (env.TASK_TRACKER_CONFIG || !existsSync(path)) return undefined;
+  if (env.OUTASK_CONFIG || !existsSync(path)) return undefined;
   const target = resolve(configPath(env));
   if (existsSync(target) && lstatSync(target).isSymbolicLink()) {
-    throw new Error(`CONFIG_MIGRATION_REQUIRED: ${target} is a user-managed symlink; select your registry explicitly with TASK_TRACKER_CONFIG`);
+    throw new Error(`CONFIG_MIGRATION_REQUIRED: ${target} is a user-managed symlink; select your registry explicitly with OUTASK_CONFIG`);
   }
   if (lstatSync(path).isSymbolicLink() && resolve(dirname(path), readlinkSync(path)) === resolve(target)) {
     return { source: path, target };
@@ -26,7 +26,7 @@ export function legacyConfig(env = process.env) {
   // replace that file with a link to itself or relocate user-managed folders.
   if (existsSync(target) && realpathSync(path) === realpathSync(target)) return undefined;
   if (!lstatSync(path).isFile() || [dirname(path), dirname(dirname(path))].some(directory => lstatSync(directory).isSymbolicLink())) {
-    throw new Error(`CONFIG_MIGRATION_REQUIRED: ${path} uses a symlink or non-file; select it explicitly with TASK_TRACKER_CONFIG to preserve that external registry`);
+    throw new Error(`CONFIG_MIGRATION_REQUIRED: ${path} uses a symlink or non-file; select it explicitly with OUTASK_CONFIG to preserve that external registry`);
   }
   return { source: path, target };
 }
@@ -74,7 +74,7 @@ export function retireConfig(migration) {
     renameSync(temporary, migration.source);
     created = false;
   } catch (error) {
-    throw new Error(`CONFIG_MIGRATION_REQUIRED: could not link the legacy registry (${error.code}); neither settings copy was deleted. Select an external registry with TASK_TRACKER_CONFIG if its filesystem cannot provide the link`);
+    throw new Error(`CONFIG_MIGRATION_REQUIRED: could not link the legacy registry (${error.code}); neither settings copy was deleted. Select an external registry with OUTASK_CONFIG if its filesystem cannot provide the link`);
   } finally {
     if (created) rmSync(temporary, { force: true });
   }

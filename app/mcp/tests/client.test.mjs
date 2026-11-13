@@ -320,15 +320,15 @@ test('MCP reports unavailable cache acceleration without failing task data', asy
   ]);
 });
 
-test('each call selects one project by cwd, explicit path or registry name and rejects invalid inputs', async (t) => {
+test('each call selects one project by cwd or explicit path and rejects invalid inputs', async (t) => {
   const root = fixture(t, [task(1)]);
   const other = fixture(t, [task(7)]);
   const config = join(root, 'registry.json');
-  writeFileSync(config, JSON.stringify({ projects: { other } }));
+  writeFileSync(config, JSON.stringify({ slow_query_ms: 0 }));
   const { client, call } = await connect(t, root);
-  assert.equal((await call('get_task', { id: 7, project: 'other', config })).id, 7);
-  assert.deepEqual((await call('get_tasks', { ids: [7, 404], project: 'other', config, fields: ['id'] })).tasks, [{ id: 7 }]);
-  assert.deepEqual((await call('search_tasks', { query: 'Task 7', project: 'other', config, fields: ['id'] })).tasks,
+  assert.equal((await call('get_task', { id: 7, project_path: other, config })).id, 7);
+  assert.deepEqual((await call('get_tasks', { ids: [7, 404], project_path: other, config, fields: ['id'] })).tasks, [{ id: 7 }]);
+  assert.deepEqual((await call('search_tasks', { query: 'Task 7', project_path: other, config, fields: ['id'] })).tasks,
     [{ id: 7, matched_fields: ['title'], snippets: { title: 'Task 7' } }]);
   assert.equal((await call('get_task', { id: 7, project_path: other, config: '/missing' })).id, 7);
   assert.deepEqual((await call('get_tasks', { ids: [7], project_path: other, config: '/missing', fields: ['id'] })).tasks, [{ id: 7 }]);
@@ -336,29 +336,25 @@ test('each call selects one project by cwd, explicit path or registry name and r
     [{ id: 7, matched_fields: ['title'], snippets: { title: 'Task 7' } }]);
   assert.equal((await call('get_task', { id: 1 })).id, 1);
   assert.deepEqual((await call('get_tasks', { ids: [1], fields: ['id'] })).tasks, [{ id: 1 }]);
-  await call('list_tasks', { project: 'other', project_path: root, config }, 'INVALID_INPUT');
-  await call('list_tasks', { project: 'missing', config }, 'PROJECT_NOT_FOUND');
   await call('list_tasks', { stores: ['all'], group: 'Active' }, 'INVALID_INPUT');
-  await call('get_tasks', { ids: [1], project: 'other', project_path: root, config }, 'INVALID_INPUT');
   await call('get_tasks', { ids: [1], cursor: 'invalid' }, 'INVALID_CURSOR');
-  await call('search_tasks', { query: 'task', project: 'other', project_path: root, config }, 'INVALID_INPUT');
   await call('search_tasks', { query: 'task', stores: ['all'], group: 'Active' }, 'INVALID_INPUT');
-  for (const args of [{ limit: 0 }, { id: '1' }, { unknown: true }]) {
+  for (const args of [{ limit: 0 }, { id: '1' }, { unknown: true }, { project: 'other' }, { project: 'other', project_path: other }]) {
     const result = await client.callTool({ name: args.id ? 'get_task' : 'list_tasks', arguments: args });
     assert.equal(result.isError, true);
   }
-  for (const args of [{ ids: [] }, { ids: ['1'] }, { ids: [1], unknown: true }]) {
+  for (const args of [{ ids: [] }, { ids: ['1'] }, { ids: [1], unknown: true }, { ids: [1], project: 'other' }]) {
     const result = await client.callTool({ name: 'get_tasks', arguments: args });
     assert.equal(result.isError, true);
   }
-  for (const args of [{}, { query: '' }, { query: 'task', search_fields: [''] }, { query: 'task', unknown: true }]) {
+  for (const args of [{}, { query: '' }, { query: 'task', search_fields: [''] }, { query: 'task', unknown: true }, { query: 'task', project: 'other' }]) {
     const result = await client.callTool({ name: 'search_tasks', arguments: args });
     assert.equal(result.isError, true);
   }
   assert.equal((await call('list_tasks')).total, 1);
 });
 
-test('schema_path selects the same project schema as the CLI without overloading registry config', async (t) => {
+test('schema_path selects the same project schema as the CLI without overloading program config', async (t) => {
   const root = fixture(t, [task(1, { status: 'queued' })]);
   writeFileSync(join(root, 'tasks/custom-schema.json'), JSON.stringify({
     stores: { 'active.json': { statuses: ['queued'] } },
@@ -366,24 +362,24 @@ test('schema_path selects the same project schema as the CLI without overloading
     default_status: 'queued',
   }));
   const registry = join(root, 'registry.json');
-  writeFileSync(registry, JSON.stringify({ projects: { selected: root } }));
+  writeFileSync(registry, JSON.stringify({ slow_query_ms: Number.MAX_SAFE_INTEGER }));
   const { call } = await connect(t, root);
-  const selected = await call('list_tasks', { project: 'selected', config: registry,
+  const selected = await call('list_tasks', { project_path: root, config: registry,
     schema_path: 'tasks/custom-schema.json', stores: ['all'] });
-  const command = cli(root, ['list', '--project', 'selected', '--config', registry,
+  const command = cli(root, ['list', '--project-path', root, '--config', registry,
     '--schema-path', 'tasks/custom-schema.json', '--store', 'all', '--format', 'json']);
   assert.equal(command.status, 0, command.stderr);
   assert.deepEqual(selected, JSON.parse(command.stdout));
-  const batch = await call('get_tasks', { project: 'selected', config: registry,
+  const batch = await call('get_tasks', { project_path: root, config: registry,
     schema_path: 'tasks/custom-schema.json', ids: [1], stores: ['all'], fields: ['id', 'status'] });
-  const batchCommand = cli(root, ['get-many', '--project', 'selected', '--config', registry,
+  const batchCommand = cli(root, ['get-many', '--project-path', root, '--config', registry,
     '--schema-path', 'tasks/custom-schema.json', '--store', 'all', '--id', '1',
     '--fields', 'id,status', '--format', 'json']);
   assert.equal(batchCommand.status, 0, batchCommand.stderr);
   assert.deepEqual(batch, JSON.parse(batchCommand.stdout));
-  const search = await call('search_tasks', { project: 'selected', config: registry,
+  const search = await call('search_tasks', { project_path: root, config: registry,
     schema_path: 'tasks/custom-schema.json', query: 'Task 1', stores: ['all'], fields: ['id', 'status'] });
-  const searchCommand = cli(root, ['search', 'Task 1', '--project', 'selected', '--config', registry,
+  const searchCommand = cli(root, ['search', 'Task 1', '--project-path', root, '--config', registry,
     '--schema-path', 'tasks/custom-schema.json', '--store', 'all', '--fields', 'id,status', '--format', 'json']);
   assert.equal(searchCommand.status, 0, searchCommand.stderr);
   assert.deepEqual(search, JSON.parse(searchCommand.stdout));

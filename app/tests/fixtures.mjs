@@ -18,7 +18,7 @@ if (process.platform === 'win32') {
 } else process.env.PATH = [dirname(process.execPath), '/usr/local/bin', '/usr/bin', '/bin'].join(':');
 process.env.XDG_CONFIG_HOME = join(testHome, '.config');
 process.env.XDG_CACHE_HOME = join(testHome, '.cache');
-delete process.env.TASK_TRACKER_CONFIG;
+delete process.env.OUTASK_CONFIG;
 delete process.env.ZDOTDIR;
 after(() => rmSync(testHome, { recursive: true, force: true,
   maxRetries: process.platform === 'win32' ? 5 : 0, retryDelay: 100 }));

@@ -157,8 +157,8 @@ test('standalone and installed batch commands share project selection and contin
   assert.equal(installed.status, 0, installed.stderr);
   assert.deepEqual(JSON.parse(installed.stdout).tasks, [{ id: 9 }, { id: 8 }]);
   const registry = join(current, 'registry.json');
-  writeFileSync(registry, JSON.stringify({ projects: { selected } }));
-  const named = cli(['get-many', '--project', 'selected', '--config', registry,
+  writeFileSync(registry, JSON.stringify({ slow_query_ms: 0 }));
+  const named = cli(['get-many', '--project-path', selected, '--config', registry,
     '--id', '8', '--fields', 'id', '--format', 'json'], { cwd: current });
   assert.equal(named.status, 0, named.stderr);
   assert.deepEqual(JSON.parse(named.stdout).tasks, [{ id: 8 }]);

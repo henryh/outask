@@ -73,8 +73,8 @@ test('standalone and CLI schema selectors match and registry config keeps its ow
   const standalone = spawnSync(process.execPath, [script, root, '--schema-path', 'tasks/custom-schema.json', '--store', 'all', '--format', 'json'], { encoding: 'utf8' });
   assert.equal(standalone.status, 0, standalone.stderr);
   const registry = join(root, 'registry.json');
-  writeFileSync(registry, JSON.stringify({ projects: { selected: root } }));
-  const cli = spawnSync(process.execPath, [executable, 'list', '--project', 'selected', '--config', registry,
+  writeFileSync(registry, JSON.stringify({ slow_query_ms: 0 }));
+  const cli = spawnSync(process.execPath, [executable, 'list', '--project-path', root, '--config', registry,
     '--schema-path', 'tasks/custom-schema.json', '--store', 'all', '--format', 'json'], { encoding: 'utf8' });
   assert.equal(cli.status, 0, cli.stderr);
   assert.deepEqual(JSON.parse(cli.stdout), JSON.parse(standalone.stdout));

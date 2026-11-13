@@ -1,11 +1,11 @@
 import { accessSync, constants, cpSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
+import { managedPayload, managedInstallation as managed, uninstallApplication } from './uninstall.mjs';
 import { updateRelease } from './update-release.mjs';
 import { legacyLocations, legacyConfig, obsoleteInstalls, retireConfig, retirePayload } from './install-migration.mjs';
 
@@ -16,8 +16,6 @@ const copyOptions = { recursive: true, verbatimSymlinks: true, ...(windows ? { f
 const defaults = installLocations();
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const publicInstallers = { 'linux-x64': 'install.sh', 'macos-arm64': 'Install.command', 'windows-x64': 'Install.cmd' };
-const managedPayload = ['app', 'bin', 'install.sh', 'install.mjs', 'install-path.mjs', 'install-launcher.mjs',
-  ...(!windows ? ['install.cmd'] : []), 'Install.command', 'Install.cmd', 'release.json', 'README.md'];
 function inspect(path) {
   try { return lstatSync(path); } catch (error) {
     if (error.code === 'ENOENT') return undefined;
@@ -45,14 +43,7 @@ function startupFile(path) {
   try { result.readBytes = readFileSync(path).length; } catch (error) { result.readError = error.code; }
   return result;
 }
-function managed(path) {
-  try {
-    const metadata = JSON.parse(readFileSync(join(path, 'release.json'), 'utf8'));
-    return typeof metadata.version === 'string' && /^[\w.+-]+$/.test(metadata.version)
-      && ['linux-x64', 'macos-arm64', 'windows-x64'].includes(metadata.target)
-      && packageNames.includes(JSON.parse(readFileSync(join(path, 'app/package.json'), 'utf8')).name);
-  } catch { return false; }
-}
+
 
 try {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: {
@@ -73,12 +64,14 @@ ${target === 'windows-x64' ? 'Use one Windows CLI/MCP/HTTP writer generation at 
 Command: outask
 Install from the extracted application directory. Update downloads GitHub Latest stable; tar and network access are required.
 Options change the command directory and application parent; reuse them for update/uninstall.
-Uninstall removes the managed command link; application files, projects and configuration remain.`);
+Uninstall removes managed commands, installed application files, default global configuration and caches.
+Projects, skills, source checkouts, custom configuration files and unrelated files remain.
+Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile settings and writer coordination files remain.`);
   } else {
     if (positionals.length > 1 || !['install', 'update', 'uninstall'].includes(positionals[0] ?? 'install')
       || values['bin-dir'] === '' || values['release-root'] === '') throw new Error('INVALID_INPUT: invalid action or empty directory');
     const bin = canonical(resolve(values['bin-dir'] ?? defaults.bin));
-    const legacyRoot = canonical(join(homedir(), '.local/share/task-tracker/releases'));
+    const legacyRoot = canonical(legacyLocations()[1]);
     const defaultRoot = defaults.releases;
     const requestedRoot = canonical(resolve(values['release-root'] ?? defaultRoot));
     const oldDefaults = legacyLocations().slice(0, 2).map(canonical);
@@ -128,8 +121,10 @@ Uninstall removes the managed command link; application files, projects and conf
     }
     for (const target of targets) if (inspect(target) && !owned(target)) throw new Error(`COMMAND_EXISTS: ${target} is unrelated; resolve the collision before installing`);
     if (positionals[0] === 'uninstall') {
+      const installed = obsoleteInstalls(releaseRoots, undefined, managed);
       for (const target of targets) if (owned(target)) unlinkSync(target);
-      console.log(`Removed managed command link at ${target}. Application copies, project data and configuration are preserved.`);
+      uninstallApplication(installed);
+      console.log(`Removed managed commands at ${bin}, installed application files, default global configuration and caches. Project/skill data, source checkouts, custom configuration files and unrelated files are preserved.`);
     } else if (positionals[0] === 'update') {
       const installed = [destination, ...targets.filter(owned).map((path) => windows ? resolve(launcherEntry(readFileSync(path, 'utf8')), '../../..') : resolve(realpathSync(path), '../../..'))].find(managed);
       if (!installed) throw new Error('NOT_INSTALLED: install first, or reuse your original --bin-dir and --release-root');

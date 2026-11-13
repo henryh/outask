@@ -5,15 +5,15 @@ core dependency once with `npm ci --prefix app --omit=dev`. From the repository
 root, generate a token and start the adapter:
 
 ```bash
-export TASKS_HTTP_TOKEN="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url'))")"
+export OUTASK_HTTP_TOKEN="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url'))")"
 node app/http.mjs /absolute/path/to/project --port 4318
 ```
 
 The server binds `127.0.0.1` and serves one project selected at startup.
-The default project is the current directory. `--schema-path` selects an existing project-relative schema; the project, registry and schema remain fixed for the process.
+The default project is the current directory. `--schema-path` selects an existing project-relative schema; the project, program configuration and schema remain fixed for the process.
 Use `node app/http.mjs --help` for startup options. Stop with Ctrl-C.
 
-`TASKS_HTTP_TOKEN` must contain 32–512 ASCII letters, digits, `_` or `-`.
+`OUTASK_HTTP_TOKEN` must contain 32–512 ASCII letters, digits, `_` or `-`.
 Generate it randomly and keep it outside task files and Git. Possession grants
 read access to every retained task and field in the selected project.
 For rotation, stop the process, replace its environment token and restart. Distribute
@@ -22,9 +22,9 @@ the new token through a trusted channel and check that the old token gets 401.
 ## Requests and results
 
 ```bash
-curl --fail-with-body -sS -H "Authorization: Bearer $TASKS_HTTP_TOKEN" \
+curl --fail-with-body -sS -H "Authorization: Bearer $OUTASK_HTTP_TOKEN" \
   'http://127.0.0.1:4318/tasks?limit=10&fields=id,title,status'
-curl --fail-with-body -sS -H "Authorization: Bearer $TASKS_HTTP_TOKEN" \
+curl --fail-with-body -sS -H "Authorization: Bearer $OUTASK_HTTP_TOKEN" \
   'http://127.0.0.1:4318/tasks/1?store=all'
 ```
 
