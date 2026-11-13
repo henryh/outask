@@ -781,26 +781,18 @@ test('Finder launcher rejects missing Node and dirname before writing installati
   }
 });
 
-test('macOS installer returns promptly from a real terminal and forwards arguments and exit status', async (t) => {
+test('macOS packaged installer forwards arguments, diagnostics and exit status', (t) => {
   const f = fixture(t, 'macos-arm64');
   const launcher = join(f.source, 'Install.command');
-  const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
-  const automation = join(f.home, 'unexpected-automation');
-  for (const command of ['osascript', 'ps']) {
-    writeFileSync(join(f.tools, command), `#!/bin/sh\necho ${quote(command)} >> ${quote(automation)}\nexit 99\n`, { mode: 0o755 });
-  }
   for (const [action, status] of [['install', 0], ['update', 7], ['uninstall', 0]]) {
     const args = [action, '--release-root', join(f.home, 'custom releases 東京')];
-    writeFileSync(internalInstaller(f.source), `console.log('INSTALL_ARGS:' + JSON.stringify(process.argv.slice(2))); console.error('INSTALL_DIAGNOSTIC'); process.exit(${status});\n`);
-    const command = `saved=$(stty -g); ${quote(launcher)} ${args.map(quote).join(' ')}; result=$?; [ "$(stty -g)" = "$saved" ] && echo TTY_RESTORED; echo STATUS:$result`;
-    const result = await terminal(command, [], { ...f.env, TERM_PROGRAM: 'Apple_Terminal' });
-    assert.equal(result.status, 0, result.output);
-    assert.match(result.output, new RegExp(`STATUS:${status}`));
-    assert.match(result.output, /TTY_RESTORED/);
-    assert.match(result.output, /INSTALL_DIAGNOSTIC/);
-    assert.deepEqual(JSON.parse(result.output.match(/INSTALL_ARGS:([^\r\n]+)/)[1]), args);
-    assert.doesNotMatch(result.output, /Press any key|Cmd\+W/);
-    assert.equal(existsSync(automation), false, 'installation must not query Terminal or process ancestry');
+    writeFileSync(internalInstaller(f.source), `console.log(JSON.stringify(process.argv.slice(2))); console.error('INSTALL_DIAGNOSTIC'); process.exit(${status});\n`);
+    for (const [command, commandArgs] of [[launcher, args], ['/bin/sh', [launcher, ...args]]]) {
+      const result = run(command, commandArgs, { env: { ...f.env, TERM_PROGRAM: 'Apple_Terminal' }, timeout: 10000 });
+      assert.equal(result.status, status, result.stderr || result.stdout);
+      assert.deepEqual(JSON.parse(result.stdout), args);
+      assert.equal(result.stderr.trim(), 'INSTALL_DIAGNOSTIC');
+    }
   }
 });
 

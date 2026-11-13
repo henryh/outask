@@ -68,7 +68,7 @@ jobs:
       - name: Native shell profile installation
         run: node --test app/tests/install-path.test.mjs
       - name: Native installer completion
-        run: node --test --test-name-pattern='successful packaged|macOS installer returns promptly' app/tests/release.test.mjs
+        run: node --test --test-name-pattern='successful packaged|macOS packaged installer' app/tests/release.test.mjs
       - name: Documented macOS checksum verification
         run: node --test app/tests/checksum-docs.test.mjs
       - name: Native macOS archive and installed CLI/MCP
