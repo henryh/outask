@@ -4,7 +4,7 @@
     "files": {
       "tasks/task-schema.json": "24d4b7abea66adc76f9c0fef3ab1deaa32aed2723e4c46740f9d635aa8937dbf",
       "tasks/active.json": "d482dfb099bca4458bfa301853fa1f28616991d0f27505a022d994d89815d904",
-      "tasks/done.json": "9c55faa51f03672789f6ab035d83be25c52824d49225755738c0451535527b58"
+      "tasks/done.json": "3caa48922c077fbe578ec09c6fde960ea95d670740851e6099e89f2572dcd4af"
     },
     "counter": 36
   }

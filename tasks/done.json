@@ -608,9 +608,10 @@
       "Project prose cleanup accepted: operator/product/MCP/HTTP guides, shared data contract, release workflow, Work Origin implementation plan, comments and CLI/generated help describe current actions and invariants. Runtime logic, public identifiers, compatibility handling, task history and immutable approved release fixtures retain their behavior/content. Shared skill files were not part of this project patch.",
       "Independent review PASS after 0887af6 explicitly preserved cache bypass (skip opening/building/refresh) and planned-hook authority (validation/reporting; record/Git changes require explicit owner-authorised operations). Project-selection help assertion uses the current exact-directory instruction; behavioral selection tests remain intact.",
       "QA PASS on native Linux Node24.21.0: focused CLI/checksum/release-notes 19/19, packaged platform README/help 1/1, project selection 5/5; final make ci passed locked dependencies/audits, 344 core tests, 18 MCP tests, installed archive and npm lifecycle. Local documentation targets 51/51 resolve; exact draft release notes validated; READMEs remain below 200 lines. Origin/main is an ancestor after fetch. Fresh macOS archive built from current prose; native Mac/Windows execution remains with hosted CI under existing policy.",
-      "Initial full CI identified a literal project-selection help assertion tied to the superseded phrase. Updated it to the positive current selection instruction in 1a4e1d0; focused selection and complete final CI passed. Candidate closure remains local pending the agreed delivery approval boundary."
+      "Initial full CI identified a literal project-selection help assertion tied to the superseded phrase. Updated it to the positive current selection instruction in 1a4e1d0; focused selection and complete final CI passed. Candidate closure remains local pending the agreed delivery approval boundary.",
+      "Owner accepted the final result and requested task completion on 2026-11-13. Final source, installer and current-state prose acceptance confirmed. Reused unchanged review/QA evidence; fetched origin/main remains an ancestor. Candidate is ready for the exact branch-push/draft-PR/required-CI/ready agreement under docs/contributing.md; stable release scope and committed notes remain v1.8 (package1.8.0)."
     ],
-    "updated_at": "2026-11-12T19:34:01.018Z",
-    "completed_at": "2026-11-12"
+    "updated_at": "2026-11-13T04:18:33.454Z",
+    "completed_at": "2026-11-13"
   }
 ]
