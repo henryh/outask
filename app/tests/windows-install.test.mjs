@@ -43,7 +43,7 @@ test('Windows packaged installer forwards arguments and exit status', { skip: pr
       encoding: 'utf8', timeout: 10000, windowsVerbatimArguments: true,
     });
     assert.ifError(result.error);
-    assert.equal(result.status, status, result.stderr);
+    assert.equal(result.status, status, `${action} (expected ${status}): ${result.stderr}\nstdout: ${result.stdout}`);
     assert.deepEqual(JSON.parse(result.stdout), [action, '--release-root', 'custom !OUTASK_WRAPPER_TRAP! 100% releases']);
     if (action === 'uninstall') assert.equal(existsSync(source), false);
   }

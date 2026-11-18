@@ -136,7 +136,9 @@ function writeSupport(releaseRoot, version, target, nodeRange) {
     writeFileSync(join(releaseRoot, 'bin', name), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
   }
   if (target === 'windows-x64') {
-    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nsetlocal EnableDelayedExpansion\r\n(\r\n  setlocal DisableDelayedExpansion\r\n  node "%~dp0app\\scripts\\install-release.mjs" %*\r\n  endlocal\r\n  exit /b !errorlevel!\r\n)\r\n`);
+    // End the batch context before Node can remove this wrapper. Keep the Node
+    // command on the same line so its path and arguments expand before handoff.
+    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\n(goto) 2>nul & node "%~dp0app\\scripts\\install-release.mjs" %*\r\n`);
   }
   writeFileSync(join(releaseRoot, 'release.json'), JSON.stringify({ version, target }) + '\n');
   if (target === 'linux-x64') {
