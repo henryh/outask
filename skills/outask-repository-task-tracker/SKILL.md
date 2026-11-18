@@ -36,9 +36,11 @@ does not establish which records were read or written.
    at a time. Use `search_fields` when relevant details are in custom fields.
    Follow returned cursors with the same query where needed. Fetch
    only candidate details using `get_task` with a numeric `id` or `get_tasks`
-   with numeric `ids`. Project the needed fields confirmed by the effective
-   schema or a prior result. Inspect the schema when a custom field name is
-   unknown. Reuse the ID when the intended outcome already exists. Ask about material ambiguity
+   with numeric `ids`. Project needed fields known to be present. Use the
+   effective schema to identify custom field names. If an absent optional
+   field causes a projection error, retry without it or read all fields
+   for the single relevant candidate. Reuse the ID when the intended outcome
+   already exists. Ask about material ambiguity
    before creating a possible duplicate or changing existing scope. Resolve
    relevant incomplete or failed reads before concluding that a task is missing.
 3. Before writing, obtain the effective schema from `inspect_schema` if you
