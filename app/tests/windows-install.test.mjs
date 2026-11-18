@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import childProcess, { spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { syncBuiltinESMExports } from 'node:module';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, renameSync, symlinkSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,25 +23,29 @@ test('Windows packaged installer forwards arguments and exit status', { skip: pr
   assert.equal(built.status, 0, built.stderr);
   const version = distributionVersion(JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version);
   const archive = join(root, `Outask-${version}-windows-x64.tar.gz`);
-  const unpacked = spawnSync('tar', ['-xzf', archive, '-C', root], { encoding: 'utf8', timeout: 60000 });
-  assert.ifError(unpacked.error);
-  assert.equal(unpacked.status, 0, unpacked.stderr);
-  const source = join(root, 'Outask');
+  const source = join(root, 'Outask !OUTASK_WRAPPER_TRAP! 100% 東京');
+  function extract() {
+    const unpacked = spawnSync('tar', ['-xzf', archive, '-C', root], { encoding: 'utf8', timeout: 60000 });
+    assert.ifError(unpacked.error);
+    assert.equal(unpacked.status, 0, unpacked.stderr);
+    renameSync(join(root, 'Outask'), source);
+  }
+  extract();
   assert.equal(existsSync(join(source, 'app/scripts/install-finish.ps1')), false);
   const installer = join(source, 'app/scripts/install-release.mjs');
-  const wrapper = join(source, 'Install.cmd');
-  const originalWrapper = readFileSync(wrapper);
   for (const [action, status] of [['install', 0], ['update', 7], ['uninstall', 0], ['uninstall', 11]]) {
-    writeFileSync(wrapper, originalWrapper);
+    if (!existsSync(source)) extract();
     const removeWrapper = action === 'uninstall'
-      ? `import { unlinkSync } from 'node:fs'; unlinkSync(new URL('../../Install.cmd', import.meta.url));` : '';
+      ? `import { rmSync } from 'node:fs'; rmSync(new URL('../..', import.meta.url), { recursive: true, force: true });` : '';
     writeFileSync(installer, `${removeWrapper}console.log(JSON.stringify(process.argv.slice(2))); process.exit(${status});\n`);
-    const result = spawnSync('cmd.exe', ['/d', '/s', '/c', `""${join(source, 'Install.cmd')}" ${action} --release-root "custom releases""`], {
+    const result = spawnSync('cmd.exe', ['/d', '/v:off', '/s', '/c', `""${join(source, 'Install.cmd')}" ${action} --release-root "custom !OUTASK_WRAPPER_TRAP! 100% releases""`], {
+      cwd: root, env: { ...process.env, OUTASK_WRAPPER_TRAP: 'expanded' },
       encoding: 'utf8', timeout: 10000, windowsVerbatimArguments: true,
     });
     assert.ifError(result.error);
     assert.equal(result.status, status, result.stderr);
-    assert.deepEqual(JSON.parse(result.stdout), [action, '--release-root', 'custom releases']);
+    assert.deepEqual(JSON.parse(result.stdout), [action, '--release-root', 'custom !OUTASK_WRAPPER_TRAP! 100% releases']);
+    if (action === 'uninstall') assert.equal(existsSync(source), false);
   }
 });
 
