@@ -4,6 +4,39 @@ Use Outask for authorised project planning, task selection, delivery and
 continuation. The tracker preserves task data; agents and project instructions
 own scope, priorities, acceptance, review and Git actions.
 
+## Install Plan to Tasks in Codex CLI
+
+From your target repository, extract the standalone ZIP into its skill directory:
+
+```sh
+mkdir -p .agents/skills
+unzip /path/to/outask-repository-task-tracker.zip -d .agents/skills
+```
+
+To install from an Outask checkout, copy the entire
+[`outask-repository-task-tracker`](../skills/outask-repository-task-tracker/)
+folder into `.agents/skills/`. Use `~/.agents/skills/` for a user-wide install.
+Follow [Linux setup](../skills/outask-repository-task-tracker/references/setup.md),
+then open a new Codex session in the target repository and invoke
+`$outask-repository-task-tracker` with an agreed plan to save.
+
+## Build the standalone ZIP
+
+From the root of the Outask source checkout, package one skill from the
+intended Git revision. Use its commit or tag in place of `HEAD` to rebuild a
+specific revision.
+
+```sh
+skill=outask-repository-task-tracker
+output_dir=$(mktemp -d)
+git archive --format=zip --output="$output_dir/$skill.zip" HEAD:skills "$skill"
+unzip -l "$output_dir/$skill.zip"
+unzip -t "$output_dir/$skill.zip"
+```
+
+The ZIP contains one top-level skill folder, with `SKILL.md` and its referenced
+files. Keep the ZIP outside the source checkout.
+
 ## Authority and adoption
 
 Select or create the project's task stores and schema according to its owner's workflow.

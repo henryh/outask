@@ -53,8 +53,10 @@ codex mcp list
 ```
 
 Start a new Codex session. For Windows, client PATH differences and other hosts,
-see [MCP setup](app/mcp/README.md). Point the agent to the
-[Outask agent skill guide](docs/outask-skill.md), for example:
+see [MCP setup](app/mcp/README.md). Install
+[Plan to Tasks](docs/outask-skill.md#install-plan-to-tasks-in-codex-cli)
+to save plans and resume tasks in Codex CLI. You can also point the agent to
+the [Outask agent guide](docs/outask-skill.md), for example:
 
 > Use the Outask agent skill guide for this project. Prefer the connected
 > `outask` MCP server and respect the project's instructions. Plan and track
