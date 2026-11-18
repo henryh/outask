@@ -23,6 +23,7 @@ const runtimeScripts = [
   'install-migration.mjs',
   'install-path.mjs',
   'install-release.mjs',
+  'uninstall.mjs',
   'inspect-blockers.mjs',
   'lifecycle.mjs',
   'list-tasks.mjs',
@@ -135,7 +136,9 @@ function writeSupport(releaseRoot, version, target, nodeRange) {
     writeFileSync(join(releaseRoot, 'bin', name), readFileSync(join(appRoot, 'bin/tasks'), 'utf8').replace('../runtime.cjs', '../app/runtime.cjs').replace('../cli.mjs', '../app/cli.mjs'), { mode: 0o755 });
   }
   if (target === 'windows-x64') {
-    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\nnode "%~dp0app\\scripts\\install-release.mjs" %*\r\nexit /b %errorlevel%\r\n`);
+    // End the batch context before Node can remove this wrapper. Keep the Node
+    // command on the same line so its path and arguments expand before handoff.
+    writeFileSync(join(releaseRoot, 'Install.cmd'), `@echo off\r\nsetlocal DisableDelayedExpansion\r\nwhere.exe node >nul 2>nul\r\nif errorlevel 1 (\r\n  echo DEPENDENCY_MISSING: install Node.js ${nodeRange} and put node on PATH 1>&2\r\n  exit /b 1\r\n)\r\nnode "%~dp0app\\runtime.cjs"\r\nif errorlevel 1 exit /b 1\r\n(goto) 2>nul & node "%~dp0app\\scripts\\install-release.mjs" %*\r\n`);
   }
   writeFileSync(join(releaseRoot, 'release.json'), JSON.stringify({ version, target }) + '\n');
   if (target === 'linux-x64') {
@@ -373,7 +376,7 @@ Replace YOUR_USER with your user name; pass \`project_path\` in tool calls.
 Update to GitHub Latest stable: run \`outask self update\` from any directory; check stable release availability with \`outask self update --check\`. Requires network access and tar on PATH.
 Uninstall (PowerShell): \`& "$env:LOCALAPPDATA\\Programs\\Outask\\Install.cmd" uninstall\`
 Uninstall (cmd.exe): \`"%LOCALAPPDATA%\\Programs\\Outask\\Install.cmd" uninstall\`
-Uninstall removes the managed launcher; application files, projects and configuration remain.
+Uninstall removes managed commands, installed application files, default global configuration and caches. Projects, skills, source checkouts, custom configuration files and unrelated files remain. Finish writes and close sessions first. PATH/profile settings and writer coordination files remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.
 `);
     return;
@@ -414,7 +417,7 @@ Start a new Codex session; use \`/mcp\` to inspect the server.
 
 Update to GitHub Latest stable: run \`outask self update\` from any directory; check stable release availability with \`outask self update --check\`. Requires network access and tar on PATH.
 Uninstall: \`${uninstall}\`
-Uninstall removes the managed command link; application files, projects and configuration remain.
+Uninstall removes managed commands, installed application files, default global configuration and caches. Projects, skills, source checkouts, custom configuration files and unrelated files remain. Finish writes and close sessions first. PATH/profile settings and writer coordination files remain.
 Use \`--bin-dir\` and \`--release-root\` for custom command and application-parent directories.
 `);
 }

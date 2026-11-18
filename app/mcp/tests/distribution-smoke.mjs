@@ -43,7 +43,7 @@ if (windows) {
   env.OUTASK_TEST_USER_HOME = home;
   env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} --import=${new URL('../../tests/helpers/registry-isolation.mjs', import.meta.url).href}`.trim();
 }
-delete env.TASK_TRACKER_CONFIG;
+delete env.OUTASK_CONFIG;
 
 function invoke(command, args = [], selectedEnv = env) {
   if (windows && command.endsWith('.cmd')) {
@@ -117,7 +117,7 @@ try {
   write('tasks/archive.json', history);
   write('tasks/task-schema.json', schema);
   write('docs/notes.txt', 'User project document\n');
-  const configuration = `${JSON.stringify({ projects: { example: project }, slow_query_ms: 0, custom: { keep: true } }, null, 2)}\n`;
+  const configuration = `${JSON.stringify({ slow_query_ms: 0, custom: { keep: true } }, null, 2)}\n`;
   writeFileSync(oldConfig, configuration);
 
   run('tar', ['-xzf', archive, '-C', downloads]);
@@ -501,18 +501,30 @@ try {
     }
     writeFileSync(command, managedCommand);
   }
-  run(join(updatedInstall, installerName), ['uninstall']);
+  const skill = join(home, 'skills/example');
+  mkdirSync(skill, { recursive: true });
+  const protectedFiles = [join(project, 'config.json'), join(skill, 'config.json'), join(home, 'custom-settings.json'), join(updatedInstall, 'personal-note.txt')];
+  for (const path of protectedFiles) writeFileSync(path, 'retain user content\n');
+  // Build a real disposable generation with the installed runtime and wait for
+  // that process to exit before removing its cache.
+  const buildCache = invoke(process.execPath, ['--input-type=module', '-e',
+    `import { refreshSearchIndex } from ${JSON.stringify(pathToFileURL(join(updatedInstall, 'app/src/search-index.mjs')).href)}; refreshSearchIndex(process.argv[1]);`, project]);
+  assert.equal(buildCache.status, 0, buildCache.stderr || buildCache.stdout);
+  assert.ok(existsSync(join(application, 'cache')), 'Installed use must produce an application cache');
+  const removed = invoke(join(updatedInstall, installerName), ['uninstall'], { ...env, OUTASK_CONFIG: protectedFiles[2] });
+  assert.equal(removed.status, 0, removed.stderr || removed.stdout);
   for (const alias of ['outask', 'tasks']) assert.equal(existsSync(join(bin, windows ? `${alias}.cmd` : alias)), false);
-  assert.equal(existsSync(updatedInstall), true);
+  for (const name of ['app', 'release.json', installerName]) assert.equal(existsSync(join(updatedInstall, name)), false);
   for (const [path, content] of retained) assert.equal(read(path), content);
-  assert.equal(readFileSync(config, 'utf8'), configuration);
+  for (const path of [config, oldConfig, join(application, 'cache')]) assert.equal(existsSync(path), false, path);
+  for (const path of protectedFiles) assert.equal(readFileSync(path, 'utf8'), 'retain user content\n');
   evidence = {
     result: 'PASS', os: { platform: process.platform, version: osVersion, architecture },
     node: { version: process.version, platform: process.platform, architecture: process.arch },
     ...(macosPrerequisites ? { macosPrerequisites } : {}),
     artifact: { version: metadata.version, target, format: archiveDirectory, sha256: createHash('sha256').update(readFileSync(archive)).digest('hex') },
     ...(!windows ? { shell: { command: env.SHELL, startup: process.platform === 'darwin' ? 'login' : 'interactive', node: shellNode } } : {}),
-    checks: ['permanent-aliases-and-canonical-identity', 'single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-uninstall-preservation', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
+    checks: ['permanent-aliases-and-canonical-identity', 'single-platform-installer', 'fresh-project-reads-and-first-create', 'missing-previous-store-rejected', ...(windows ? ['powershell-cmd-launch', 'unicode-install-cp437-preservation', 'persistent-user-path', 'concurrent-cli-mcp-writes', 'termination-recovery', 'unicode-and-spaces'] : ['fresh-shell-command-path', 'mcp-by-command-name']), 'search', 'local-release-helper-overrides', 'clean-and-repeat-install', 'missing-dependencies', 'incompatible-runtime', 'download-removal', 'cli-lifecycle', 'shared-mcp-storage-validation', 'required-and-unknown-fields', 'latest-update-current-resolution-download-install-failures', 'update-preservation-and-complete-uninstall', 'live-mcp-read-write-through-update', 'fresh-cli-mcp-use-update'],
   };
 } catch (error) {
   if (stderr) process.stderr.write(stderr);

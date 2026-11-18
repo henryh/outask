@@ -18,7 +18,7 @@ const project = join(temporary, 'project 東京 person');
 const home = join(temporary, 'home');
 const npmrc = join(temporary, 'npmrc');
 const env = { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, 'AppData/Local'),
-  XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'), TASK_TRACKER_CONFIG: undefined,
+  XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'), OUTASK_CONFIG: undefined,
   npm_config_userconfig: npmrc, NPM_CONFIG_USERCONFIG: npmrc, npm_config_cache: join(temporary, 'cache'),
   PATH: [process.platform === 'win32' ? prefix : join(prefix, 'bin'), dirname(process.execPath), process.env.PATH].join(delimiter) };
 if (process.platform === 'win32') {

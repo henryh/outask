@@ -18,10 +18,10 @@ if (process.platform === 'win32') {
 } else process.env.PATH = [dirname(process.execPath), '/usr/local/bin', '/usr/bin', '/bin'].join(':');
 process.env.XDG_CONFIG_HOME = join(testHome, '.config');
 process.env.XDG_CACHE_HOME = join(testHome, '.cache');
-delete process.env.TASK_TRACKER_CONFIG;
+delete process.env.OUTASK_CONFIG;
 delete process.env.ZDOTDIR;
-after(() => rmSync(testHome, { recursive: true, force: true,
-  maxRetries: process.platform === 'win32' ? 5 : 0, retryDelay: 100 }));
+// Detached cache refreshes can publish their last files while the suite closes.
+after(() => rmSync(testHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
 export function beforeFixtureCleanup(context, callback) {
   const state = resources.get(context);

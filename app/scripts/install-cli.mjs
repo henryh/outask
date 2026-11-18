@@ -8,7 +8,8 @@ import { fail } from '../src/errors.mjs';
 import { reportError } from './output.mjs';
 import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
-import { legacyLocations } from './install-migration.mjs';
+import { legacyLocations, obsoleteInstalls } from './install-migration.mjs';
+import { managedInstallation, uninstallApplication } from './uninstall.mjs';
 
 const windows = process.platform === 'win32';
 const defaults = installLocations();
@@ -67,7 +68,9 @@ Requires Node.js 22.23.3 or later on PATH.
 Command: ${windows ? '%USERPROFILE%\\AppData\\Local\\Programs\\Outask\\commands\\outask.cmd' : '~/.local/bin/outask'}
 Open a new terminal after installation. To update, update this checkout and rerun install.
 Use --release-root for the parent of an existing custom Outask installation.
-Install refuses unrelated commands; uninstall removes the managed command link and preserves application files, projects and configuration.
+Install refuses unrelated commands. Uninstall removes managed commands, installed application files, default global configuration and caches.
+Projects, skills, source checkouts, custom configuration files and unrelated files remain.
+Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile settings and writer coordination files remain.
 `);
   } else {
     if (positionals.length !== 1 || !['install', 'uninstall'].includes(positionals[0]) || values['bin-dir'] === '' || values['release-root'] === '') {
@@ -90,6 +93,8 @@ Install refuses unrelated commands; uninstall removes the managed command link a
         }
       }
     }
+    const installed = positionals[0] === 'uninstall'
+      ? obsoleteInstalls(releaseRoots, undefined, managedInstallation) : [];
     for (const target of targets) {
       const present = inspect(target);
       if (positionals[0] === 'uninstall') {
@@ -109,6 +114,10 @@ Install refuses unrelated commands; uninstall removes the managed command link a
         }
         process.stdout.write(`${already ? 'Already installed' : 'Installed'}: ${target} -> ${source}.\n`);
       }
+    }
+    if (positionals[0] === 'uninstall') {
+      uninstallApplication(installed);
+      console.log('Removed installed application files, default global configuration and caches. Project/skill data, source checkouts, custom configuration files and unrelated files are preserved.');
     }
     if (positionals[0] === 'install') for (const message of configurePath(bin)) console.log(message);
   }

@@ -20,9 +20,8 @@ const id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const limit = z.number().int().min(1).max(maxLimit).optional()
   .describe(`Integer limit from 1 to ${maxLimit}; default 10. For more paged results, use the returned continuation.`);
 const selection = {
-  project: text.optional().describe('Configured project name; exclusive with project_path.'),
   project_path: text.optional().describe('Project directory; defaults to server working directory.'),
-  config: text.optional().describe('Name registry path; otherwise TASK_TRACKER_CONFIG or the Outask default registry.'),
+  config: text.optional().describe('Program configuration path for slow_query_ms; otherwise OUTASK_CONFIG or the Outask default config.'),
   schema_path: text.optional().describe('Project-relative task schema; overrides selection of tasks/task-schema.json or docs/task-schema.json.'),
 };
 const reading = {
@@ -48,11 +47,8 @@ export function createServer() {
     }, async (args) => {
       try {
         if (jsonBytes(args, 0, inputBytes) > inputBytes) fail('INPUT_TOO_LARGE', 'tool arguments exceed 8 MiB');
-        const { project, project_path, config, schema_path, ...input } = args;
-        if (project !== undefined && project_path !== undefined) {
-          fail('INVALID_INPUT', 'select exactly one project: project or project_path');
-        }
-        const path = selectProject({ name: project, path: project_path, config });
+        const { project_path, config, schema_path, ...input } = args;
+        const path = selectProject({ path: project_path });
         const advisories = [];
         const result = operation(path, {
           ...input, schemaPath: schema_path,

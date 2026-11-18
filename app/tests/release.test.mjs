@@ -71,8 +71,8 @@ function versionedBuild(t, packageVersion) {
 }
 before(() => {
   root = mkdtempSync(join(tmpdir(), 'task-tracker-release-test-'));
-  archives = process.env.TASK_TRACKER_RELEASE_DIR || join(root, 'dist');
-  if (!process.env.TASK_TRACKER_RELEASE_DIR) ok(run(process.execPath, [join(repo, 'app/scripts/release.mjs'), '--out-dir', archives, '--target', 'linux-x64', '--target', 'macos-arm64', '--target', 'windows-x64']));
+  archives = process.env.OUTASK_RELEASE_DIR || join(root, 'dist');
+  if (!process.env.OUTASK_RELEASE_DIR) ok(run(process.execPath, [join(repo, 'app/scripts/release.mjs'), '--out-dir', archives, '--target', 'linux-x64', '--target', 'macos-arm64', '--target', 'windows-x64']));
 });
 after(() => { cleanupProjectLocks(root); rmSync(root, { recursive: true, force: true }); });
 function fixture(t, target = 'linux-x64') {
@@ -88,7 +88,7 @@ function fixture(t, target = 'linux-x64') {
   mkdirSync(tools);
   symlinkSync(process.execPath, join(tools, 'node'));
   const env = { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, 'AppData/Local'),
-    XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, TASK_TRACKER_CONFIG: undefined,
+    XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, OUTASK_CONFIG: undefined,
     SHELL: '/bin/bash', NVM_DIR: undefined, ZDOTDIR: undefined, PATH: `${bin}:${tools}:/usr/bin:/bin` };
   const install = (...args) => target === 'windows-x64'
     ? run(process.execPath, [internalInstaller(source), ...args], { env })
@@ -273,8 +273,95 @@ test('download install, repeat, update and uninstall preserve project data and s
   ok(task('validate', project));
   ok(run(join(newer, 'install.sh'), ['uninstall'], { env: f.env }));
   assert.equal(existsSync(join(f.bin, 'tasks')), false);
+  for (const name of ['app', 'release.json', 'install.sh']) assert.equal(existsSync(join(newer, name)), false);
+  assert.equal(readFileSync(join(newer, 'user-note.txt'), 'utf8'), 'keep user content');
   assert.equal(readFileSync(join(project, 'tasks/done.json'), 'utf8'), data);
   assert.deepEqual(JSON.parse(readFileSync(join(project, 'docs/task-schema.json'))), schema);
+});
+
+test('source checkout uninstall removes installed copies and retains checkout and neighboring files', t => {
+  const f = fixture(t);
+  ok(f.install());
+  const checkout = join(f.home, 'checkout');
+  cpSync(f.source, checkout, { recursive: true });
+  rmSync(join(checkout, 'release.json'));
+  const entry = readFileSync(join(checkout, 'app/bin/tasks'));
+  writeFileSync(join(f.installed, 'personal.txt'), 'retain');
+  ok(run(process.execPath, [join(repo, 'app/scripts/install-cli.mjs'), 'uninstall'], { env: f.env }));
+  for (const alias of ['outask', 'tasks']) assert.equal(existsSync(join(f.bin, alias)), false);
+  assert.equal(existsSync(join(f.installed, 'app')), false);
+  assert.equal(existsSync(join(f.installed, 'release.json')), false);
+  assert.equal(readFileSync(join(f.installed, 'personal.txt'), 'utf8'), 'retain');
+  assert.deepEqual(readFileSync(join(checkout, 'app/bin/tasks')), entry);
+  ok(run(process.execPath, [join(repo, 'app/scripts/install-cli.mjs'), 'uninstall'], { env: f.env }));
+});
+
+test('uninstall cleans default and XDG state while preserving project, skill and custom configuration', t => {
+  for (const route of ['archive', 'checkout']) {
+    const f = fixture(t);
+    ok(f.install());
+    const env = { ...f.env, XDG_CONFIG_HOME: join(f.home, 'xdg-config'), XDG_CACHE_HOME: join(f.home, 'xdg-cache') };
+    const defaults = [join(f.installed, 'config.json'), join(env.XDG_CONFIG_HOME, 'outask/config.json'),
+      join(env.XDG_CONFIG_HOME, 'task-tracker/config.json'), join(f.home, '.config/task-tracker/config.json')];
+    const caches = [join(f.installed, 'cache'), join(env.XDG_CACHE_HOME, 'outask/cache')];
+    for (const path of defaults) {
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, '{"slow_query_ms":150}\n');
+    }
+    for (const path of caches) {
+      mkdirSync(join(path, 'project-generation'), { recursive: true });
+      writeFileSync(join(path, 'project-generation/index.sqlite'), 'disposable cache');
+    }
+    const project = join(f.home, 'project');
+    mkdirSync(join(project, 'tasks'), { recursive: true });
+    const retained = new Map([
+      [join(project, 'tasks/active.json'), '[{"id":1,"title":"Retained","status":"pending"}]\n'],
+      [join(project, 'tasks/task-schema.json'), '{"stores":{"active.json":{"statuses":["pending"]}}}\n'],
+      [join(project, 'config.json'), '{"slow_query_ms":42}\n'],
+      [join(f.home, 'skills/example/config.json'), '{"slow_query_ms":43}\n'],
+      [join(f.home, 'custom-registry.json'), '{"slow_query_ms":44}\n'],
+      [join(f.source, 'config.json'), '{"slow_query_ms":45}\n'],
+      [join(f.installed, 'user-note.txt'), 'retain neighboring data\n'],
+      [join(env.XDG_CONFIG_HOME, 'outask/other.txt'), 'retain settings neighbor\n'],
+    ]);
+    for (const [path, bytes] of retained) { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, bytes); }
+    const custom = join(f.home, 'custom-registry.json');
+    env.OUTASK_CONFIG = custom;
+    ok(run(join(f.bin, 'tasks'), ['list', project, '--no-cache'], { env }));
+    const args = route === 'archive' ? [internalInstaller(f.installed), 'uninstall']
+      : [join(repo, 'app/scripts/install-cli.mjs'), 'uninstall'];
+    ok(run(process.execPath, args, { env }));
+    for (const path of [...defaults, ...caches, join(f.installed, 'app'), join(f.installed, 'release.json')]) {
+      assert.equal(existsSync(path), false, `${route}: ${path}`);
+    }
+    for (const alias of ['outask', 'tasks']) assert.equal(existsSync(join(f.bin, alias)), false);
+    for (const [path, bytes] of retained) assert.equal(readFileSync(path, 'utf8'), bytes, `${route}: ${path}`);
+    assert.ok(existsSync(join(f.source, 'app/bin/tasks')), 'extracted source must remain');
+    // The retained extracted/source installer supports absent optional state.
+    ok(run(process.execPath, route === 'archive' ? [internalInstaller(f.source), 'uninstall'] : args, { env }));
+  }
+});
+
+test('uninstall leaves configuration and caches behind user-managed directory aliases intact', t => {
+  const f = fixture(t);
+  ok(f.install());
+  const skill = join(f.home, 'skills/example');
+  mkdirSync(join(skill, 'cache'), { recursive: true });
+  writeFileSync(join(skill, 'config.json'), '{"slow_query_ms":42}\n');
+  writeFileSync(join(skill, 'cache/user-data'), 'preserve');
+  const configHome = join(f.home, 'xdg-config');
+  const cacheHome = join(f.home, 'xdg-cache');
+  for (const path of [configHome, cacheHome]) {
+    mkdirSync(path);
+    symlinkSync(skill, join(path, 'outask'));
+  }
+  ok(run(process.execPath, [internalInstaller(f.installed), 'uninstall'], {
+    env: { ...f.env, XDG_CONFIG_HOME: configHome, XDG_CACHE_HOME: cacheHome },
+  }));
+  assert.equal(readFileSync(join(skill, 'config.json'), 'utf8'), '{"slow_query_ms":42}\n');
+  assert.equal(readFileSync(join(skill, 'cache/user-data'), 'utf8'), 'preserve');
+  assert.equal(readlinkSync(join(configHome, 'outask')), skill);
+  assert.equal(readlinkSync(join(cacheHome, 'outask')), skill);
 });
 
 test('managed upgrades replace the previous root installers and preserve user data and unknown files', (t) => {
@@ -436,7 +523,7 @@ test('a legacy packaged updater migrates its default root, registry and command 
   mkdirSync(dirname(oldConfig), { recursive: true });
   const settings = '{"projects":{},"unknown":{"preserved":[1,2]}}\n';
   writeFileSync(oldConfig, settings);
-  const env = { ...f.env, XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, TASK_TRACKER_CONFIG: undefined };
+  const env = { ...f.env, XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, OUTASK_CONFIG: undefined };
   // Supply the task-tracker application parent explicitly.
   ok(run(process.execPath, [internalInstaller(f.source), 'install', '--bin-dir', f.bin, '--release-root', oldRoot], { env }));
   for (const name of ['outask', 'tasks']) {
@@ -458,7 +545,7 @@ test('installation preserves default state created by source commands and refuse
   const oldConfig = join(f.home, '.config/task-tracker/config.json');
   mkdirSync(dirname(oldConfig), { recursive: true });
   writeFileSync(oldConfig, '{"projects":{},"unknown":true}\n');
-  const env = { ...f.env, XDG_CONFIG_HOME: undefined, TASK_TRACKER_CONFIG: undefined };
+  const env = { ...f.env, XDG_CONFIG_HOME: undefined, OUTASK_CONFIG: undefined };
   const blocked = run(process.execPath, [internalInstaller(f.source)], { env });
   assert.notEqual(blocked.status, 0);
   assert.match(blocked.stderr, /CONFIG_CONFLICT/);
@@ -479,7 +566,7 @@ test('command uninstall preserves a user-selected symlinked legacy registry with
   mkdirSync(dirname(legacy), { recursive: true });
   symlinkSync(external, legacy);
   ok(run(process.execPath, [internalInstaller(f.installed), 'uninstall'], {
-    env: { ...f.env, XDG_CONFIG_HOME: undefined, TASK_TRACKER_CONFIG: undefined },
+    env: { ...f.env, XDG_CONFIG_HOME: undefined, OUTASK_CONFIG: undefined },
   }));
   for (const name of ['outask', 'tasks']) assert.equal(existsSync(join(f.bin, name)), false);
   assert.equal(readlinkSync(legacy), external);

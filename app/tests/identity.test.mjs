@@ -31,7 +31,7 @@ test('default registry recognises legacy settings without rewriting and prefers 
   writeFileSync(canonical, '{"slow_query_ms":42}\n');
   assert.equal(readConfig(undefined, env).path, canonical);
   assert.equal(readConfig(undefined, env).slowQueryMs, 42);
-  assert.equal(readConfig(undefined, { ...env, TASK_TRACKER_CONFIG: legacy }).path, legacy);
+  assert.equal(readConfig(undefined, { ...env, OUTASK_CONFIG: legacy }).path, legacy);
   assert.equal(readConfig(legacy, env).settings.unknown.preserved, true);
 });
 
