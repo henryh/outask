@@ -8,7 +8,7 @@ node app/scripts/install-cli.mjs install
 outask --help
 ```
 
-Keep the checkout; remove its command with `node app/scripts/install-cli.mjs uninstall`. Use `outask --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
+Keep the checkout; uninstall with `node app/scripts/install-cli.mjs uninstall` (cleanup rules below apply). Use `outask --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
 
 ## Installation and updates
 
@@ -38,11 +38,12 @@ Let existing MCP/HTTP sessions and active writes finish normally. Existing sessi
 Managed files are replaced; user files, tasks and configuration remain. Resolve
 an unrelated `tasks` collision explicitly. The self updater retains custom paths. Keep the installation's command directory on PATH. Reuse its `--bin-dir` and `--release-root` when invoking installer update/uninstall actions directly.
 
-From the installed application's directory, remove the command with
+Finish writes and close CLI/MCP/HTTP sessions. From the installed application's directory, uninstall with
 `./install.sh uninstall` on Linux, `./Install.command uninstall` on macOS,
 `./Install.cmd uninstall` in PowerShell or `Install.cmd uninstall` in cmd.exe.
-Application files and project data remain;
-PATH/profile settings remain. Move any user files before removing the application.
+Uninstall removes managed `outask`/`tasks` commands, confirmed installed application files, default global configuration (including XDG and migrated legacy locations) and application caches. Project/skill tasks and configuration, source checkouts, configuration files at arbitrary `--config` / `OUTASK_CONFIG` locations and unrelated files remain. Cleanup does not follow directory symlinks into external data.
+
+Existing PATH/profile settings and writer coordination files remain; coordination files must retain their inodes for running or independently loaded writers. Custom installations require their original `--bin-dir` and `--release-root`. npm uninstall has its own [cleanup rules](../docs/npm.md).
 
 ## Verify a download
 
@@ -53,12 +54,13 @@ Before extracting, download `SHA256SUMS` from the same release and follow the [p
 ```bash
 outask list --limit 10
 outask list --project-path /work/my-project --limit 10
-outask get --project my-project 42 --fields id,title,status
+outask get --project-path /work/my-project 42 --fields id,title,status
 ```
 
-The default project is the current directory. A positional project path or `--project-path` selects a directory; `--project` selects a
-configured name. Choose one. Relative paths resolve from the caller's directory.
-See [configuration](#configuration) for names and schema selection.
+The default project is the current directory. A positional project path or
+`--project-path` selects a directory. Choose one. Relative paths resolve from the
+caller's directory. No parent directory or project-name search is performed.
+See [configuration](#configuration) for program settings and schema selection.
 
 ## Task commands
 
@@ -167,13 +169,13 @@ outask validate || exit $?
 Git invokes `pre-commit` from the working-tree root, so this uses the current project. Keep `outask` on PATH. Shared hooks, linked worktrees and nested projects need manual integration appropriate to their target; use the printed invocation when an explicit target or schema is needed. Remove only the added validation line to undo integration.
 
 ## Configuration
-`--config` selects the global registry; then `TASK_TRACKER_CONFIG`, then
+`--config` selects the global program configuration; then `OUTASK_CONFIG`, then
 the platform Outask root's `config.json`. Explicit `XDG_CONFIG_HOME` selects
 `$XDG_CONFIG_HOME/outask/config.json`; explicit `XDG_CACHE_HOME` selects
 `$XDG_CACHE_HOME/outask/cache`. Otherwise disposable indexes live in `cache/`
-inside the Outask root. Registry migration links source filenames to the canonical registry. Conflicting registries require reconciliation.
-It can map `projects` names to absolute paths, define an absolute `projects_root`
-and set `slow_query_ms`. Conflicting name locations require an explicit path.
+inside the Outask root. Configuration migration links source filenames to the canonical settings file. Conflicting settings files require reconciliation.
+The only supported setting is non-negative integer `slow_query_ms` (default `150`).
+Unknown JSON fields are preserved and ignored. Project selection uses paths or cwd.
 
 ## Schema
 ```bash
@@ -184,7 +186,7 @@ outask schema --write
 Schema selection uses `tasks/task-schema.json`, then existing
 `docs/task-schema.json`. If both exist, choose with `--schema-path`; an explicit
 path is project-relative, must exist and cannot use symlinks.
-Use `--schema-path` to select a schema and `--config` to select the registry. `schema --write` refuses an existing file;
+Use `--schema-path` to select a schema and `--config` to select global settings. `schema --write` refuses an existing file;
 use `--write --replace` only when you intend to expand the current schema while
 preserving custom rules. Validate after schema changes. See the
 [shared data contract](../docs/contract.md) for configuration and field rules.

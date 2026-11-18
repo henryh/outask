@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { fixture, run, snapshot, task, writeStore } from './fixtures.mjs';
 import { selectProject } from '../src/projects.mjs';
+import { readConfig } from '../src/config.mjs';
 
 const entry = fileURLToPath(new URL('../bin/tasks', import.meta.url));
 const installer = fileURLToPath(new URL('../scripts/install-cli.mjs', import.meta.url));
@@ -49,7 +50,7 @@ test('bare invocation gives a brief command guide without preparing a project an
   const root = fixture(t, []);
   const empty = join(root, 'empty');
   mkdirSync(empty);
-  const options = { cwd: empty, env: { ...process.env, HOME: empty, TASK_TRACKER_CONFIG: join(empty, 'absent-config.json') } };
+  const options = { cwd: empty, env: { ...process.env, HOME: empty, OUTASK_CONFIG: join(empty, 'absent-config.json') } };
   const result = success(cli([], options));
   assert.equal(result.stderr, '');
   const names = [...result.stdout.matchAll(/^  ([\w-]+)\s+\S.+$/gm)].map((match) => match[1]);
@@ -58,14 +59,14 @@ test('bare invocation gives a brief command guide without preparing a project an
   assert.match(result.stdout, /outask <command> --help/);
   assert.match(result.stdout, /outask --help/);
   assert.match(result.stdout, /outask --version/);
-  assert.doesNotMatch(result.stdout, /Exit [01]|TASK_TRACKER_CONFIG|task-schema\.json|project instructions/);
+  assert.doesNotMatch(result.stdout, /Exit [01]|OUTASK_CONFIG|task-schema\.json|project instructions/);
   const full = success(cli(['--help'], options));
   assert.equal(full.stderr, '');
   assert.match(full.stdout, /Outask manages project tasks stored as JSON/);
   assert.match(full.stdout, /https:\/\/github\.com\/henryh\/outask/);
   assert.match(full.stdout, /outask create --title/);
   assert.match(full.stdout, /--project-path <directory>/);
-  assert.doesNotMatch(full.stdout, /Exit [01]|TASK_TRACKER_CONFIG|task-schema\.json|project instructions/);
+  assert.doesNotMatch(full.stdout, /Exit [01]|OUTASK_CONFIG|task-schema\.json|project instructions/);
   for (const alias of ['-h', 'help']) assert.equal(success(cli([alias], options)).stdout, full.stdout);
   assert.match(success(cli(['list', '--help'], options)).stdout, /Usage: outask list/);
   assert.deepEqual(readdirSync(empty), []);
@@ -95,7 +96,7 @@ test('installed symlink works outside checkout, matches scripts, updates and uni
   const project = fixture(t);
   const elsewhere = fixture(t, []);
   const bin = join(elsewhere, 'bin');
-  const env = { ...process.env, HOME: elsewhere, SHELL: '/bin/bash', PATH: `${bin}:${dirname(process.execPath)}` };
+  const env = { ...process.env, HOME: elsewhere, XDG_CONFIG_HOME: join(elsewhere, '.config'), XDG_CACHE_HOME: join(elsewhere, '.cache'), LOCALAPPDATA: join(elsewhere, 'AppData/Local'), SHELL: '/bin/bash', PATH: `${bin}:${dirname(process.execPath)}` };
   const install = (action) => execute(process.execPath, [installer, action, '--bin-dir', bin], { env, cwd: elsewhere });
   const before = snapshot(project);
   success(install('install'));
@@ -155,11 +156,11 @@ test('installed list guidance preserves original selectors, query arguments and 
   const path = "selected ' $(touch path-injected)";
   symlinkSync(project, join(project, path));
   const registry = 'registry file.json';
-  config(join(project, registry), { projects: { named: project } });
+  config(join(project, registry), { slow_query_ms: 0 });
   const flags = ['--store', 'active', '--store=done', '--where', `note=${needle}`, '--where=status=pending',
     '--id=1', '--id', '2', '--id=3', '--sort', 'id', '--desc', '--fields', 'id,title,note',
     '--format', 'ids', '--limit', '1', '--offset=0', '--offset', '0'];
-  for (const selector of [[path], ['--project-path', path], ['--project=named', '--config', registry], ['--', path]]) {
+  for (const selector of [[path], ['--project-path', path], ['--project-path', path, '--config', registry], ['--', path]]) {
     const result = success(execute('tasks', ['list', ...flags, ...selector], { cwd: project, env }));
     assert.equal(result.stdout, '3\n');
     const command = result.stderr.match(/Next page: (.+)/)[1];
@@ -170,7 +171,7 @@ test('installed list guidance preserves original selectors, query arguments and 
       assert.ok(command.includes(argument), command);
     }
     if (selector[0] === '--project-path') assert.match(command, /--project-path '/);
-    if (selector[0] === '--project=named') assert.match(command, /--project=named --config 'registry file.json'/);
+    if (selector.includes('--config')) assert.match(command, /--config 'registry file.json'/);
     if (selector[0] === '--') assert.match(command, / -- 'selected /);
     assert.equal(follow(result).stdout, '2\n');
   }
@@ -247,7 +248,7 @@ test('installer refuses unrelated target, dangling links and PATH commands', (t)
   const target = join(bin, 'tasks');
   writeFileSync(target, 'unrelated\n');
   for (const action of ['install', 'uninstall']) {
-    error(execute(process.execPath, [installer, action, '--bin-dir', bin]), 'COMMAND_EXISTS');
+    error(execute(process.execPath, [installer, action, '--bin-dir', bin], { env: { ...process.env, HOME: root, XDG_CONFIG_HOME: join(root, '.config'), XDG_CACHE_HOME: join(root, '.cache'), LOCALAPPDATA: join(root, 'AppData/Local') } }), 'COMMAND_EXISTS');
     assert.equal(readFileSync(target, 'utf8'), 'unrelated\n');
   }
   const dangling = join(root, 'dangling');
@@ -296,37 +297,36 @@ test('development installer rejects a release lookalike outside its managed loca
   }), 'COMMAND_EXISTS');
 });
 
-test('name configuration precedence, immediate children, mapping collisions and explicit paths', (t) => {
-  const root = fixture(t, []);
-  const first = fixture(t, [task(1)]);
-  const second = fixture(t, [task(2)]);
-  const projects = join(root, 'projects');
-  mkdirSync(projects);
-  symlinkSync(first, join(projects, 'hyphen-name'));
-  const xdg = join(root, 'xdg');
-  const normal = config(join(xdg, 'task-tracker/config.json'), { projects_root: projects });
-  const override = config(join(root, 'override.json'), { projects: { 'hyphen-name': second } });
-  const env = { ...process.env, XDG_CONFIG_HOME: xdg, TASK_TRACKER_CONFIG: undefined };
-  assert.equal(selectProject({ name: 'hyphen-name' }, env), first);
-  assert.equal(selectProject({ name: 'hyphen-name' }, { ...env, TASK_TRACKER_CONFIG: override }), second);
-  assert.equal(selectProject({ name: 'hyphen-name', config: normal }, { ...env, TASK_TRACKER_CONFIG: override }), first);
-  success(cli(['get', '1', '--project', 'hyphen-name', '--fields', 'id'], { env, cwd: root }));
-  config(normal, { projects_root: projects, projects: { 'hyphen-name': second } });
-  error(cli(['list', '--project', 'hyphen-name'], { env }), 'AMBIGUOUS_PROJECT');
-  config(normal, { projects_root: projects, projects: { 'hyphen-name': first } });
-  assert.equal(selectProject({ name: 'hyphen-name' }, env), first);
-  writeFileSync(normal, '{broken');
-  success(cli(['list', '--project-path', first], { env }));
-  success(cli(['list'], { env, cwd: first }));
-  error(cli(['list', '--project', 'hyphen-name'], { env }), 'INVALID_JSON');
-  error(cli(['list', first, '--project', 'hyphen-name'], { env }), 'INVALID_INPUT');
-  error(cli(['list', '--project', 'a', '--project', 'b'], { env }), 'INVALID_INPUT');
-  error(cli(['get', '1', '--project-path', first, '--project', 'hyphen-name'], { env }), 'INVALID_INPUT');
-  error(cli(['list', '--project', '../hyphen-name'], { env }), 'INVALID_INPUT');
-  config(normal, { projects: { external: first } });
-  assert.equal(selectProject({ name: 'external' }, env), first);
-  error(cli(['list', '--project', 'unknown'], { env }), 'PROJECT_NOT_FOUND');
+test('project paths and cwd ignore name configuration and reject removed selectors', (t) => {
+  const root = fixture(t, [task(1)]);
+  const selected = fixture(t, [task(2)]);
+  const registry = config(join(root, 'config.json'), {
+    projects_root: 'not-an-absolute-path', projects: ['unrecognised'], custom: { keep: true }, slow_query_ms: 0,
+  });
+  const bytes = readFileSync(registry);
+  const env = { ...process.env, OUTASK_CONFIG: registry };
+  assert.equal(selectProject({ path: selected }), selected);
+  success(cli(['get', '1', '--fields', 'id'], { env, cwd: root }));
+  success(cli(['get', '2', '--project-path', selected, '--fields', 'id'], { env, cwd: root }));
+  success(cli(['get', selected, '2', '--fields', 'id'], { env, cwd: root }));
+  for (const args of [['list', '--project', 'named'], ['list', root, '--project-path', selected],
+    ['list', '--project-path', root, '--project-path', selected]]) error(cli(args, { env }), 'INVALID_INPUT');
   error(cli(['list', '--project-path', join(root, 'absent')], { env }), 'PROJECT_NOT_FOUND');
+  assert.deepEqual(readConfig(registry).settings, JSON.parse(bytes));
+  assert.deepEqual(readFileSync(registry), bytes);
+});
+
+test('slow query configuration follows explicit, environment and default paths', (t) => {
+  const root = fixture(t, []);
+  const xdg = join(root, 'xdg');
+  const normal = config(join(xdg, 'outask/config.json'), { slow_query_ms: 5 });
+  const override = config(join(root, 'override.json'), { slow_query_ms: 10 });
+  const explicit = config(join(root, 'explicit.json'), { slow_query_ms: 0 });
+  const env = { ...process.env, XDG_CONFIG_HOME: xdg, OUTASK_CONFIG: undefined };
+  assert.equal(readConfig(undefined, env).path, normal);
+  assert.equal(readConfig(undefined, env).slowQueryMs, 5);
+  assert.equal(readConfig(undefined, { ...env, OUTASK_CONFIG: override }).slowQueryMs, 10);
+  assert.equal(readConfig(explicit, { ...env, OUTASK_CONFIG: override }).slowQueryMs, 0);
 });
 
 test('CLI preserves compact defaults, exact filters, human help and error streams', (t) => {

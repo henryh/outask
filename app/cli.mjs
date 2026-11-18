@@ -43,13 +43,12 @@ Task commands use the current project directory by default.
 Command options: outask <command> --help. Full guide: outask --help.
 Installed version: outask --version.
 `;
-const selectionHelp = `Select one project with a positional path, --project-path <path>, or --project <name>.
+const selectionHelp = `Select one project with a positional path or --project-path <path>.
 With no selector, use the current working directory. Selectors cannot be combined.
-  --config <path>      Program config; overrides TASK_TRACKER_CONFIG, then XDG_CONFIG_HOME
-                      (default: the platform Outask root/config.json). Paths bypass name mappings.
-  --schema-path <file> Project-relative task schema; distinct from registry --config.
-Names resolve immediate projects_root children and explicit projects mappings;
-conflicting locations fail. No parent search or automatic worktree selection.
+  --config <path>      Program config; overrides OUTASK_CONFIG, then XDG_CONFIG_HOME
+                      (default: the platform Outask root/config.json).
+  --schema-path <file> Project-relative task schema; distinct from program --config.
+No parent search or automatic worktree selection.
 `;
 const help = `Outask manages project tasks stored as JSON alongside your code.
 
@@ -119,9 +118,9 @@ export async function main(args) {
     const command = commands[name];
     const usage = command.usage.replace(/node app\/(?:scripts\/)?[^ ]+/, `outask ${name}`);
     const { values, positionals, tokens } = parseArgs({ args: rest, allowPositionals: true, tokens: true, options: {
-      ...command.options, project: { type: 'string' }, 'project-path': { type: 'string' }, config: { type: 'string' },
+      ...command.options, 'project-path': { type: 'string' }, config: { type: 'string' },
     } });
-    for (const option of ['project', 'project-path', 'config', 'schema-path']) {
+    for (const option of ['project-path', 'config', 'schema-path']) {
       if (tokens.filter((token) => token.kind === 'option' && token.name === option).length > 1) {
         fail('INVALID_INPUT', `--${option} may be supplied only once`);
       }
@@ -134,14 +133,14 @@ export async function main(args) {
     const withId = !['list', 'get-many', 'validate', 'create', 'hook', 'http', 'schema'].includes(name);
     const selected = parseProject(positionals, usage, withId);
     const hasPath = positionals.length > (withId ? 1 : 0);
-    if (Number(hasPath) + Number(values.project !== undefined) + Number(values['project-path'] !== undefined) > 1) {
-      fail('INVALID_INPUT', 'select exactly one project: positional path, --project-path or --project');
+    if (Number(hasPath) + Number(values['project-path'] !== undefined) > 1) {
+      fail('INVALID_INPUT', 'select exactly one project: positional path or --project-path');
     }
     if (values['project-path'] === '' || values.config === '' || values['schema-path'] === '') fail('INVALID_INPUT', 'paths must not be empty');
-    const project = selectProject({ name: values.project, path: values['project-path'] ?? selected.project, config: values.config });
+    const project = selectProject({ path: values['project-path'] ?? selected.project });
     const forwarded = [];
     for (const token of tokens) {
-      if (token.kind !== 'option' || ['project', 'project-path', 'config'].includes(token.name)) continue;
+      if (token.kind !== 'option' || ['project-path', 'config'].includes(token.name)) continue;
       forwarded.push(token.value === undefined ? token.rawName : `--${token.name}=${token.value}`);
     }
     try {

@@ -18,7 +18,7 @@ import { parseInteger, parseProject, parseSchema, parseSelection, projectHelp } 
 
 export const usage = 'node app/http.mjs [project-path] [--port <port>] [--allow-origin <origin>] [--schema-path <file>]';
 export const options = { port: { type: 'string', default: '4318' }, 'allow-origin': { type: 'string', multiple: true }, 'schema-path': { type: 'string' }, help: { type: 'boolean', short: 'h' } };
-export const help = `Usage: ${usage}\nServe read-only tasks on 127.0.0.1 (default port 4318; 0 selects a free port).\nRequires TASKS_HTTP_TOKEN (32–512 URL-safe characters).\nRepeat --allow-origin for exact browser origins; see the HTTPS proxy guide.\n--schema-path selects a project-relative schema for this server process.\nGET /tasks/search?query=<text> searches content; GET /tasks/batch?ids=2,1 retrieves ordered IDs.\nBoth support fields, store/group, limit and cursor; search also supports search-fields.\n${projectHelp}HTTP routes and access restrictions: app/HTTP.md\n`;
+export const help = `Usage: ${usage}\nServe read-only tasks on 127.0.0.1 (default port 4318; 0 selects a free port).\nRequires OUTASK_HTTP_TOKEN (32–512 URL-safe characters).\nRepeat --allow-origin for exact browser origins; see the HTTPS proxy guide.\n--schema-path selects a project-relative schema for this server process.\nGET /tasks/search?query=<text> searches content; GET /tasks/batch?ids=2,1 retrieves ordered IDs.\nBoth support fields, store/group, limit and cursor; search also supports search-fields.\n${projectHelp}HTTP routes and access restrictions: app/HTTP.md\n`;
 
 function tokenDigest(token) {
   return createHash('sha256').update(token).digest();
@@ -121,9 +121,9 @@ function errorStatus(code) {
   return 400;
 }
 
-export function createHttpServer(projectPath, { token = process.env.TASKS_HTTP_TOKEN, origins = [], schemaPath, config } = {}) {
+export function createHttpServer(projectPath, { token = process.env.OUTASK_HTTP_TOKEN, origins = [], schemaPath, config } = {}) {
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,512}$/.test(token)) {
-    fail('INVALID_INPUT', 'TASKS_HTTP_TOKEN must contain 32–512 URL-safe characters (letters, digits, _ or -)');
+    fail('INVALID_INPUT', 'OUTASK_HTTP_TOKEN must contain 32–512 URL-safe characters (letters, digits, _ or -)');
   }
   const expectedToken = tokenDigest(token);
   const allowed = allowedOrigins(origins);

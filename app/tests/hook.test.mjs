@@ -20,7 +20,7 @@ function repo(t) {
   const root = mkdtempSync(join(tmpdir(), "task-hook-'"));
   t.after(() => { cleanupProjectLocks(root); rmSync(root, { recursive: true, force: true }); assert.equal(existsSync(root), false); });
   const env = { ...process.env, HOME: root, SHELL: '/bin/bash', XDG_CONFIG_HOME: join(root, '.config'),
-    XDG_CACHE_HOME: join(root, '.cache'), TASK_TRACKER_CONFIG: undefined, ZDOTDIR: undefined };
+    XDG_CACHE_HOME: join(root, '.cache'), OUTASK_CONFIG: undefined, ZDOTDIR: undefined };
   const git = (...args) => execute('git', args, root, env);
   ok(git('init', '-q'));
   ok(git('config', 'user.name', 'Hook Test'));
@@ -33,7 +33,7 @@ function repo(t) {
 test('installed CLI onboarding prepares, guards blockers, restores, validates manual edits and opts into commits', (t) => {
   const { root, git } = repo(t);
   const bin = join(root, 'bin');
-  const env = { ...process.env, HOME: root, SHELL: '/bin/bash', ZDOTDIR: undefined, TASK_TRACKER_CONFIG: undefined,
+  const env = { ...process.env, HOME: root, SHELL: '/bin/bash', ZDOTDIR: undefined, OUTASK_CONFIG: undefined,
     XDG_CONFIG_HOME: join(root, '.config'), XDG_CACHE_HOME: join(root, '.cache'), PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin` };
   ok(execute(process.execPath, [installer, 'install', '--bin-dir', bin], root, env));
   const cli = (...args) => execute(join(bin, 'tasks'), args, root, env);
@@ -141,8 +141,8 @@ test('configured hooks, foreign hooks, modified ownership and shared locations a
   assert.match(cli('hook', '--install', '--remove').stderr, /^INVALID_INPUT:/);
   assert.match(cli('hook', root, '--project-path', root, '--install').stderr, /^INVALID_INPUT:/);
   const registry = join(root, 'registry.json');
-  writeFileSync(registry, JSON.stringify({ projects: { named: root } }));
-  assert.match(cli('hook', '--project', 'named', '--config', registry, '--remove').stderr, /Existing or modified hook/);
+  writeFileSync(registry, JSON.stringify({ slow_query_ms: 0 }));
+  assert.match(cli('hook', '--project-path', root, '--config', registry, '--remove').stderr, /Existing or modified hook/);
 });
 
 

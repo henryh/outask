@@ -414,7 +414,7 @@ test('HTTP defaults stay compact and oversized details remain bounded', async (t
 });
 
 async function startProcess(t, args, root, readToken = token) {
-  const child = spawn(process.execPath, args, { cwd: root, env: { ...process.env, TASKS_HTTP_TOKEN: readToken } });
+  const child = spawn(process.execPath, args, { cwd: root, env: { ...process.env, OUTASK_HTTP_TOKEN: readToken } });
   async function stop() {
     if (child.exitCode === null && child.signalCode === null) { child.kill(); await once(child, 'exit'); }
   }
@@ -459,23 +459,23 @@ test('startup rejects invalid secret/origin configuration without disclosing it'
   }
   assert.throws(() => createHttpServer(root, { token, schemaPath: 'missing.json' }), { code: 'READ_ERROR' });
   assert.throws(() => createHttpServer(root, { token, schemaPath: '../outside.json' }), { code: 'INVALID_INPUT' });
-  const result = run('../http', [root], { env: { ...process.env, TASKS_HTTP_TOKEN: '' } });
+  const result = run('../http', [root], { env: { ...process.env, OUTASK_HTTP_TOKEN: '' } });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /TASKS_HTTP_TOKEN/);
+  assert.match(result.stderr, /OUTASK_HTTP_TOKEN/);
   assert.deepEqual(snapshot(root), before);
 });
 
-test('HTTP public selectors retain cwd, positional and configured project selection', async (t) => {
+test('HTTP public selectors retain cwd, positional and explicit project selection', async (t) => {
   const root = fixture(t, [task(1, { title: 'Current' })]);
   const selected = fixture(t, [task(1, { title: 'Selected' })]);
   mkdirSync(join(root, 'config'));
   writeFileSync(join(root, 'config/schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } } }));
   const config = join(root, 'registry.json');
-  writeFileSync(config, JSON.stringify({ projects: { example: selected }, slow_query_ms: 0 }));
+  writeFileSync(config, JSON.stringify({ projects_root: false, projects: null, slow_query_ms: 0 }));
   const executable = fileURLToPath(new URL('../bin/tasks', import.meta.url));
   for (const [args, title] of [
     [[], 'Current'], [[selected], 'Selected'],
-    [['--project', 'example', '--config', config], 'Selected'],
+    [['--project-path', selected, '--config', config], 'Selected'],
     [['--schema-path', 'config/schema.json'], 'Current'],
   ]) {
     const server = await startProcess(t, [executable, 'http', ...args, '--port', '0', '--allow-origin', 'https://ui.example', '--allow-origin', 'http://localhost:3000'], root);

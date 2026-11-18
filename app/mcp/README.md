@@ -89,9 +89,9 @@ for coordination-file cleanup and incompatible protocol migrations.
 ## Tools and selection
 
 Select a project in each tool call. Supply
-an absolute `project_path` when the client's working directory is unknown, or
-use `project` for a configured name. They are mutually exclusive; neither means
-the server's current directory. `config` selects the global registry and
+an absolute `project_path` when the client's working directory is unknown.
+Omit it to use the server's current directory. `config` selects the global
+program configuration for `slow_query_ms` and
 `schema_path` independently selects a project-relative schema. See
 [project selection](../README.md#selecting-a-project) and
 [configuration](../../docs/contract.md#implemented-read-configuration).

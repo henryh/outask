@@ -243,7 +243,7 @@ test('slow scan advisories respect threshold boundaries and the response budget'
   const page = searchTasks(warned, 'find', { fields: ['id'], slowQueryMs: 0 });
   assert.equal(page.advisories.length, 1);
   assert.ok(Buffer.byteLength(`${JSON.stringify(page, null, 2)}\n`, 'utf8') <= 32 * 1024);
-  const env = { ...process.env, TASK_TRACKER_CONFIG: registry };
+  const env = { ...process.env, OUTASK_CONFIG: registry };
   const output = success(run('search-tasks', [warned, 'find', '--fields', 'id', '--format', 'json'], { env }));
   assert.equal(JSON.parse(output.stdout).advisories[0].code, 'SLOW_SCAN');
   const human = success(cli(['search', 'find', '--fields', 'id', '--config', registry], { cwd: warned }));
@@ -498,7 +498,7 @@ test('invalid search settings use the shared configuration error path', (context
     const registry = join(root, 'registry.json');
     writeFileSync(registry, JSON.stringify({ slow_query_ms: slowQueryMs }));
     assert.throws(() => readConfig(registry), { code: 'INVALID_CONFIG' });
-    const env = { ...process.env, TASK_TRACKER_CONFIG: registry };
+    const env = { ...process.env, OUTASK_CONFIG: registry };
     const standalone = run('search-tasks', [root, 'task'], { env });
     assert.equal(standalone.status, 1);
     assert.match(standalone.stderr, /^INVALID_CONFIG:.*slow_query_ms/);
@@ -525,8 +525,8 @@ test('standalone and installed search support project selection, metadata and co
   assert.equal(explicit.stdout, '1 2 3\n');
   const registry = join(root, 'registry', 'config.json');
   mkdirSync(dirname(registry), { recursive: true });
-  writeFileSync(registry, JSON.stringify({ projects: { selected: root } }));
-  const named = success(cli(['search', 'remembered', '--project', 'selected', '--config', registry, '--format', 'ids']));
+  writeFileSync(registry, JSON.stringify({ slow_query_ms: 0, projects_root: false, projects: null }));
+  const named = success(cli(['search', 'remembered', '--project-path', root, '--config', registry, '--format', 'ids']));
   assert.equal(named.stdout, '1 2 3\n');
   const defaultOutput = success(cli(['search', 'remembered'], { cwd: root }));
   assert.match(defaultOutput.stdout, /^id\s+title\s+status\s+matched_fields\s+snippets\n/);
