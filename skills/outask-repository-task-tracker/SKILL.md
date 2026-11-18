@@ -36,11 +36,13 @@ does not establish which records were read or written.
    at a time. Use `search_fields` when relevant details are in custom fields.
    Follow returned cursors with the same query where needed. Fetch
    only candidate details using `get_task` with a numeric `id` or `get_tasks`
-   with numeric `ids`, projecting the fields needed to judge a match. Reuse
-   the ID when the intended outcome already exists. Ask about material ambiguity
+   with numeric `ids`. Project the needed fields confirmed by the effective
+   schema or a prior result. Inspect the schema when a custom field name is
+   unknown. Reuse the ID when the intended outcome already exists. Ask about material ambiguity
    before creating a possible duplicate or changing existing scope. Resolve
    relevant incomplete or failed reads before concluding that a task is missing.
-3. Before writing, call `inspect_schema`. Use its field types, required fields,
+3. Before writing, obtain the effective schema from `inspect_schema` if you
+   have not read it in this session. Use its field types, required fields,
    default status, and store rules. Call `create_task` with a nested `task` object
    containing the title and applicable project fields. Let Outask allocate IDs.
    When authorized dependencies need IDs, save prerequisites first and use
