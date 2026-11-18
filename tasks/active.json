@@ -463,24 +463,6 @@
     "updated_at": "2026-11-11T08:38:17.928Z"
   },
   {
-    "id": 37,
-    "title": "Ship the Plan to Tasks skill for Codex CLI",
-    "status": "in_progress",
-    "priority": "medium",
-    "blockers": [],
-    "values": "Goal: grow adoption of free Outask among developers who plan with AI agents. Codex CLI users can turn a chat plan into durable repository tasks and resume work in a fresh session. Verify the same task IDs across runs and demonstrate bounded task reads and targeted details to limit context and token use.",
-    "scope": "Create the free Plan to Tasks agent skill under skills/outask-repository-task-tracker/ in the Outask source repository. Start with Codex CLI on Linux. Deliver a validated single-skill ZIP and English listing copy outside version control for the initial free distribution. Keep source and general packaging instructions channel-neutral and keep the skill out of application installers.",
-    "acceptance": [
-      "Verify installation, runtime requirements, tool names, typed arguments and task status behavior against the code, release documentation and published Outask version used for acceptance. Include name and description in SKILL.md and document requirements and setup for Codex CLI.",
-      "Check for Outask MCP first and read the current project's tasks to verify the connection. Use the server working directory when it is confirmed to be the target repository. Pass an absolute project_path only when the server runs elsewhere, its working directory cannot be confirmed, or the target project's own workflow requires explicit selection.",
-      "If MCP is unavailable, use the official documented Outask installation and registration route when the client permits it, with exact manual steps otherwise. Cover PATH, Codex CLI restart or a new session, and a task read after reconnecting.",
-      "Use bounded Active reads projected to the task details needed, targeted matching against existing and relevant historical tasks, and the effective schema before writes. Create only missing tasks with Outask MCP, suggest an eligible next task and update the selected task's status as authorized when work resumes. Preserve existing IDs, fields and project workflow.",
-      "In a clean test repository, install official Outask, connect from Codex CLI, verify the empty read, create tasks from a plan, repeat the request and verify no duplicates, then open a new session and change one task's status while retaining its ID. Record client, platform, Outask version, steps and results.",
-      "Build and inspect a single-skill ZIP outside Git, document its source and how to rebuild it, and prepare the English listing with the example request, Free pricing, Outask MCP under Needs access to, and https://github.com/henryh/outask as the project link. Use this approved description: Turn a plan into actionable project tasks. Add what’s missing, see what to start next, and pick up where you left off. Keep agent runs fast and token costs low by loading only the task details you need."
-    ],
-    "updated_at": "2026-11-18T22:35:42.463Z"
-  },
-  {
     "id": 38,
     "title": "Verify Plan to Tasks across skill distribution clients",
     "status": "pending",
