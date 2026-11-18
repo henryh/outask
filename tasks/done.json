@@ -617,5 +617,35 @@
     ],
     "updated_at": "2026-11-13T04:33:10.877Z",
     "completed_at": "2026-11-13"
+  },
+  {
+    "id": 12,
+    "title": "Remove installed application files, global configuration and caches during uninstall",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Change the standard uninstall flow so removing Outask deletes managed commands, confirmed installed application copies, application-owned default global/user configuration and application caches when present. Cover packaged installers on Linux x64, macOS arm64 and Windows x64 and source-checkout uninstall. Preserve project/skill task records and configuration, source checkouts, arbitrary explicitly selected configuration files and unrelated user files. Rename old environment variables to OUTASK_CONFIG, OUTASK_RELEASE_DIR and OUTASK_HTTP_TOKEN. Remove project selection by configured name and projects_root lookup from CLI/MCP and configuration; retain cwd/explicit path selection and slow_query_ms as the only supported global setting. Align help, documentation, focused checks and native distribution gates.",
+    "acceptance": [
+      "For each supported installation/uninstall route, inventory the application-owned installation, global configuration and cache paths actually created or used, including configured locations, and make standard uninstall remove those artifacts together with the managed tasks command.",
+      "Verify an install -> use/configure -> uninstall scenario in an isolated user environment: installed application files, application-owned global configuration and any generated caches are absent afterward.",
+      "Verify project task records and configuration, configuration inside skills, source checkout contents and unrelated neighboring files remain unchanged after uninstall.",
+      "Verify uninstall succeeds when optional configuration or cache paths are absent and that existing protection against removing an unrelated command remains effective.",
+      "Update focused installer/distribution checks and uninstall help/documentation to reflect complete application cleanup and retained project/skill data; verify supported platform behavior through the project's native distribution gates.",
+      "Explicit --config / OUTASK_CONFIG files at arbitrary locations survive uninstall; default application/XDG settings and caches are removed.",
+      "CLI/MCP accept only current-directory or explicit-path project selection; --project/project names and projects_root lookup are removed. Only slow_query_ms remains a supported global setting; unknown user JSON fields remain preserved.",
+      "No old-product environment variable names remain in application runtime, tooling, documentation or tests."
+    ],
+    "values": "Goal: preserve project-owned readable JSON and coordinated CLI/MCP/HTTP operations (docs/product.md). Immediate user value: archive/source uninstall removes managed application payloads and default global settings/caches while retaining arbitrary settings, project/skill data, source checkouts and unrelated files. Owner-approved simplification: select projects by cwd/explicit path, with slow_query_ms as the only supported global setting and OUTASK-prefixed environment variables. Verification at the user boundary: install/use/configure/uninstall an isolated real archive; assert managed payload/default settings/generated cache absence and byte-for-byte retained data, alongside focused path-selection/configuration tests.",
+    "updated_at": "2026-11-18T08:51:35.161Z",
+    "notes": [
+      "PR #20 https://github.com/henryh/outask/pull/20 is draft. Initial dd3b5f0 was pushed with owner approval. Corrected implementation e904d50 is local and awaits renewed push approval; base origin/main remains 8d0822b. Release 1.9.0 / v1.9 and exact docs/release-notes.md are retained. Branch-local done is candidate acceptance, not main delivery or native readiness.",
+      "Cleanup inventory: metadata/package-confirmed payloads under selected application parent and known migration roots; managed outask/tasks aliases; default applicationRoot/config.json, XDG_CONFIG_HOME/outask/config.json, default/XDG task-tracker/config.json; applicationRoot/cache and XDG_CACHE_HOME/outask/cache. Arbitrary explicit configs, source/project/skill data, unknown neighbors, PATH/profile settings and fixed coordination inodes remain. Directory symlinks are not traversed. npm native lifecycle remains separate.",
+      "Original independent feature review PASS at c84e5d2; correction review PASS at e904d50. Rework changes only the cached Windows wrapper exit to CALL EXIT /B %%errorlevel%% and adds a self-unlink failure11 scenario alongside update7 and self-unlink0, restoring the wrapper per scenario. Paths/%* and DisableDelayedExpansion stay intact. Native self-removal/status behavior must still pass hosted Windows22/24 gates.",
+      "Hosted run 44268124570 for dd3b5f0: Linux and macOS native PR jobs passed on Node22/24, Linux/macOS archive jobs passed, all six npm acceptance jobs passed. Windows22/24 wrapper tests failed 0 !== 7; Windows archive custom-root helper uninstall failed with CMD path-not-found. Readiness stopped and candidate reopened. Failure remains observable on old PR head until corrected push; no native Windows pass is claimed.",
+      "Final local QA PASS: make ci exited0 for e904d50 on Linux x64, Node24.21.0/npm11.18.0 in a temporary isolated toolchain: locked installs/audits, core348, MCP18, actual archive CLI/MCP/default-cleanup and npm lifecycle. Archive1.9 SHA256 89f47b6b63dc24f19b28a9bebdff99a282a029e0ff11af217e81d5749d05e84a; npm artifact SHA256 8f7c1b9b779b9b101803da70960b55cfe4f3ae8859da812dd94e644f3903d2ca. Local Windows suite4pass/1native-only skipped. Earlier full regression359core+18MCP and Node22.23.3 archive/npm acceptance are reused for unchanged runtime contracts.",
+      "Local environment failures investigated before final PASS: globally installed npm12.2.2 changed pack --json to a keyed object; both main and candidate expect an array. A minimal isolated package reproduced the shape change; no unrelated source fix was added. Node24.12.0/npm11 attempt hit existing dangling-link legacy-install fixture EEXIST; final gate retained previously passing Node24.21.0 and isolated npm11 for all children. PATH-only npm shim was insufficient because npm smoke prepends the running node directory; final portable toolchain resolved that consistently without altering user installs.",
+      "Documentation/value and release candidate validator PASS. Remaining delivery: approve new task-branch push, rerun all required hosted PR/archive/npm gates on new head, ready only after success, owner merge using Create a merge commit, read-only publication/download verification afterward."
+    ],
+    "completed_at": "2026-11-18T08:51:28.387Z"
   }
 ]
