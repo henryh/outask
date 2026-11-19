@@ -8,24 +8,7 @@ Use `outask` from your terminal. `tasks` is a permanent alias for the same insta
 
 ## Install the CLI
 
-Install through npm with `npm install -g outask`, or use the platform archives below. See [npm installation, updates and removal](docs/npm.md).
-
-Requires Node.js 22.23.3 or later. Download your platform's archive from
-[Releases](https://github.com/henryh/outask/releases), [verify its checksum](app/README.md#verify-a-download), extract it and open
-`Outask` in a terminal.
-
-Install on Linux x64:
-
-```bash
-./install.sh
-```
-
-On macOS Apple silicon, double-click `Install.command` in Finder or run
-`./Install.command` in a terminal.
-On Windows x64, run `./Install.cmd` in PowerShell or `Install.cmd` in cmd.exe.
-Open a new terminal after installation. No administrator access or WSL is needed.
-For macOS Finder/Gatekeeper, updates and removal, see the
-[installation guide](app/README.md#installation-and-updates).
+Run `npm install -g outask` with Node.js 22.23.3 or later. For platform archives, offline installation, and source checkouts, see [Install Outask](docs/install.md).
 
 ## Basic use
 
@@ -52,17 +35,9 @@ codex mcp add outask -- outask mcp
 codex mcp list
 ```
 
-Start a new Codex session. For Windows, client PATH differences and other hosts,
-see [MCP setup](app/mcp/README.md). Install
-[Plan to Tasks](docs/outask-skill.md#install-plan-to-tasks-in-codex-cli)
-to save plans and resume tasks in Codex CLI. You can also point the agent to
-the [Outask agent guide](docs/outask-skill.md), for example:
+Start a new session. For other clients and platforms, see [MCP setup](app/mcp/README.md).
 
-> Use the Outask agent skill guide for this project. Prefer the connected
-> `outask` MCP server and respect the project's instructions. Plan and track
-> this request: _describe the work_.
-
-Outask manages task data. Your project workflow controls Git and publishing.
+To use [Plan to Tasks](skills/outask-repository-task-tracker/), copy its folder into your agent's skills directory and enable it.
 
 ## Contributing
 

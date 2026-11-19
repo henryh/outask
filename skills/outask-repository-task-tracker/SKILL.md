@@ -1,72 +1,28 @@
 ---
 name: outask-repository-task-tracker
-description: Turn an agreed plan into Outask tasks for the current repository, reuse matching tasks, suggest an eligible next task, or resume a saved task by ID. Use when the user wants to track or continue repository work with Outask MCP.
+description: Turn work requests, plans, and technical specifications into tracked tasks. Use when the user asks to create a task, break work into tasks, set up or use a task tracker, check task status, or start or resume a task.
 ---
 
 # Plan to Tasks
 
-Use the target repository's instructions for task ownership, authorization,
-schema selection, priority, and delivery. Treat planning, a request for status,
-and a request for the next task as reads. Write when the user authorizes saving
-tasks or changing their status.
+Follow the current repository's instructions for task ownership and workflow. Route task management through its designated role when it has one.
 
-## Connect and read
+## Require Outask
 
-Find the connected Outask MCP tools. Verify the connection and project with
-`list_tasks` using `{"group":"Active","fields":["id","title","status"],"limit":10}`.
-Use the server's working directory when you can confirm it is the target
-repository. Add the target's absolute `project_path` to each call when the
-server runs elsewhere, its working directory is unknown, or the project
-requires explicit selection. Keep any required schema selector consistent.
+Before investigating or planning the requested work, look for connected Outask MCP tools and verify access to the current repository with a small task read. Use the discovered tool schemas and [Outask MCP documentation](https://github.com/henryh/outask/blob/main/app/mcp/README.md) for operational details. Offline, use locally available Outask documentation and tool schemas.
 
-If the server is missing or cannot start, follow [Outask and Codex CLI setup](references/setup.md).
-An empty Active result is valid. Check `isError` and read `structuredContent`
-or the client-rendered structured result. A fixed text acknowledgment alone
-does not establish which records were read or written.
+If Outask is unavailable, restrict your actions and response to setup. Offer to install it using the [installation guide](https://github.com/henryh/outask/blob/main/docs/install.md) or connect an existing installation using the MCP documentation. With the user's authorization, follow those instructions. For a user-supplied Outask archive or local path, use the bundled instructions, including offline. Resume task work after a successful MCP task read.
 
-## Save the plan
+## Respond to the request
 
-1. Identify actionable tasks from the agreed plan. Capture their intended
-   results, acceptance, and explicit dependencies using the project's fields.
-2. Match each item against the Active results. Use `search_tasks` for
-   distinctive terms from the desired outcome or title, one phrase per query, with
-   `fields: ["id","title","status"]` and a small integer `limit`. Search relevant
-   retained history explicitly with `group: "Done"`, `group: "Archive"`, or
-   `stores: ["all"]` when configured stores require it. Use one store selector
-   at a time. Use `search_fields` when relevant details are in custom fields.
-   Follow returned cursors with the same query where needed. Fetch
-   only candidate details using `get_task` with a numeric `id` or `get_tasks`
-   with numeric `ids`. Project needed fields known to be present. Use the
-   effective schema to identify custom field names. If an absent optional
-   field causes a projection error, retry without it or read all fields
-   for the single relevant candidate. Reuse the ID when the intended outcome
-   already exists. Ask about material ambiguity
-   before creating a possible duplicate or changing existing scope. Resolve
-   relevant incomplete or failed reads before concluding that a task is missing.
-3. Before writing, obtain the effective schema from `inspect_schema` if you
-   have not read it in this session. Use its field types, required fields,
-   default status, and store rules. Call `create_task` with a nested `task` object
-   containing the title and applicable project fields. Let Outask allocate IDs.
-   When authorized dependencies need IDs, save prerequisites first and use
-   their returned numeric IDs in the dependent record. Create only missing
-   tasks. If a write fails or its outcome is unknown, reread the selected
-   project for the record before deciding whether to retry.
+- **Implement one result.** An actionable request such as “Fix sorting” authorizes recording the work and starting it. Find or create the task, briefly confirm its ID and title, then record the start and begin implementation in the same turn when eligible. Respect the current task, blockers, and project approval gates.
+- **Implement several results.** Split the request only where each result can be accepted independently. Save the missing tasks and their dependencies. If the user or project selected a task to start, start it when eligible. Otherwise reply with only the saved or reused IDs and titles, plus an optional one-line next-task suggestion.
+- **Save a task or plan.** Record the requested work and confirm its IDs and titles. Start a saved task only when the request also calls for implementation.
+- **Resume a task.** Use its existing ID and verify eligibility before recording the start and continuing.
+- **Discuss, check status, or suggest next work.** Answer within the requested read-only scope.
 
-## Suggest or resume work
+## Record the outcome and follow the project
 
-Prefer work already in progress when the project treats it as current. For an
-eligible next-task recommendation, follow the project's order. If it defines
-none, prefer higher priority then lower ID among startable tasks. Page the
-bounded Active list with the returned `nextOffset` where needed, projecting
-`id,title,status,priority,blockers`. A blocker is active only if its ID occurs
-in Active. For a named candidate, `inspect_blockers` with its numeric `id`
-returns its eligibility and Active blockers. Respect any additional
-prerequisites in project instructions.
+Match the requested result against existing and relevant historical tasks before creating anything. Use bounded reads, inspect the effective schema before writing, and reuse matching IDs and project-owned fields. Ask a focused question only when an unresolved choice materially changes the requested result or scope.
 
-In a fresh session, retrieve the selected task by ID with only the fields
-needed for the work, including `updated_at` if changing status. When the user
-authorizes starting or resuming it, use `transition_task` with its numeric
-`id`, the exact configured working `status` (normally `in_progress`), and the
-last-read `if_updated_at` when present. Retain the same ID. For stale writes or
-uncertain results, inspect the current task first. Report the saved or reused
-IDs, the eligible task, and any blockers that affect the user's next action.
+Write each title and description around the problem, the result the user needs, and how to verify it. Base acceptance on agreed requirements and established project behavior. Include agreed delivery constraints and dependencies. Omit the choice of task tracker from task records. Keep implementation, review, testing and delivery together when they serve the same result. Once started, advance the same task through the repository's workflow and pause at its approval boundaries.

@@ -1,10 +1,10 @@
 # Local MCP adapter
 
-Install with the [CLI quick start](../../README.md#install-the-cli).
+Follow [Install Outask](../../docs/install.md).
 Requires Node.js 22.23.3 or later and a trusted local stdio client. Release
 archives and the [npm package](../../docs/npm.md) include the adapter and its dependencies.
 
-For an existing project's records, follow [project setup](../../docs/outask-skill.md#connect-an-existing-project) before changing data.
+For an existing project, inspect its [effective schema](../../docs/contract.md#effective-schema-and-git-hooks) before changing records.
 
 ## Codex on Linux/macOS
 
@@ -20,8 +20,8 @@ server name; `outask mcp` is the process it launches. See
 [Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 Use `outask` from PATH for the installed adapter. If startup fails, check that
-both `outask` and `node` are available in the client's environment, then restart
-the client after correcting PATH. Verify the connection in a new session.
+both `outask` and `node` resolve in the terminal that launches the client.
+Correct PATH and restart from that terminal. Verify the connection with an Active task read for the current project.
 
 Only when a confirmed client limitation prevents PATH-based startup, register
 absolute paths from a working terminal and record the concrete reason:
@@ -73,7 +73,7 @@ Adapt the outer settings container to your client:
 }
 ```
 
-Both `tasks` and `node` must be available on the client's PATH; follow the PATH
+Both `outask` and `node` must be available on the client's PATH; follow the PATH
 checks above if startup fails. For Windows, use the Node entry described above.
 Remove the entry and stop its process to disconnect the adapter.
 
@@ -88,9 +88,7 @@ for coordination-file cleanup and incompatible protocol migrations.
 
 ## Tools and selection
 
-Select a project in each tool call. Supply
-an absolute `project_path` when the client's working directory is unknown.
-Omit it to use the server's current directory. `config` selects the global
+Use the server's current directory when it is confirmed to be the target repository. Supply its absolute `project_path` when the server runs elsewhere, its working directory is unknown, or the project requires explicit selection. Keep that selection consistent across reads and writes. `config` selects the global
 program configuration for `slow_query_ms` and
 `schema_path` independently selects a project-relative schema. See
 [project selection](../README.md#selecting-a-project) and
