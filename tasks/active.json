@@ -512,5 +512,33 @@
       "Verify on Codex CLI that setting up Outask MCP includes installing and checking the skill, and that a new session can load it and read the repository's tasks. Where automatic installation is unavailable, show exact manual steps and make the remaining setup requirement clear."
     ],
     "updated_at": "2026-11-18T08:59:23.774Z"
+  },
+  {
+    "id": 37,
+    "title": "Ship the Plan to Tasks skill for Codex CLI",
+    "status": "review",
+    "priority": "medium",
+    "blockers": [],
+    "values": "Goal: grow adoption of free Outask among developers who plan with AI agents. Codex CLI users can turn a chat plan into durable repository tasks and resume work in a fresh session. Verify the same task IDs across runs and demonstrate bounded task reads and targeted details to limit context and token use.",
+    "scope": "Create the free Plan to Tasks agent skill under skills/outask-repository-task-tracker/ in the Outask source repository. Start with Codex CLI on Linux. Deliver a validated single-skill ZIP and English listing copy outside version control for the initial free distribution. Keep source and general packaging instructions channel-neutral and keep the skill out of application installers.",
+    "acceptance": [
+      "Verify installation, runtime requirements, tool names, typed arguments and task status behavior against the code, release documentation and published Outask version used for acceptance. Include name and description in SKILL.md and document requirements and setup for Codex CLI.",
+      "Check for Outask MCP first and read the current project's tasks to verify the connection. Use the server working directory when it is confirmed to be the target repository. Pass an absolute project_path only when the server runs elsewhere, its working directory cannot be confirmed, or the target project's own workflow requires explicit selection.",
+      "If MCP is unavailable, use the official documented Outask installation and registration route when the client permits it, with exact manual steps otherwise. Cover PATH, Codex CLI restart or a new session, and a task read after reconnecting.",
+      "Use bounded Active reads projected to the task details needed, targeted matching against existing and relevant historical tasks, and the effective schema before writes. Create only missing tasks with Outask MCP, suggest an eligible next task and update the selected task's status as authorized when work resumes. Preserve existing IDs, fields and project workflow.",
+      "In a clean test repository, install official Outask, connect from Codex CLI, verify the empty read, create tasks from a plan, repeat the request and verify no duplicates, then open a new session and change one task's status while retaining its ID. Record client, platform, Outask version, steps and results.",
+      "Build and inspect a single-skill ZIP outside Git, document its source and how to rebuild it, and prepare the English listing with the example request, Free pricing, Outask MCP under Needs access to, and https://github.com/henryh/outask as the project link. Use this approved description: Turn a plan into actionable project tasks. Add what’s missing, see what to start next, and pick up where you left off. Keep agent runs fast and token costs low by loading only the task details you need."
+    ],
+    "updated_at": "2026-11-19T12:55:42.087Z",
+    "notes": [
+      "Independent feature review passed at 5b9e6a1. Confirmed MCP tool arguments against the published npm Outask 1.9.0 and addressed targeted search, failed reads, optional field projections and Linux PATH recovery.",
+      "End-to-end on Linux x86_64, Codex CLI 0.167.2, Node.js 24.21.0 and official npm outask@1.9.0. Installed Outask into an isolated prefix, registered it with codex mcp add outask -- outask mcp, and unpacked the skill ZIP into .agents/skills in a clean Git repository.",
+      "Codex read zero Active tasks with a confirmed server cwd and no project_path. It used bounded fields/limits, targeted history searches and inspect_schema before saving two pending tasks. Task 2 retained blocker 1, and Codex recommended task 1. An identical request reused IDs 1 and 2 with zero create_task calls and an identical persisted projection. A fresh session with the server launched outside the repository used absolute project_path and the last-read timestamp to move the same ID 1 to in_progress. Task 2 remained pending. Repeated the duplicate check with the final ZIP.",
+      "Built outask-repository-task-tracker.zip from skills/outask-repository-task-tracker at 5b9e6a1 using the documented git archive command. ZIP integrity and exact source member bytes passed. SHA256 dca5e8c58af7466f6c341296fb1db5bf67a7e11085e3fd3d54e87ece901c21f2. Delivered the ZIP and English Free listing copy outside version control.",
+      "Inspected the v1.10 Linux, macOS and Windows archives and npm tarball. All four exclude the skill and ZIP. Native Linux archive/npm lifecycle acceptance passed on Node.js 22.23.3 with npm 11.18.0.",
+      "Local tool diagnostics: npm 12.2.2 returned an empty npm pack result, and Node.js 24.12.0 left dangling symlinks in an existing release test fixture. The successful gates use npm 11.18.0 paired with their selected runtime.",
+      "RELEASE_DEFERRED. The owner deferred the version bump and release for task 37. Restored the package version, lockfile and release notes to their main-branch state. The v1.10 package checks in these notes describe the earlier local build. Task 39 owns publishing the standalone ZIP as a release asset.",
+      "Native Linux make ci and make regression passed on Node.js 24.21.0 and npm 11.18.0. CI covered 348 core and 18 MCP tests, dependency audit, archive and npm lifecycle. Regression covered 359 core and 18 MCP tests plus installed self-update acceptance. The earlier concurrent Node.js 22.23.3 regression run had one HTTP ECONNRESET; that test passed when rerun independently on Node.js 22.23.3."
+    ]
   }
 ]
