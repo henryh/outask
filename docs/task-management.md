@@ -7,17 +7,26 @@ owns required fields. Do not import other project stores or reset the backlog.
 ## Task records
 
 - Positive integer IDs are unique across retained stores; the tracker allocates them.
-- Active: `pending`, `in_progress`, `review`. Done: `done`.
 - Every task requires `scope`, nonempty `acceptance` and `blockers`.
 - Done requires `completed_at`. Only blockers still in Active prevent starting.
 - For standalone backlog creation or correction, save and validate the records with refreshed `tasks/.task-tracker.json` on the current branch. Stop there; creating or switching branches, staging, committing and starting implementation require separate user authorisation.
 - During authorised task delivery or Git recording, commit changed stores with refreshed `tasks/.task-tracker.json`.
 
-During authorised task delivery, use `task-<id>-<slug>` and preserve corrections there. Record acceptance, set
-`completed_at` and close on that branch before the final push. Branch-local done
-means candidate acceptance; status on `main` owns delivered completion. Rework
-returns to review and removes `completed_at` until affected gates pass again.
-Follow the complete [delivery sequence](contributing.md#task-delivery).
+### Delivery statuses
+
+| Group | Status | Meaning |
+| --- | --- | --- |
+| Active | `pending` | Waiting to start |
+| Active | `in_progress` | Implementing the feature |
+| Active | `review` | Independent feature review |
+| Active | `feature_qa` | Functional acceptance and regression tests from source |
+| Active | `awaiting_owner` | Waiting for the owner's manual-test decision or result and agreement to proceed |
+| Active | `delivery_in_progress` | Preparing the delivery candidate |
+| Active | `delivery_review` | Independent review of the combined candidate |
+| Active | `delivery_qa` | Build, artifacts and native installation acceptance |
+| Done | `done` | Accepted candidate on the task branch and delivered change on `main` |
+
+All started statuses remain Active until local candidate closure. Apply the blocker check when entering a started status. Under the [delivery sequence](contributing.md#task-delivery), record the owner's decision before starting delivery. Close the candidate on `task-<id>-<slug>` and set `completed_at` before requesting push approval. For rework, return to the affected stage and remove `completed_at` until its gates pass again.
 
 ## Agent task access
 

@@ -4,7 +4,12 @@
       "statuses": [
         "pending",
         "in_progress",
-        "review"
+        "review",
+        "feature_qa",
+        "awaiting_owner",
+        "delivery_in_progress",
+        "delivery_review",
+        "delivery_qa"
       ]
     },
     "done.json": {
@@ -13,6 +18,15 @@
       ]
     }
   },
+  "working_statuses": [
+    "in_progress",
+    "review",
+    "feature_qa",
+    "awaiting_owner",
+    "delivery_in_progress",
+    "delivery_review",
+    "delivery_qa"
+  ],
   "fields": {
     "scope": {
       "type": "string",

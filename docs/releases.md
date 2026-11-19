@@ -13,6 +13,8 @@ Release every Work Origin synchronization change, including the client, coordina
 
 ## Prepare the candidate
 
+Begin version changes, release notes, platform packaging and artifact acceptance in [stage 2 of task delivery](contributing.md#stage-2-delivery), after the owner accepts the feature from source and agrees to delivery. Apply the release decision above before preparing a version.
+
 Keep implementation, documentation, candidate task closure and release in the
 same task PR. Include all still-unreleased user-visible changes since the latest
 published tag. Use the next minor version by default, or a major for large/breaking

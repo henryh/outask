@@ -2,8 +2,8 @@
   "counter": 40,
   "validated": {
     "files": {
-      "tasks/task-schema.json": "24d4b7abea66adc76f9c0fef3ab1deaa32aed2723e4c46740f9d635aa8937dbf",
-      "tasks/active.json": "3f62c4b755e8d359e155501c9a50af9f32f5bde0d57e0c8284aa86c060239a01",
+      "tasks/task-schema.json": "928361cc1dde0d58330a6c4d2fd829dc22928ea7f2f7944a22f0d92e8343f603",
+      "tasks/active.json": "b3e55a3b31f731565ce19414920de3cf4bd8d53f3851c1b285dddc8984d3c318",
       "tasks/done.json": "2c210c74a8ea517063ee210fce4f7470dfe9b7baad0dbdb3708ea3b077c3d8b2"
     },
     "counter": 40
