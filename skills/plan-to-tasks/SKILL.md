@@ -1,5 +1,5 @@
 ---
-name: plan-to-task-outask
+name: plan-to-tasks
 description: Use for direct work requests such as fixing a bug or implementing a feature. Turn requests, plans, and specifications into tracked tasks. Also use to create or split tasks, set up or use a task tracker, check status, or start or resume tasks.
 ---
 

@@ -28,16 +28,9 @@ or use the [operator cookbook](app/README.md).
 
 ## Use with an agent
 
-On Linux/macOS, register the installed adapter with Codex:
+Connect the local Outask MCP adapter to your agent and start a new session. See [MCP setup](app/mcp/README.md) for client and platform instructions.
 
-```bash
-codex mcp add outask -- outask mcp
-codex mcp list
-```
-
-Start a new session. For other clients and platforms, see [MCP setup](app/mcp/README.md).
-
-To use [`plan-to-task-outask`](skills/plan-to-task-outask/), copy its folder into your agent's skills directory and enable it.
+To use [Plan to Tasks](skills/plan-to-tasks/), copy its folder into your agent's skills directory and enable it.
 
 ## Contributing
 
