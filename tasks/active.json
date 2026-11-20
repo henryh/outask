@@ -516,11 +516,11 @@
   {
     "id": 37,
     "title": "Ship the Plan to Tasks skill for Codex CLI",
-    "status": "awaiting_owner",
+    "status": "delivery_in_progress",
     "priority": "medium",
     "blockers": [],
     "values": "Goal: grow adoption of free Outask among developers who plan with AI agents. Codex CLI users can turn a chat plan into durable repository tasks and resume work in a fresh session. Verify the same task IDs across runs and demonstrate bounded task reads and targeted details to limit context and token use.",
-    "scope": "Create the free Plan to Tasks agent skill under skills/outask-repository-task-tracker/ in the Outask source repository. Start with Codex CLI on Linux. Deliver a validated single-skill ZIP and English listing copy outside version control for the initial free distribution. Keep source and general packaging instructions channel-neutral and keep the skill out of application installers.",
+    "scope": "Create the free Plan to Tasks agent skill under skills/plan-to-task-outask/ in the Outask source repository. Start with Codex CLI on Linux. Deliver a validated single-skill ZIP and English listing copy outside version control for the initial free distribution. Keep source and general packaging instructions channel-neutral and keep the skill out of application installers.",
     "acceptance": [
       "Verify installation, runtime requirements, tool names, typed arguments and task status behavior against the code, release documentation and published Outask version used for acceptance. Include name and description in SKILL.md and document requirements and setup for Codex CLI.",
       "Check for Outask MCP first and read the current project's tasks to verify the connection. Use the server working directory when it is confirmed to be the target repository. Pass an absolute project_path only when the server runs elsewhere, its working directory cannot be confirmed, or the target project's own workflow requires explicit selection.",
@@ -530,7 +530,7 @@
       "Build and inspect a single-skill ZIP outside Git, record its source and rebuild command in task evidence, and prepare the English listing with the example request, Free pricing, Outask MCP under Needs access to, and https://github.com/henryh/outask as the project link. Use this approved description: Turn a plan into actionable project tasks. Add what’s missing, see what to start next, and pick up where you left off. Keep agent runs fast and token costs low by loading only the task details you need.",
       "An ordinary implementation request for one eligible result creates or reuses the task, confirms its ID, and starts work in the same turn. Save independent outcomes as separate tasks, confirm their IDs concisely, and start the selected one only when authorised. Save-only and read-only requests retain their narrower behavior. Task records describe the user outcome and how to verify it; the choice of task tracker stays outside the records."
     ],
-    "updated_at": "2026-11-19T14:16:35.541Z",
+    "updated_at": "2026-11-20T14:47:28.666Z",
     "notes": [
       "Independent feature review passed at 5b9e6a1. Confirmed MCP tool arguments against the published npm Outask 1.9.0 and addressed targeted search, failed reads, optional field projections and Linux PATH recovery.",
       "End-to-end on Linux x86_64, Codex CLI 0.167.2, Node.js 24.21.0 and official npm outask@1.9.0. Installed Outask into an isolated prefix, registered it with codex mcp add outask -- outask mcp, and unpacked the skill ZIP into .agents/skills in a clean Git repository.",
@@ -542,7 +542,9 @@
       "Native Linux make ci and make regression passed on Node.js 24.21.0 and npm 11.18.0. CI covered 348 core and 18 MCP tests, dependency audit, archive and npm lifecycle. Regression covered 359 core and 18 MCP tests plus installed self-update acceptance. The earlier concurrent Node.js 22.23.3 regression run had one HTTP ECONNRESET; that test passed when rerun independently on Node.js 22.23.3.",
       "Revised source feature review passed. The skill contains request, record and workflow rules. The shared Outask installation and MCP pages own setup and tool details. The project README links directly to the skill folder.",
       "Source acceptance on Linux with Codex CLI 0.167.2 and published Outask 1.9.0. A plain request created ID 1, moved it to in_progress, fixed and verified sorting, and kept the same ID in review. Two independent outcomes saved as pending tasks; repeat requests reused the same IDs without writes and the final response confirmed IDs and titles with one suggestion. A save-only request created a pending task without changing source. Without MCP, the offline scenario requested the archive path and permission to install, without reading or editing the report or creating a task store. The published Linux archive README contains the offline installation and Codex registration steps.",
-      "Owner manual-test decision is pending. Validate the revised distribution ZIP during delivery after source acceptance."
+      "Owner manual-test decision is pending. Validate the revised distribution ZIP during delivery after source acceptance.",
+      "The owner named the skill plan-to-task-outask for a temporary trial from the source checkout. Earlier ZIP evidence describes the pre-rename artifact.",
+      "The owner accepted the source evaluation and requested delivery preparation for the free skill. The application release remains deferred."
     ]
   }
 ]

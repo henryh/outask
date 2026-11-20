@@ -1,6 +1,6 @@
 ---
-name: outask-repository-task-tracker
-description: Turn work requests, plans, and technical specifications into tracked tasks. Use when the user asks to create a task, break work into tasks, set up or use a task tracker, check task status, or start or resume a task.
+name: plan-to-task-outask
+description: Use for direct work requests such as fixing a bug or implementing a feature. Turn requests, plans, and specifications into tracked tasks. Also use to create or split tasks, set up or use a task tracker, check status, or start or resume tasks.
 ---
 
 # Plan to Tasks

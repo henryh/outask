@@ -37,7 +37,7 @@ codex mcp list
 
 Start a new session. For other clients and platforms, see [MCP setup](app/mcp/README.md).
 
-To use [Plan to Tasks](skills/outask-repository-task-tracker/), copy its folder into your agent's skills directory and enable it.
+To use [`plan-to-task-outask`](skills/plan-to-task-outask/), copy its folder into your agent's skills directory and enable it.
 
 ## Contributing
 
