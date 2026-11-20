@@ -6,6 +6,22 @@ import { spawnSync } from 'node:child_process';
 import { archiveName, archivePath, hostTarget, releaseVersion, root, tagName } from './release-config.mjs';
 import { checksumName, checksumsRequired, verifyArchive } from './release-checksums.mjs';
 
+// These suites remain in the full CI and regression runs.
+const deliveryTests = new Set([
+  'checksum-docs.test.mjs',
+  'install-path.test.mjs',
+  'npm-release.test.mjs',
+  'push-guard.test.mjs',
+  'release-checksums.test.mjs',
+  'release-notes.test.mjs',
+  'release-pr.test.mjs',
+  'release-recovery.test.mjs',
+  'release-upload.test.mjs',
+  'release.test.mjs',
+  'update-release.test.mjs',
+  'windows-install.test.mjs',
+]);
+
 function run(label, command, args, env = process.env) {
   if (process.platform === 'win32' && command === 'npm') {
     args = [join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'), ...args];
@@ -37,7 +53,7 @@ function regressionFiles() {
     .map(name => join('app/tests/regression', name));
 }
 
-function tests(regression = false) {
+function tests({ regression = false, featureOnly = false } = {}) {
   const home = mkdtempSync(join(tmpdir(), 'outask-tests-home-'));
   const env = { ...process.env, HOME: home, USERPROFILE: process.platform === 'win32' ? home : process.env.USERPROFILE,
     PATH: process.platform === 'win32' ? process.env.PATH : [dirname(process.execPath), '/usr/local/bin', '/usr/bin', '/bin'].join(':'),
@@ -45,7 +61,8 @@ function tests(regression = false) {
   mkdirSync(env.LOCALAPPDATA, { recursive: true });
   try {
     for (const [label, directory] of [['Core', 'app/tests'], ['MCP', 'app/mcp/tests']]) {
-      const files = readdirSync(join(root, directory)).filter((name) => name.endsWith('.test.mjs')).sort()
+      const files = readdirSync(join(root, directory))
+        .filter(name => name.endsWith('.test.mjs') && (!featureOnly || !deliveryTests.has(name))).sort()
         .map((name) => join(directory, name));
       if (regression && label === 'Core') files.push(...regressionFiles());
       const output = run(`${label} tests`, process.execPath, ['--test', '--test-reporter=tap', ...files], env);
@@ -130,12 +147,13 @@ function downloaded() {
 
 try {
   const mode = process.argv[2];
-  if (process.argv.length > 3 || (mode !== undefined && !['dependencies', 'test', 'regression', 'distribution', 'archive', 'downloaded', 'npm', 'npm-archive', 'npm-downloaded'].includes(mode))) {
-    throw new Error('Usage: node scripts/ci.mjs [dependencies|test|regression|distribution|archive|downloaded|npm|npm-archive|npm-downloaded]');
+  if (process.argv.length > 3 || (mode !== undefined && !['dependencies', 'test-feature', 'test', 'regression', 'distribution', 'archive', 'downloaded', 'npm', 'npm-archive', 'npm-downloaded'].includes(mode))) {
+    throw new Error('Usage: node scripts/ci.mjs [dependencies|test-feature|test|regression|distribution|archive|downloaded|npm|npm-archive|npm-downloaded]');
   }
   if (mode === undefined || mode === 'dependencies') dependencies();
+  if (mode === 'test-feature') tests({ featureOnly: true });
   if (mode === undefined || mode === 'test') tests();
-  if (mode === 'regression') { tests(true); distribution(); npmDistribution(); }
+  if (mode === 'regression') { tests({ regression: true }); distribution(); npmDistribution(); }
   if (mode === 'archive') {
     process.stdout.write(run('Self-update regression tests', process.execPath, ['--test', ...regressionFiles()]));
   }

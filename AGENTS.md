@@ -43,8 +43,11 @@ task and branch unless the owner agrees otherwise.
 ## Git delivery and service state
 
 Follow the complete [delivery](docs/contributing.md#task-delivery) and
-[release](docs/releases.md) policies for every candidate. Use task branches;
-finish review, QA, documentation and candidate closure before the final push.
+[release](docs/releases.md) policies for every candidate. Use task branches.
+Finish independent review and QA from source, then ask the owner about manual
+testing and agree on the handoff to delivery. Prepare versions, build artifacts,
+and use GitHub for delivery only in the second stage.
+Finish delivery review, QA, documentation and candidate closure before the final push.
 Obtain exact push/draft-PR/CI/ready agreement; changed candidates need new agreement.
 Only the owner merges, using **Create a merge commit**. Never push `main`, rewrite
 history, squash/rebase delivery, or tag/upload manually.

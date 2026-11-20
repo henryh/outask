@@ -3,7 +3,7 @@ REPO ?=
 RELEASE_ROOT ?=
 BIN_DIR ?= $(HOME)/.local/bin
 
-.PHONY: help ci ci-dependencies test regression test-distribution install-push-guard release release-upload install-local-release
+.PHONY: help ci ci-dependencies test-feature test regression test-distribution install-push-guard release release-upload install-local-release
 
 help:
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z0-9_-]+:.*## / { printf "make %-21s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -13,6 +13,9 @@ ci: ## Run dependency checks, core/MCP tests and native host install smoke
 
 ci-dependencies: ## Install locked dependencies and audit core/MCP including dev
 	@node scripts/ci.mjs dependencies
+
+test-feature: ## Run source core and MCP tests for feature acceptance
+	@node scripts/ci.mjs test-feature
 
 test: ## Run all existing core and MCP test files
 	@node scripts/ci.mjs test

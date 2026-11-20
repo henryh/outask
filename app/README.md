@@ -1,14 +1,6 @@
 # Outask operator cookbook
 
-Install a release with the [quick start](../README.md#install-the-cli). For a source checkout, run from the repository root (Node.js 22.23.3 or later):
-
-```bash
-npm ci --prefix app --omit=dev
-node app/scripts/install-cli.mjs install
-outask --help
-```
-
-Keep the checkout; uninstall with `node app/scripts/install-cli.mjs uninstall` (cleanup rules below apply). Use `outask --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
+See [Install Outask](../docs/install.md) for npm, platform archives and source checkouts. Use `outask --help`, [MCP](mcp/README.md) or read-only [HTTP](HTTP.md) as needed.
 
 ## Installation and updates
 

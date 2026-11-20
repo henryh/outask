@@ -7,11 +7,12 @@ change account tiers; independent review/QA and passing CI are still required.
 
 ## Fresh clone
 
-Use Node.js 22.23.3 or later, npm, Git, Make, a POSIX shell and tar:
+Use Node.js 22.23.3 or later, npm, Git, Make and a POSIX shell. Native packaging also requires tar.
 
 ```sh
 make install-push-guard
-make ci
+make ci-dependencies
+make test-feature
 ```
 
 Install the guard explicitly in every clone. It installs only this checkout's
@@ -30,17 +31,16 @@ pre-commit hook is independent.
 
 ## Task delivery
 
-1. Create `task-<id>-<slug>` from current `main`. PM starts the task and commits
-   validated stores/service metadata under [task management](task-management.md).
-2. Finish implementation, independent feature review, QA and documentation.
-   Apply the [release value gate](releases.md#prepare-the-candidate). Fetch and
-   merge current `origin/main` locally, resolve conflicts there, inspect the
-   combined candidate and run `make ci` plus affected gates. Repeat integration
-   if main advances; do not use GitHub's conflict editor. Local verification
-   covers available hosts. Lack of another native OS does not block a candidate:
-   review its affected contracts and existing gates, then rely on required hosted
-   CI for that OS. Do not simulate a pass or require owner-run native checks unless
-   acceptance names a scenario that hosted CI cannot cover.
+### Stage 1 feature acceptance
+
+1. Create `task-<id>-<slug>` from current `main`. PM starts the task and commits validated stores and service metadata under [task management](task-management.md). Implement the feature and its user documentation on the local branch. Use the normal entry point from the source checkout.
+2. Conduct independent feature review against the agreed requirements, then run the affected acceptance scenarios and regression tests from source. Use `make test-feature` (`node scripts/ci.mjs test-feature`) for the source core and MCP suites. Use narrower Node test files when they cover the affected contract or suit the available host. Version changes, release notes, platform packaging configuration, artifact builds, native installer acceptance and GitHub delivery belong to stage 2.
+3. Show the owner what changed, how to try it from source and what passed. Ask whether the owner wants to test manually and record the decision. If they do, wait for the result and address findings before proceeding. Move to stage 2 once the owner accepts the feature and agrees to delivery. For an agreed local-only result, record the acceptance and stop here.
+
+### Stage 2 delivery
+
+1. Confirm the [release scope](releases.md#prepare-the-candidate). Prepare the version and exact notes when releasing. For an ordinary PR, follow the existing release decision rules at the current version. Fetch and merge current `origin/main` locally and resolve conflicts there. Repeat integration if main advances.
+2. Independently review the combined delivery candidate, including packaging, affected platform contracts and release metadata where applicable. Run `make ci` and affected delivery gates. If integration or delivery work changes feature behavior, repeat the affected stage 1 review and tests, including the owner's acceptance of that change. Verify available native hosts locally and use required hosted CI for other platforms. Owner-run native checks are required only when acceptance names a scenario that hosted CI cannot cover.
 3. PM records acceptance, sets `completed_at`, closes the candidate task and runs
    task validation. Commit stores and `tasks/.task-tracker.json` with the complete
    implementation before requesting the final push. Do not defer known work to
@@ -56,7 +56,7 @@ pre-commit hook is independent.
    for release candidates, three native archive jobs and six native npm artifact
    acceptance jobs. Each platform is checked
    with Node.js 22.23.3 and 24. Failed gates stop readiness. If rework is needed,
-   return the task to review/remove `completed_at`, fix it, repeat affected gates,
+   return the task to the affected stage and remove `completed_at`. Fix the issue, repeat affected gates,
    close/validate/commit again and obtain agreement for the new push. If main
    advances, repeat local integration, verification and push agreement. Mark ready
    only after success; the agreed sequence already covers that ready transition.
@@ -85,6 +85,8 @@ reset or rewrite them. Keep the task branch. Starting work, passing checks or
 merge approval alone never authorises other remote actions.
 
 ## Native distribution acceptance
+
+Use this route in [stage 2](#stage-2-delivery).
 
 Run `make regression` (native Windows: `node scripts/ci.mjs regression`) for full core/MCP and native archive/npm regression, including CLI self updates and non-mutating update checks. Install locked dependencies first. Dedicated self-update tests live in `app/tests/regression/`; ordinary `make test`, `make ci` and distribution smoke omit them. Release archive/download and npm artifact/download acceptance enable the installed self-update scenarios; release archive acceptance also runs the dedicated tests. Existing installer/npm lifecycle smoke remains in ordinary CI.
 
