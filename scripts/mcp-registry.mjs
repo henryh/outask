@@ -2,6 +2,7 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { parsePackageVersion } from './release-config.mjs';
 
 const officialMeta = 'io.modelcontextprotocol.registry/official';
 
@@ -15,9 +16,13 @@ export function checkDescriptor(manifest, descriptor) {
     || pkg.identifier !== manifest.name || pkg.registryBaseUrl !== registry) {
     throw new Error('MCP Registry descriptor must reference the npm manifest package and registry');
   }
-  const exactVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
-  if (!exactVersion.test(manifest.version) || descriptor.version !== manifest.version || pkg.version !== manifest.version) {
+  parsePackageVersion(manifest.version);
+  if (descriptor.version !== manifest.version || pkg.version !== manifest.version) {
     throw new Error('Both MCP Registry descriptor versions must match the exact npm manifest version');
+  }
+  const optionalArrays = [descriptor.icons, descriptor.remotes, pkg.runtimeArguments, pkg.environmentVariables];
+  if (optionalArrays.some((value) => Array.isArray(value) && value.length === 0)) {
+    throw new Error('The MCP Registry omits empty optional arrays. Remove them from app/mcp/server.json.');
   }
   if (pkg.runtimeHint !== 'npx' || pkg.runtimeArguments?.length || pkg.transport?.type !== 'stdio'
     || !isDeepStrictEqual(pkg.packageArguments, [{ type: 'positional', value: 'mcp' }])) {
@@ -28,7 +33,8 @@ export function checkDescriptor(manifest, descriptor) {
 export async function verifyRegistryEntry(descriptor, { allowMissing = false } = {}) {
   const name = encodeURIComponent(descriptor.name);
   const version = encodeURIComponent(descriptor.version);
-  const url = `https://registry.modelcontextprotocol.io/v0.1/servers/${name}/versions/${version}`;
+  const query = allowMissing ? '?include_deleted=true' : '';
+  const url = `https://registry.modelcontextprotocol.io/v0.1/servers/${name}/versions/${version}${query}`;
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
   if (response.status === 404 && allowMissing) return false;
   if (!response.ok) throw new Error(`MCP Registry lookup for ${descriptor.name}@${descriptor.version} returned HTTP ${response.status}`);

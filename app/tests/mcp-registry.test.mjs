@@ -21,11 +21,21 @@ test('both descriptor versions must match the exact npm version', () => {
   assert.throws(() => checkDescriptor(manifest, { ...descriptor, version: 'latest' }), /exact npm manifest version/);
   const wrongVersion = { ...descriptor.packages[0], version: 'latest' };
   assert.throws(() => checkDescriptor(manifest, { ...descriptor, packages: [wrongVersion] }), /exact npm manifest version/);
+
+  const version = '1.9.0-01';
+  const invalidPrerelease = { ...descriptor, version, packages: [{ ...descriptor.packages[0], version }] };
+  assert.throws(() => checkDescriptor({ ...manifest, version }, invalidPrerelease), /Invalid prerelease identifier/);
 });
 
 test('descriptor checks reject a package that launches the CLI instead of MCP', () => {
   const wrongLauncher = { ...descriptor.packages[0], packageArguments: [] };
   assert.throws(() => checkDescriptor(manifest, { ...descriptor, packages: [wrongLauncher] }), /positional mcp argument/);
+});
+
+test('descriptor checks reject empty optional arrays omitted by the Registry', () => {
+  const emptyRuntimeArguments = { ...descriptor.packages[0], runtimeArguments: [] };
+  assert.throws(() => checkDescriptor(manifest, { ...descriptor, packages: [emptyRuntimeArguments] }), /omits empty optional arrays/);
+  assert.throws(() => checkDescriptor(manifest, { ...descriptor, remotes: [] }), /omits empty optional arrays/);
 });
 
 test('read-back checks the exact active entry and rejects mismatched published data', async (t) => {
@@ -39,6 +49,13 @@ test('read-back checks the exact active entry and rejects mismatched published d
   response.server = descriptor;
   response._meta[official].status = 'deprecated';
   await assert.rejects(verifyRegistryEntry(descriptor), /must be active and match/);
+});
+
+test('prepublication lookup rejects an existing deleted exact entry', async (t) => {
+  const deleted = { server: descriptor, _meta: { [official]: { status: 'deleted' } } };
+  t.mock.method(globalThis, 'fetch', async (url) => new URL(url).searchParams.get('include_deleted') === 'true'
+    ? Response.json(deleted) : new Response(null, { status: 404 }));
+  await assert.rejects(verifyRegistryEntry(descriptor, { allowMissing: true }), /must be active and match/);
 });
 
 test('only a prepublication lookup can accept a missing exact entry', async (t) => {
