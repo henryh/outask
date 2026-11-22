@@ -516,7 +516,7 @@
   {
     "id": 43,
     "title": "Make MCP task write schemas portable",
-    "status": "in_progress",
+    "status": "awaiting_owner",
     "priority": "medium",
     "blockers": [],
     "scope": "For Outask 1.10.1, publish explicit JSON Schema alternatives for arbitrary create_task fields, update_task set values and add/remove items while preserving runtime validation.",
@@ -524,6 +524,12 @@
       "MCP tools/list advertises portable schemas at all four reported paths and accepts all JSON value types there.",
       "Source checks verify the advertised schemas and that MCP writes preserve mixed JSON values."
     ],
-    "updated_at": "2026-11-22T20:46:56.641Z"
+    "updated_at": "2026-11-22T20:50:56.112Z",
+    "notes": [
+      "Stage 1 independent source review passed at 7ea8f65. The four advertised schemas preserve all JSON value types and the same runtime validators.",
+      "Source QA passed on Linux with Node 24.21.0. make test-feature passed 249 Core tests and 19 MCP tests. The new stdio regression failed on the original schema and passed after the fix, verifying all four schema paths and mixed JSON values through create, set, add, remove and persisted reread.",
+      "The official MCP Inspector portability linter at eb54b447e5377a7a18acaea9602fced5cb4c5b9f found four warnings before the fix and zero findings across all 12 advertised tools afterward.",
+      "Awaiting the owner’s manual source-test decision and agreement to start preparation of Outask 1.10.1."
+    ]
   }
 ]
