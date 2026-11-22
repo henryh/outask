@@ -512,5 +512,29 @@
       "Verify on Codex CLI that setting up Outask MCP includes installing and checking the skill, and that a new session can load it and read the repository's tasks. Where automatic installation is unavailable, show exact manual steps and make the remaining setup requirement clear."
     ],
     "updated_at": "2026-11-18T08:59:23.774Z"
+  },
+  {
+    "id": 43,
+    "title": "Make MCP task write schemas portable",
+    "status": "delivery_in_progress",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "For Outask 1.10.1, publish explicit JSON Schema alternatives for arbitrary create_task fields, update_task set values and add/remove items while preserving runtime validation. Keep release packaging and verification compatible with npm 11 and npm 12 pack JSON output.",
+    "acceptance": [
+      "MCP tools/list advertises portable schemas at all four reported paths and accepts all JSON value types there.",
+      "Source checks verify the advertised schemas and that MCP writes preserve mixed JSON values.",
+      "Release assembly, npm lifecycle smoke, and registry artifact download handle the npm 11 array and npm 12 named-object output formats. Verify both formats in tests and run the real npm 12 artifact path."
+    ],
+    "updated_at": "2026-11-22T21:11:54.915Z",
+    "notes": [
+      "Stage 1 independent source review passed at 7ea8f65. The four advertised schemas preserve all JSON value types and the same runtime validators.",
+      "Source QA passed on Linux with Node 24.21.0. make test-feature passed 249 Core tests and 19 MCP tests. The new stdio regression failed on the original schema and passed after the fix, verifying all four schema paths and mixed JSON values through create, set, add, remove and persisted reread.",
+      "The official MCP Inspector portability linter at eb54b447e5377a7a18acaea9602fced5cb4c5b9f found four warnings before the fix and zero findings across all 12 advertised tools afterward.",
+      "The owner confirmed the installed source-build check and authorised preparation of Outask 1.10.1. The installed outask mcp exposed 12 tools and read task 43. MCP Inspector 2.13.0 tools/list --strict succeeded without findings, and its local web interface answered its health check.",
+      "Independent delivery review passed at 0a7869a against origin/main 6a083e9, the published v1.10 commit. Release version, exact notes, package and lockfile, and MCP Registry descriptor passed local checks.",
+      "Linux x64 delivery QA passed on Node 24.21.0 and npm 11.18.0. make ci passed locked installs, both dependency audits, 356 Core and 19 MCP tests and native archive/npm lifecycle smoke. make regression passed 367 Core and 19 MCP tests plus archive and npm self-update acceptance. The first CI run reproduced the existing npm 12 pack JSON failure in the npm smoke subprocess. An isolated Node binary with npm 11 alongside it passed both gates, and the temporary runtime was removed.",
+      "MCP Inspector 2.13.0 strict tools/list found zero issues across all 12 tools in the Linux archive payload and installed npm artifact. Both exposed the six JSON types at the four affected paths. The npm package contains io.github.henryh/outask and exact version 1.10.1.",
+      "Hosted native and artifact jobs remain required before marking the PR ready. After owner merge, verify GitHub release assets and checksums, exact npm version and MCP Registry entry, and the advertised public npm launch through read-only checks."
+    ]
   }
 ]
