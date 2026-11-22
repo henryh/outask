@@ -8,13 +8,13 @@
     "source": "github",
     "subfolder": "app/mcp"
   },
-  "version": "1.9.0",
+  "version": "1.10.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "outask",
-      "version": "1.9.0",
+      "version": "1.10.0",
       "runtimeHint": "npx",
       "transport": { "type": "stdio" },
       "packageArguments": [

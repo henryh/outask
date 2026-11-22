@@ -516,7 +516,7 @@
   {
     "id": 42,
     "title": "Publish Outask in the official MCP Registry",
-    "status": "awaiting_owner",
+    "status": "delivery_review",
     "priority": "medium",
     "blockers": [],
     "scope": "Register the existing public outask npm package as io.github.henryh/outask in the official MCP Registry. Add package ownership metadata and a server.json manifest for version-pinned npx stdio startup with the mcp argument. Integrate validation and GitHub OIDC registration into the owner-approved minor release, after the exact public npm version is verified. Preserve the existing CLI and local MCP setup.",
@@ -526,11 +526,12 @@
       "The approved minor release publishes the existing public npm package first. The MCP Registry job uses GitHub OIDC and registers the same approved version after public npm acceptance. A read-only lookup confirms the public Registry entry advertises the expected npm package, version and stdio launch arguments."
     ],
     "values": "Goal: make Outask's local task operations available to developers and AI agents. Value: users can discover Outask in the official MCP Registry and launch a known release using their client. Result: the public entry identifies the exact installable npm package and stdio launch. Measure: fetch the entry by name and version, then start the advertised package and list its tools.",
-    "updated_at": "2026-11-22T19:39:56.120Z",
+    "updated_at": "2026-11-22T19:43:22.635Z",
     "notes": [
       "Stage 1 independent source review passed at 2be375a. The exact-version preflight distinguishes deleted versions from absent versions. Read-back checks the approved package and launch settings across Registry metadata normalisation.",
       "Source QA passed on Linux with Node 24.21.0. make test-feature passed 249 core and 18 MCP tests. All 29 focused Registry, npm publication, release gate and recovery tests passed. The official validator accepted the tracked server.json, Actionlint accepted both changed workflows, and raw stdio initialize and tools/list returned 12 tools with JSON-RPC-only stdout.",
-      "Awaiting the owner's manual source-test decision and agreement to start delivery. The planned stable minor is 1.10.0. Delivery acceptance must check mcpName in the exact packed release and exercise the advertised version-pinned npx launch. Hosted OIDC, npm and Registry publication, and public read-back remain release checks."
+      "Awaiting the owner's manual source-test decision and agreement to start delivery. The planned stable minor is 1.10.0. Delivery acceptance must check mcpName in the exact packed release and exercise the advertised version-pinned npx launch. Hosted OIDC, npm and Registry publication, and public read-back remain release checks.",
+      "The owner accepted the source handoff and authorised preparation of stable minor release 1.10.0 without manual source testing."
     ]
   }
 ]
