@@ -24,6 +24,7 @@ Commit these together:
 
 - `app/package.json`: advancing three-component SemVer.
 - `app/package-lock.json`: matching top-level/root-package versions.
+- `app/mcp/server.json`: matching server and npm package versions.
 - `docs/release-notes.md`: exact final UTF-8 notes with a final newline.
 
 Use title `Outask v<distribution-version>` to opt into release. A separately
@@ -80,6 +81,12 @@ Build the npm tarball through the same payload preparation as archives with `nod
 The npm publisher requires `OUTASK_NPM_OWNER` to identify a package maintainer and OIDC trust for `.github/workflows/release.yml`. It publishes only the accepted artifact from the approved revision. Existing versions must match accepted bytes, and prereleases preserve `latest`. Public-registry acceptance requires a published package entry; an absent package reports `WAITING`.
 
 Verify the public package read-only with `node scripts/ci.mjs npm-downloaded`. Packed lifecycle checks exercise updates through a controlled local registry; public download checks require an existing published version. Required archive publication and download checks still apply.
+
+## MCP Registry publication
+
+Run `node scripts/mcp-registry.mjs check` from the checkout to check the [server descriptor](../app/mcp/server.json) against the npm manifest. Use the exact npm version in both descriptor fields, including the patch component when the GitHub tag omits it.
+
+The owner-merged `Release` workflow in `henryh/outask` requires native download acceptance of the exact public npm version and verifies its `mcpName`. It runs the official `mcp-publisher` validation before publishing through GitHub OIDC. Reruns accept an identical active entry, and a conflicting entry fails the workflow. Run `node scripts/mcp-registry.mjs verify` from the approved release checkout to read back the exact version and compare it with the descriptor.
 
 ## Verify a download
 

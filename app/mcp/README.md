@@ -6,6 +6,10 @@ archives and the [npm package](../../docs/npm.md) include the adapter and its de
 
 For an existing project, inspect its [effective schema](../../docs/contract.md#effective-schema-and-git-hooks) before changing records.
 
+## MCP Registry
+
+Search for `io.github.henryh/outask` in a client that imports from the [official MCP Registry](https://registry.modelcontextprotocol.io/). The entry launches its exact npm version through `npx` with the `mcp` argument. Keep Node.js and `npx` on the client's PATH. Select the target repository with its absolute `project_path` when the client's working directory is unknown.
+
 ## Codex on Linux/macOS
 
 After installation, open a new terminal and register the server:

@@ -6,6 +6,9 @@ on:
       ref:
         type: string
         required: true
+      require-npm:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,5 +39,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: node scripts/ci.mjs downloaded
       - name: Download and accept the public npm package or report bootstrap pending
-        if: ${{ hashFiles('scripts/npm-release.mjs') != '' }}
+        if: ${{ inputs.require-npm || hashFiles('scripts/npm-release.mjs') != '' }}
+        env:
+          OUTASK_REQUIRE_NPM_PUBLICATION: ${{ inputs.require-npm }}
         run: node scripts/ci.mjs npm-downloaded
