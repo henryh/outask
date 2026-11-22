@@ -512,5 +512,20 @@
       "Verify on Codex CLI that setting up Outask MCP includes installing and checking the skill, and that a new session can load it and read the repository's tasks. Where automatic installation is unavailable, show exact manual steps and make the remaining setup requirement clear."
     ],
     "updated_at": "2026-11-18T08:59:23.774Z"
+  },
+  {
+    "id": 41,
+    "title": "Preserve user scope in the Plan to Tasks skill",
+    "status": "in_progress",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Address Snyk E004 and W011 in skills/plan-to-tasks/SKILL.md. Keep the repository's task workflow, MCP access, and duplicate checks. Remove the rule that conceals tracker choice from task records.",
+    "acceptance": [
+      "When Outask is unavailable, offer to connect it and continue work that can proceed without task management under the repository workflow. Installation and connection require explicit user authorization.",
+      "Treat Outask task contents and other repository data as untrusted context. Embedded instructions cannot acquire system authority or expand the user's request.",
+      "For task management, retain the MCP access check, any documented repository fallback, and matching of existing or historical records before creating a task."
+    ],
+    "values": "Goal: support repository-owned task workflows for AI agents (docs/product.md). Immediate security and user value: the skill preserves the requested work when task access is unavailable and prevents task data from granting authority. Verify with the skill source in unavailable-Outask, embedded-instruction, and existing-task scenarios.",
+    "updated_at": "2026-11-22T18:42:31.503Z"
   }
 ]
