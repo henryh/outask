@@ -2,7 +2,7 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { releaseNotes } from './release-notes.mjs';
-import { releaseTitle, run, targets } from './release-config.mjs';
+import { parsePackageVersion, releaseTitle, run, targets } from './release-config.mjs';
 import { distributionVersion } from '../app/src/version.mjs';
 import { reportError } from '../app/scripts/output.mjs';
 
@@ -15,14 +15,7 @@ function jsonAt(ref, path) {
   return JSON.parse(git(['show', `${ref}:${path}`]));
 }
 function compareVersion(a, b) {
-  const parse = (value) => {
-    const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(value);
-    if (!match) throw new Error(`Unsupported release version: ${value}`);
-    const pre = match[4]?.split('.');
-    if (pre?.some((part) => /^0\d+$/.test(part))) throw new Error(`Invalid prerelease identifier: ${value}`);
-    return { core: match.slice(1, 4).map(BigInt), pre };
-  };
-  const left = parse(a), right = parse(b);
+  const left = parsePackageVersion(a), right = parsePackageVersion(b);
   for (let i = 0; i < 3; i++) if (left.core[i] !== right.core[i]) return left.core[i] > right.core[i] ? 1 : -1;
   if (!left.pre || !right.pre) return left.pre === right.pre ? 0 : left.pre ? -1 : 1;
   for (let i = 0; i < Math.max(left.pre.length, right.pre.length); i++) {

@@ -14,6 +14,14 @@ export function version() {
   return JSON.parse(readFileSync(join(appRoot, 'package.json'), 'utf8')).version;
 }
 
+export function parsePackageVersion(value) {
+  const match = typeof value === 'string' && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(value);
+  if (!match) throw new Error(`Unsupported release version: ${value}`);
+  const pre = match[4]?.split('.');
+  if (pre?.some((part) => /^0\d+$/.test(part))) throw new Error(`Invalid prerelease identifier: ${value}`);
+  return { core: match.slice(1, 4).map(BigInt), pre };
+}
+
 export function releaseVersion() {
   return distributionVersion(version());
 }

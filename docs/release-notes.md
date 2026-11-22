@@ -2,15 +2,14 @@ Outask is a lightweight task tracker for personal projects and your AI harness.
 
 ## Downloads
 
-- [Linux x64](https://github.com/henryh/outask/releases/download/v1.9/Outask-1.9-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.9/Outask-1.9-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/henryh/outask/releases/download/v1.9/Outask-1.9-windows-x64.tar.gz)
+- [Linux x64](https://github.com/henryh/outask/releases/download/v1.10/Outask-1.10-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.10/Outask-1.10-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/henryh/outask/releases/download/v1.10/Outask-1.10-windows-x64.tar.gz)
 
 ## What's new
 
-- Archive and source-checkout uninstall now remove installed application files, default global configuration and caches while keeping project/skill data, source checkouts, custom configuration files and unrelated files.
-- Select projects from their working directory or by an explicit path. Global settings now use only `slow_query_ms`; project-name selection has been removed.
-- Use `OUTASK_CONFIG` for a custom configuration file and `OUTASK_HTTP_TOKEN` for the source HTTP server. See [installation and updates](https://github.com/henryh/outask/blob/v1.9/app/README.md#installation-and-updates) for cleanup and upgrade details.
+- Find Outask as `io.github.henryh/outask` in clients that import servers from the official MCP Registry. The entry launches the exact npm release over stdio.
+- Install [Plan to Tasks](https://github.com/henryh/outask/blob/v1.10/README.md#use-with-an-agent) from the source checkout. Use it in Codex CLI to save agreed work as Outask tasks, reuse matching records and resume work by ID.
 
 ## Install
 
@@ -42,6 +41,6 @@ outask list --format table
 
 ## Documentation
 
-- [Basic use](https://github.com/henryh/outask/blob/v1.9/README.md#basic-use)
-- [Full operator reference](https://github.com/henryh/outask/blob/v1.9/app/README.md)
-- [MCP setup](https://github.com/henryh/outask/blob/v1.9/app/mcp/README.md)
+- [Basic use](https://github.com/henryh/outask/blob/v1.10/README.md#basic-use)
+- [Full operator reference](https://github.com/henryh/outask/blob/v1.10/app/README.md)
+- [MCP setup](https://github.com/henryh/outask/blob/v1.10/app/mcp/README.md)

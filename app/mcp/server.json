@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.henryh/outask",
+  "description": "Read and manage repository-local JSON tasks with Outask.",
+  "title": "Outask",
+  "repository": {
+    "url": "https://github.com/henryh/outask",
+    "source": "github",
+    "subfolder": "app/mcp"
+  },
+  "version": "1.10.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "outask",
+      "version": "1.10.0",
+      "runtimeHint": "npx",
+      "transport": { "type": "stdio" },
+      "packageArguments": [
+        { "type": "positional", "value": "mcp" }
+      ]
+    }
+  ]
+}

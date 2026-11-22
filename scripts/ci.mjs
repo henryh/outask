@@ -101,13 +101,19 @@ function npmDistribution() {
 
 async function npmDownloaded() {
   const { packageMetadata, packageName, artifactIntegrity } = await import('./npm-release.mjs');
+  const requirePublication = process.env.OUTASK_REQUIRE_NPM_PUBLICATION === 'true';
   const metadata = await packageMetadata();
   if (!metadata) {
+    if (requirePublication) throw new Error('Public npm package is required before MCP Registry publication');
     console.log('npm download acceptance: WAITING (package has no registry entry; see docs/releases.md#npm-publication)');
     return;
   }
-  const expected = metadata.versions?.[JSON.parse(readFileSync(join(root, 'app/package.json'))).version];
+  const manifest = JSON.parse(readFileSync(join(root, 'app/package.json')));
+  const expected = metadata.versions?.[manifest.version];
   if (!expected) throw new Error('Approved npm version has not been published');
+  if (requirePublication && (!manifest.mcpName || expected.mcpName !== manifest.mcpName)) {
+    throw new Error('Public npm version does not carry the approved mcpName');
+  }
   const temporary = mkdtempSync(join(tmpdir(), 'outask-npm-downloaded-'));
   try {
     const packed = JSON.parse(run('Public registry package download', 'npm', ['pack', `${packageName}@${expected.version}`, '--json', '--ignore-scripts', '--registry', 'https://registry.npmjs.org', '--pack-destination', temporary]))[0];

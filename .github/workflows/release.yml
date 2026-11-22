@@ -109,3 +109,57 @@ jobs:
     uses: ./.github/workflows/release-downloads.yml
     with:
       ref: ${{ github.event.pull_request.merge_commit_sha }}
+      require-npm: ${{ github.repository == 'henryh/outask' }}
+
+  mcp-registry:
+    needs: downloaded-acceptance
+    if: github.repository == 'henryh/outask'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.13
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.3'
+          package-manager-cache: false
+      - name: Check the descriptor and look for the exact version
+        id: registry
+        run: node scripts/mcp-registry.mjs status
+      - name: Install cosign
+        if: steps.registry.outputs.exists == 'false'
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      - name: Download and verify mcp-publisher
+        if: steps.registry.outputs.exists == 'false'
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          archive=mcp-publisher_linux_amd64.tar.gz
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/$MCP_PUBLISHER_VERSION"
+          curl --fail --silent --show-error --location --output "$archive" "$base_url/$archive"
+          curl --fail --silent --show-error --location --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/$MCP_PUBLISHER_VERSION" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar -xzf "$archive" mcp-publisher
+      - name: Validate with the official MCP Registry
+        if: steps.registry.outputs.exists == 'false'
+        run: '"$RUNNER_TEMP/mcp-publisher" validate app/mcp/server.json'
+      - name: Authenticate and publish to the official MCP Registry
+        if: steps.registry.outputs.exists == 'false'
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/mcp-publisher" login github-oidc
+          "$RUNNER_TEMP/mcp-publisher" publish app/mcp/server.json
+      - name: Verify the exact public MCP Registry entry
+        if: steps.registry.outputs.exists == 'false'
+        run: node scripts/mcp-registry.mjs verify
