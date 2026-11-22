@@ -32,20 +32,49 @@ test('descriptor checks reject a package that launches the CLI instead of MCP', 
   assert.throws(() => checkDescriptor(manifest, { ...descriptor, packages: [wrongLauncher] }), /positional mcp argument/);
 });
 
-test('descriptor checks reject empty optional arrays omitted by the Registry', () => {
-  const emptyRuntimeArguments = { ...descriptor.packages[0], runtimeArguments: [] };
-  assert.throws(() => checkDescriptor(manifest, { ...descriptor, packages: [emptyRuntimeArguments] }), /omits empty optional arrays/);
-  assert.throws(() => checkDescriptor(manifest, { ...descriptor, remotes: [] }), /omits empty optional arrays/);
+test('read-back accepts the approved launch settings when the Registry normalises metadata', async (t) => {
+  const pkg = descriptor.packages[0];
+  const approved = {
+    ...descriptor,
+    repository: { ...descriptor.repository, id: '' },
+    _meta: { 'io.modelcontextprotocol.registry/publisher-provided': {} },
+    remotes: [],
+    packages: [{ ...pkg, transport: { type: 'stdio', headers: [], variables: {} }, runtimeArguments: [], environmentVariables: [] }],
+  };
+  checkDescriptor(manifest, approved);
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ server: descriptor, _meta: { [official]: { status: 'active' } } }));
+  assert.equal(await verifyRegistryEntry(approved), true);
 });
 
-test('read-back checks the exact active entry and rejects mismatched published data', async (t) => {
+test('read-back rejects a different identity, npm package or launch configuration', async (t) => {
   const response = { server: descriptor, _meta: { [official]: { status: 'active' } } };
   const fetch = t.mock.method(globalThis, 'fetch', async () => Response.json(response));
   assert.equal(await verifyRegistryEntry(descriptor), true);
   assert.equal(fetch.mock.calls[0].arguments[0], `https://registry.modelcontextprotocol.io/v0.1/servers/${encodeURIComponent(descriptor.name)}/versions/${encodeURIComponent(descriptor.version)}`);
 
-  response.server = { ...descriptor, packages: [] };
-  await assert.rejects(verifyRegistryEntry(descriptor, { allowMissing: true }), /must be active and match/);
+  const pkg = descriptor.packages[0];
+  const packageChanges = [
+    { registryType: 'pypi' },
+    { registryBaseUrl: 'https://example.com' },
+    { identifier: 'other-package' },
+    { version: '0.0.0' },
+    { runtimeHint: 'node' },
+    { transport: { type: 'streamable-http' } },
+    { packageArguments: [] },
+    { runtimeArguments: [{ type: 'named', name: '--offline' }] },
+    { environmentVariables: [{ name: 'OUTASK_CONFIG', value: '/other/config.json' }] },
+  ];
+  for (const change of [
+    { name: 'io.github.example/other' },
+    { version: '0.0.0' },
+    { packages: [] },
+    { packages: [pkg, pkg] },
+    { remotes: [{ type: 'streamable-http', url: 'https://example.com/mcp' }] },
+    ...packageChanges.map((fields) => ({ packages: [{ ...pkg, ...fields }] })),
+  ]) {
+    response.server = { ...descriptor, ...change };
+    await assert.rejects(verifyRegistryEntry(descriptor, { allowMissing: true }), /must be active and match/, JSON.stringify(change));
+  }
   response.server = descriptor;
   response._meta[official].status = 'deprecated';
   await assert.rejects(verifyRegistryEntry(descriptor), /must be active and match/);

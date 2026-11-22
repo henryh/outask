@@ -86,7 +86,7 @@ Verify the public package read-only with `node scripts/ci.mjs npm-downloaded`. P
 
 Run `node scripts/mcp-registry.mjs check` from the checkout to check the [server descriptor](../app/mcp/server.json) against the npm manifest. Use the exact npm version in both descriptor fields, including the patch component when the GitHub tag omits it.
 
-The owner-merged `Release` workflow in `henryh/outask` requires native download acceptance of the exact public npm version and verifies its `mcpName`. It runs the official `mcp-publisher` validation before publishing through GitHub OIDC. Reruns accept an identical active entry, and a conflicting entry fails the workflow. Run `node scripts/mcp-registry.mjs verify` from the approved release checkout to read back the exact version and compare it with the descriptor.
+The owner-merged `Release` workflow in `henryh/outask` requires native download acceptance of the exact public npm version and verifies its `mcpName`. It runs the official `mcp-publisher` validation before publishing through GitHub OIDC. Reruns accept an active entry with the approved npm package and launch settings. A conflicting or inactive entry fails the workflow. Run `node scripts/mcp-registry.mjs verify` from the approved release checkout to check the published identity, exact version and launch settings.
 
 ## Verify a download
 

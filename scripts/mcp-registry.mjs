@@ -6,6 +6,20 @@ import { parsePackageVersion } from './release-config.mjs';
 
 const officialMeta = 'io.modelcontextprotocol.registry/official';
 
+function packageLaunch(pkg) {
+  return {
+    registryType: pkg.registryType,
+    registryBaseUrl: pkg.registryBaseUrl,
+    identifier: pkg.identifier,
+    version: pkg.version,
+    runtimeHint: pkg.runtimeHint,
+    transport: pkg.transport?.type,
+    packageArguments: pkg.packageArguments,
+    runtimeArguments: pkg.runtimeArguments ?? [],
+    environmentVariables: pkg.environmentVariables ?? [],
+  };
+}
+
 export function checkDescriptor(manifest, descriptor) {
   const [pkg] = Array.isArray(descriptor.packages) ? descriptor.packages : [];
   if (!manifest.mcpName || descriptor.name !== manifest.mcpName) {
@@ -19,10 +33,6 @@ export function checkDescriptor(manifest, descriptor) {
   parsePackageVersion(manifest.version);
   if (descriptor.version !== manifest.version || pkg.version !== manifest.version) {
     throw new Error('Both MCP Registry descriptor versions must match the exact npm manifest version');
-  }
-  const optionalArrays = [descriptor.icons, descriptor.remotes, pkg.runtimeArguments, pkg.environmentVariables];
-  if (optionalArrays.some((value) => Array.isArray(value) && value.length === 0)) {
-    throw new Error('The MCP Registry omits empty optional arrays. Remove them from app/mcp/server.json.');
   }
   if (pkg.runtimeHint !== 'npx' || pkg.runtimeArguments?.length || pkg.transport?.type !== 'stdio'
     || !isDeepStrictEqual(pkg.packageArguments, [{ type: 'positional', value: 'mcp' }])) {
@@ -40,8 +50,11 @@ export async function verifyRegistryEntry(descriptor, { allowMissing = false } =
   if (!response.ok) throw new Error(`MCP Registry lookup for ${descriptor.name}@${descriptor.version} returned HTTP ${response.status}`);
 
   const { server, _meta } = await response.json();
-  if (!isDeepStrictEqual(server, descriptor) || _meta?.[officialMeta]?.status !== 'active') {
-    throw new Error(`MCP Registry entry for ${descriptor.name}@${descriptor.version} must be active and match app/mcp/server.json`);
+  if (_meta?.[officialMeta]?.status !== 'active' || server?.name !== descriptor.name || server.version !== descriptor.version
+    || !Array.isArray(server.packages) || server.packages.length !== 1 || !server.packages[0]
+    || !isDeepStrictEqual(packageLaunch(server.packages[0]), packageLaunch(descriptor.packages[0]))
+    || !isDeepStrictEqual(server.remotes ?? [], descriptor.remotes ?? [])) {
+    throw new Error(`MCP Registry entry for ${descriptor.name}@${descriptor.version} must be active and match the approved server identity and launch settings`);
   }
   return true;
 }
