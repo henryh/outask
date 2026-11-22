@@ -512,5 +512,18 @@
       "Verify on Codex CLI that setting up Outask MCP includes installing and checking the skill, and that a new session can load it and read the repository's tasks. Where automatic installation is unavailable, show exact manual steps and make the remaining setup requirement clear."
     ],
     "updated_at": "2026-11-18T08:59:23.774Z"
+  },
+  {
+    "id": 43,
+    "title": "Make MCP task write schemas portable",
+    "status": "in_progress",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "For Outask 1.10.1, publish explicit JSON Schema alternatives for arbitrary create_task fields, update_task set values and add/remove items while preserving runtime validation.",
+    "acceptance": [
+      "MCP tools/list advertises portable schemas at all four reported paths and accepts all JSON value types there.",
+      "Source checks verify the advertised schemas and that MCP writes preserve mixed JSON values."
+    ],
+    "updated_at": "2026-11-22T20:46:56.641Z"
   }
 ]
