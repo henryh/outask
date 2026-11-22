@@ -512,5 +512,20 @@
       "Verify on Codex CLI that setting up Outask MCP includes installing and checking the skill, and that a new session can load it and read the repository's tasks. Where automatic installation is unavailable, show exact manual steps and make the remaining setup requirement clear."
     ],
     "updated_at": "2026-11-18T08:59:23.774Z"
+  },
+  {
+    "id": 42,
+    "title": "Publish Outask in the official MCP Registry",
+    "status": "in_progress",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Register the existing public outask npm package as io.github.henryh/outask in the official MCP Registry. Add package ownership metadata and a server.json manifest for version-pinned npx stdio startup with the mcp argument. Integrate validation and GitHub OIDC registration into the owner-approved minor release, after the exact public npm version is verified. Preserve the existing CLI and local MCP setup.",
+    "acceptance": [
+      "The accepted npm tarball contains mcpName io.github.henryh/outask. The Registry manifest matches that name and the exact npm release version and passes the official non-publishing validator.",
+      "A fresh npm launch with the manifest's positional mcp argument completes initialize and tools/list over stdio with JSON-RPC-only stdout. The existing installed outask mcp command remains supported.",
+      "The approved minor release publishes the existing public npm package first. The MCP Registry job uses GitHub OIDC and registers the same approved version after public npm acceptance. A read-only lookup confirms the public Registry entry advertises the expected npm package, version and stdio launch arguments."
+    ],
+    "values": "Goal: make Outask's local task operations available to developers and AI agents. Value: users can discover Outask in the official MCP Registry and launch a known release using their client. Result: the public entry identifies the exact installable npm package and stdio launch. Measure: fetch the entry by name and version, then start the advertised package and list its tools.",
+    "updated_at": "2026-11-22T19:19:44.576Z"
   }
 ]
