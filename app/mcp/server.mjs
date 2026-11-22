@@ -34,7 +34,18 @@ const writing = {
   store: text.optional().describe('Destination store, when ambiguous.'),
   if_updated_at: text.optional().describe('Exact last-read updated_at; rejects stale writes.'),
 };
-const object = z.record(z.string(), z.unknown());
+// Explicitly allow object keys so Zod preserves anyOf instead of emitting a type array.
+const jsonValue = z.unknown().meta({
+  anyOf: [
+    { type: 'array' },
+    { type: 'boolean' },
+    { type: 'null' },
+    { type: 'number' },
+    { type: 'object', additionalProperties: true },
+    { type: 'string' },
+  ],
+});
+const object = z.record(z.string(), jsonValue);
 const writes = ({ store, if_updated_at }) => ({ store, ifUpdatedAt: if_updated_at });
 const reads = ({ no_cache, ...args }) => ({ ...args, noCache: no_cache ?? false });
 
@@ -95,8 +106,8 @@ export function createServer() {
   }, (path, { task, store, schemaPath }) => createTask(path, task, { store, schemaPath }));
   register('update_task', 'Patch a retained task atomically. Duplicate additions are silent no-ops. Returns the complete record.', {
     ...writing, id, patch: z.strictObject({
-      set: object.optional(), add: z.record(z.string(), z.array(z.unknown())).optional(),
-      remove: z.record(z.string(), z.array(z.unknown())).optional(), unset: z.array(text).optional(),
+      set: object.optional(), add: z.record(z.string(), z.array(jsonValue)).optional(),
+      remove: z.record(z.string(), z.array(jsonValue)).optional(), unset: z.array(text).optional(),
     }),
   }, (path, args) => updateTask(path, args.id, args.patch, { ...writes(args), schemaPath: args.schemaPath }));
   register('transition_task', 'Move a retained task to an exact configured status; Active blockers prevent starting. Returns the complete record.', {

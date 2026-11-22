@@ -173,6 +173,56 @@ test('MCP and CLI report the shared project byte boundary', async (t) => {
   assert.match(result.stderr, new RegExp(`INPUT_TOO_LARGE:.*${projectBytes / 1024 / 1024} MiB`));
 });
 
+test('MCP task writes advertise and preserve all JSON value types', async (t) => {
+  const root = fixture(t, []);
+  const { client, call } = await connect(t, root);
+  const { tools } = await client.listTools();
+  const create = tools.find(({ name }) => name === 'create_task').inputSchema.properties.task;
+  const { set, add, remove } = tools.find(({ name }) => name === 'update_task')
+    .inputSchema.properties.patch.properties;
+  const expected = [
+    { type: 'array' },
+    { type: 'boolean' },
+    { type: 'null' },
+    { type: 'number' },
+    { type: 'object', additionalProperties: true },
+    { type: 'string' },
+  ];
+  for (const [path, schema] of Object.entries({
+    'task.additionalProperties': create.additionalProperties,
+    'patch.set.additionalProperties': set.additionalProperties,
+    'patch.add.additionalProperties.items': add.additionalProperties.items,
+    'patch.remove.additionalProperties.items': remove.additionalProperties.items,
+  })) {
+    const alternatives = schema?.anyOf?.toSorted((a, b) => a.type.localeCompare(b.type));
+    assert.deepEqual(alternatives, expected, path);
+  }
+
+  const fields = {
+    customArray: [null, { nested: true }],
+    customBoolean: false,
+    customNull: null,
+    customNumber: 1.5,
+    customObject: { nested: [null, 2] },
+    customString: 'value',
+  };
+  const values = Object.values(fields);
+  const created = await call('create_task', {
+    task: { title: 'Mixed JSON values', ...fields, toRemove: [...values, 'keep'] },
+  });
+  for (const [key, value] of Object.entries(fields)) assert.deepEqual(created[key], value, key);
+
+  const replacements = Object.fromEntries(Object.entries(fields).map(([key, value]) => [`${key}Set`, value]));
+  const updated = await call('update_task', {
+    id: created.id,
+    patch: { set: replacements, add: { added: values }, remove: { toRemove: values } },
+  });
+  for (const [key, value] of Object.entries(replacements)) assert.deepEqual(updated[key], value, key);
+  assert.deepEqual(updated.added, values);
+  assert.deepEqual(updated.toRemove, ['keep']);
+  assert.deepEqual(await call('get_task', { id: created.id }), updated);
+});
+
 test('installed stdio SDK client discovers tools and maintains a full lifecycle with CLI parity', async (t) => {
   const root = fixture(t, [task(1), task(2, { blockers: [1], parent: 'external/8', custom: { keep: true }, tags: ['a'] })]);
   const installer = fileURLToPath(new URL('../../scripts/install-cli.mjs', import.meta.url));
