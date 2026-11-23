@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { parseNpmPack } from '../app/scripts/npm-pack.mjs';
 import { archiveName, archivePath, hostTarget, releaseVersion, root, tagName } from './release-config.mjs';
 import { checksumName, checksumsRequired, verifyArchive } from './release-checksums.mjs';
 
@@ -116,8 +117,11 @@ async function npmDownloaded() {
   }
   const temporary = mkdtempSync(join(tmpdir(), 'outask-npm-downloaded-'));
   try {
-    const packed = JSON.parse(run('Public registry package download', 'npm', ['pack', `${packageName}@${expected.version}`, '--json', '--ignore-scripts', '--registry', 'https://registry.npmjs.org', '--pack-destination', temporary]))[0];
-    const artifact = join(temporary, packed.filename);
+    const report = run('Public registry package download', 'npm', [
+      'pack', `${packageName}@${expected.version}`, '--json', '--ignore-scripts',
+      '--registry', 'https://registry.npmjs.org', '--pack-destination', temporary,
+    ]);
+    const artifact = join(temporary, parseNpmPack(report).filename);
     if (artifactIntegrity(artifact) !== expected.dist.integrity) throw new Error('Downloaded npm package integrity mismatch');
     npmSmoke(artifact);
   } finally { rmSync(temporary, { recursive: true, force: true }); }

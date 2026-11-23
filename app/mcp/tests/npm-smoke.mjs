@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { parseNpmPack } from '../../scripts/npm-pack.mjs';
 import { distributionVersion } from '../../src/version.mjs';
 import { isolateUserHome } from '../../tests/helpers/registry-isolation.mjs';
 import { cleanupProjectLocks } from '../../tests/helpers/cleanup-project-locks.mjs';
@@ -91,7 +92,8 @@ try {
   const previousServer = originalServer.replace(`version: '${adapterVersion}'`, `version: '${old.version}'`);
   assert.notEqual(previousServer, originalServer, 'older fixture must identify its loaded MCP code');
   writeFileSync(oldServer, previousServer);
-  const oldArtifact = JSON.parse(await run('npm', ['pack', '--json', '--ignore-scripts'], join(extracted, 'package')))[0].filename;
+  const oldPackageReport = await run('npm', ['pack', '--json', '--ignore-scripts'], join(extracted, 'package'));
+  const oldArtifact = parseNpmPack(oldPackageReport).filename;
   await run('npm', ['install', '-g', '--prefix', prefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', join(extracted, 'package', oldArtifact)]);
   assert.equal((await commandVersion('outask')).trim(), 'Outask v0.0');
 
