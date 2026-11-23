@@ -3,7 +3,6 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { parseNpmPack } from '../app/scripts/npm-pack.mjs';
 import { archiveName, archivePath, hostTarget, releaseVersion, root, tagName } from './release-config.mjs';
 import { checksumName, checksumsRequired, verifyArchive } from './release-checksums.mjs';
 
@@ -101,6 +100,7 @@ function npmDistribution() {
 }
 
 async function npmDownloaded() {
+  const { parseNpmPack } = await import('../app/scripts/npm-pack.mjs');
   const { packageMetadata, packageName, artifactIntegrity } = await import('./npm-release.mjs');
   const requirePublication = process.env.OUTASK_REQUIRE_NPM_PUBLICATION === 'true';
   const metadata = await packageMetadata();
