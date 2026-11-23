@@ -9,6 +9,7 @@ Outask is a lightweight task tracker for personal projects and your AI harness.
 ## What's new
 
 - The schemas for `create_task` and `update_task` pass MCP Inspector’s portability check. Both tools support mixed JSON values in custom fields and patch arrays.
+- Global npm installations can check for and install updates with `outask self update` on npm 12.
 
 ## Install
 

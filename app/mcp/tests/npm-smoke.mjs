@@ -140,6 +140,9 @@ try {
     const checked = await run(process.execPath, [oldEntry, 'self', 'update', '--check'], project, 10);
     assert.match(checked, /Update available.*v0.0.* -> v/);
     assert.deepEqual(readFileSync(join(dirname(dirname(oldEntry)), 'package.json')), before);
+    registryLatest = `${manifest.version}-rc.1`;
+    await assert.rejects(run(process.execPath, [oldEntry, 'self', 'update', '--check']), /npm latest must identify one stable Outask version/);
+    registryLatest = manifest.version;
     registryFailure = true;
     await assert.rejects(run(process.execPath, [oldEntry, 'self', 'update', '--check']), /UPDATE_FAILED/);
     assert.equal((await commandVersion('outask')).trim(), 'Outask v0.0');
