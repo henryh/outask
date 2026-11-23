@@ -115,7 +115,8 @@ export async function main(args) {
     return;
   }
   const cli = npmCli();
-  const latest = JSON.parse(npmRun(cli, selected, ['view', 'outask@latest', 'version', '--json']));
+  const report = JSON.parse(npmRun(cli, selected, ['view', 'outask@latest', 'version', '--json']));
+  const latest = Array.isArray(report) && report.length === 1 ? report[0] : report;
   if (typeof latest !== 'string' || latest.includes('-')) fail('UPDATE_FAILED', 'npm latest must identify one stable Outask version');
   const newer = compareVersions(selected.version, latest) < 0;
   if (!newer) { console.log(`Outask v${distributionVersion(selected.version)} is already current${compareVersions(selected.version, latest) > 0 ? ` (newer than stable v${latest})` : ''}.`); return; }

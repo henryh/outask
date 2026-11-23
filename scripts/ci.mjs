@@ -100,6 +100,7 @@ function npmDistribution() {
 }
 
 async function npmDownloaded() {
+  const { parseNpmPack } = await import('../app/scripts/npm-pack.mjs');
   const { packageMetadata, packageName, artifactIntegrity } = await import('./npm-release.mjs');
   const requirePublication = process.env.OUTASK_REQUIRE_NPM_PUBLICATION === 'true';
   const metadata = await packageMetadata();
@@ -116,8 +117,11 @@ async function npmDownloaded() {
   }
   const temporary = mkdtempSync(join(tmpdir(), 'outask-npm-downloaded-'));
   try {
-    const packed = JSON.parse(run('Public registry package download', 'npm', ['pack', `${packageName}@${expected.version}`, '--json', '--ignore-scripts', '--registry', 'https://registry.npmjs.org', '--pack-destination', temporary]))[0];
-    const artifact = join(temporary, packed.filename);
+    const report = run('Public registry package download', 'npm', [
+      'pack', `${packageName}@${expected.version}`, '--json', '--ignore-scripts',
+      '--registry', 'https://registry.npmjs.org', '--pack-destination', temporary,
+    ]);
+    const artifact = join(temporary, parseNpmPack(report).filename);
     if (artifactIntegrity(artifact) !== expected.dist.integrity) throw new Error('Downloaded npm package integrity mismatch');
     npmSmoke(artifact);
   } finally { rmSync(temporary, { recursive: true, force: true }); }

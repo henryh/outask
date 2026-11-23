@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { fail } from '../src/errors.mjs';
 import { reportError } from './output.mjs';
+import { parseNpmPack } from './npm-pack.mjs';
 import { distributionVersion } from '../src/version.mjs';
 
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -446,7 +447,8 @@ async function buildNpm(options) {
     cpSync(join(root, 'LICENSE'), join(stage, 'LICENSE'));
     cpSync(join(root, 'docs/npm.md'), join(stage, 'README.md'));
     assertClean(stage);
-    const packed = JSON.parse(run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', options.outDir], { cwd: stage }).stdout)[0];
+    const { stdout } = run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', options.outDir], { cwd: stage });
+    const packed = parseNpmPack(stdout);
     return { format: 'npm', archive: join(options.outDir, packed.filename), bytes: packed.size };
   } finally { rmSync(stage, { recursive: true, force: true }); }
 }

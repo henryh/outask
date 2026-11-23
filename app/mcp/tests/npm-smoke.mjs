@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { parseNpmPack } from '../../scripts/npm-pack.mjs';
 import { distributionVersion } from '../../src/version.mjs';
 import { isolateUserHome } from '../../tests/helpers/registry-isolation.mjs';
 import { cleanupProjectLocks } from '../../tests/helpers/cleanup-project-locks.mjs';
@@ -91,7 +92,8 @@ try {
   const previousServer = originalServer.replace(`version: '${adapterVersion}'`, `version: '${old.version}'`);
   assert.notEqual(previousServer, originalServer, 'older fixture must identify its loaded MCP code');
   writeFileSync(oldServer, previousServer);
-  const oldArtifact = JSON.parse(await run('npm', ['pack', '--json', '--ignore-scripts'], join(extracted, 'package')))[0].filename;
+  const oldPackageReport = await run('npm', ['pack', '--json', '--ignore-scripts'], join(extracted, 'package'));
+  const oldArtifact = parseNpmPack(oldPackageReport).filename;
   await run('npm', ['install', '-g', '--prefix', prefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', join(extracted, 'package', oldArtifact)]);
   assert.equal((await commandVersion('outask')).trim(), 'Outask v0.0');
 
@@ -138,6 +140,9 @@ try {
     const checked = await run(process.execPath, [oldEntry, 'self', 'update', '--check'], project, 10);
     assert.match(checked, /Update available.*v0.0.* -> v/);
     assert.deepEqual(readFileSync(join(dirname(dirname(oldEntry)), 'package.json')), before);
+    registryLatest = `${manifest.version}-rc.1`;
+    await assert.rejects(run(process.execPath, [oldEntry, 'self', 'update', '--check']), /npm latest must identify one stable Outask version/);
+    registryLatest = manifest.version;
     registryFailure = true;
     await assert.rejects(run(process.execPath, [oldEntry, 'self', 'update', '--check']), /UPDATE_FAILED/);
     assert.equal((await commandVersion('outask')).trim(), 'Outask v0.0');

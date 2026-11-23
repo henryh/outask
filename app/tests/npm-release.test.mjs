@@ -1,9 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { parseNpmPack } from '../scripts/npm-pack.mjs';
 import { publicationPlan } from '../../scripts/npm-release.mjs';
 
 const candidate = { name: 'fixture-package', version: '1.6.0', integrity: 'sha512-approved', owner: 'confirmed-owner' };
 const owned = { name: candidate.name, maintainers: [{ name: candidate.owner }], versions: {} };
+
+test('npm pack reports one archive as an array or a package-keyed object', () => {
+  const archive = { name: 'fixture-package', filename: 'fixture-package-1.6.0.tgz', size: 123 };
+  assert.deepEqual(parseNpmPack(JSON.stringify([archive])), archive);
+  assert.deepEqual(parseNpmPack(JSON.stringify({ [archive.name]: archive })), archive);
+});
+
+test('npm pack rejects invalid JSON and missing, incomplete or ambiguous archive records', () => {
+  assert.throws(() => parseNpmPack(''), { code: 'INVALID_RELEASE', message: /returned invalid JSON/ });
+  const archive = { filename: 'fixture.tgz', size: 123 };
+  for (const report of [{}, [null], [{ size: 123 }], [{ filename: 'fixture.tgz' }], { a: archive, b: archive }]) {
+    assert.throws(() => parseNpmPack(JSON.stringify(report)), { code: 'INVALID_RELEASE', message: /one archive/ });
+  }
+});
 
 test('npm first publication hands off only absent packages; occupied names require confirmed ownership', () => {
   assert.deepEqual(publicationPlan(undefined, candidate), { action: 'bootstrap' });
