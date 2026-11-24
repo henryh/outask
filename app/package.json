@@ -1,7 +1,7 @@
 {
   "name": "outask",
   "mcpName": "io.github.henryh/outask",
-  "version": "1.10.1",
+  "version": "2.0.0",
   "description": "Outask CLI for repository-local JSON task tracking",
   "private": true,
   "author": "Henry <me@henrydev.me>",
