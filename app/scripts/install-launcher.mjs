@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { applicationRoot } from '../src/locations.mjs';
 
 export const commandNames = ['outask', 'tasks'];
-export const packageNames = ['outask', 'task-tracker-local'];
+export const packageNames = ['outask'];
 
 export function installLocations() {
   const destination = applicationRoot();

@@ -19,20 +19,18 @@ test('platform application roots remain stable and explicit cache/config locatio
   assert.equal(configPath({ XDG_CONFIG_HOME: '/selected/config' }), '/selected/config/outask/config.json');
 });
 
-test('default registry recognises legacy settings without rewriting and prefers canonical settings', t => {
+test('registry uses canonical defaults and explicit configuration without rewriting', t => {
   const home = fixture(t, []);
   const env = { HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, 'local') };
-  const legacy = join(home, '.config/task-tracker/config.json');
-  mkdirSync(join(home, '.config/task-tracker'), { recursive: true });
-  writeFileSync(legacy, '{"projects":{},"unknown":{"preserved":true}}\n');
-  assert.equal(readConfig(undefined, env).path, legacy);
   const canonical = configPath(env);
+  assert.equal(readConfig(undefined, env).path, canonical);
   mkdirSync(applicationRoot(env), { recursive: true });
   writeFileSync(canonical, '{"slow_query_ms":42}\n');
-  assert.equal(readConfig(undefined, env).path, canonical);
   assert.equal(readConfig(undefined, env).slowQueryMs, 42);
-  assert.equal(readConfig(undefined, { ...env, OUTASK_CONFIG: legacy }).path, legacy);
-  assert.equal(readConfig(legacy, env).settings.unknown.preserved, true);
+  const explicit = join(home, 'selected-settings.json');
+  writeFileSync(explicit, '{"unknown":{"preserved":true}}\n');
+  assert.equal(readConfig(undefined, { ...env, OUTASK_CONFIG: explicit }).path, explicit);
+  assert.equal(readConfig(explicit, env).settings.unknown.preserved, true);
 });
 
 test('both CLI names share canonical help, continuations, reads, errors and exit codes', t => {

@@ -98,7 +98,7 @@ test('archive discovery retains custom command directories and selects the runni
 });
 
 test('archive discovery supports existing metadata without a bin field through owned PATH commands', t => {
-  const root = fixture(t), app = join(root, 'Outask/app'), bin = join(root, 'legacy commands');
+  const root = fixture(t), app = join(root, 'Outask/app'), bin = join(root, 'custom commands');
   appAt(app); linkArchive(bin, app);
   writeFileSync(join(dirname(app), 'release.json'), JSON.stringify({ version: '1.8', target: updateTarget() }));
   const previous = process.env.PATH;

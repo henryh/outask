@@ -37,7 +37,7 @@ export function configurePath(bin, { env = process.env, platform = process.platf
         const contents = readFileSync(profile, 'utf8');
         if (contents.replace(managedBlocks, '') !== contents) profiles.push(profile);
       }
-    } catch (error) { messages.push(`Cannot inspect legacy PATH blocks in ${profile}: ${error.message}`); }
+    } catch (error) { messages.push(`Cannot inspect managed PATH blocks in ${profile}: ${error.message}`); }
   }
   for (const profile of new Set(profiles)) {
     try {

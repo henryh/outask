@@ -246,7 +246,7 @@ test('download install, repeat, update and uninstall preserve project data and s
   const project = join(f.home, 'project');
   mkdirSync(join(project, 'docs'), { recursive: true });
   const schema = { stores: { 'active.json': { statuses: ['pending', 'in_progress'], required_fields: ['team'] }, 'done.json': { statuses: ['done'], required_fields: ['team'] } } };
-  writeFileSync(join(project, 'docs/task-schema.json'), JSON.stringify(schema));
+  writeFileSync(join(project, 'tasks/task-schema.json'), JSON.stringify(schema));
   ok(task('create', project, '--json', JSON.stringify({ title: 'Installed task', team: 'ops', extra: { keep: true } })));
   ok(task('list', project));
   ok(task('update', project, '1', '--json', JSON.stringify({ set: { title: 'Updated task' } })));
@@ -276,7 +276,7 @@ test('download install, repeat, update and uninstall preserve project data and s
   for (const name of ['app', 'release.json', 'install.sh']) assert.equal(existsSync(join(newer, name)), false);
   assert.equal(readFileSync(join(newer, 'user-note.txt'), 'utf8'), 'keep user content');
   assert.equal(readFileSync(join(project, 'tasks/done.json'), 'utf8'), data);
-  assert.deepEqual(JSON.parse(readFileSync(join(project, 'docs/task-schema.json'))), schema);
+  assert.deepEqual(JSON.parse(readFileSync(join(project, 'tasks/task-schema.json'))), schema);
 });
 
 test('source checkout uninstall removes installed copies and retains checkout and neighboring files', t => {
@@ -301,8 +301,7 @@ test('uninstall cleans default and XDG state while preserving project, skill and
     const f = fixture(t);
     ok(f.install());
     const env = { ...f.env, XDG_CONFIG_HOME: join(f.home, 'xdg-config'), XDG_CACHE_HOME: join(f.home, 'xdg-cache') };
-    const defaults = [join(f.installed, 'config.json'), join(env.XDG_CONFIG_HOME, 'outask/config.json'),
-      join(env.XDG_CONFIG_HOME, 'task-tracker/config.json'), join(f.home, '.config/task-tracker/config.json')];
+    const defaults = [join(f.installed, 'config.json'), join(env.XDG_CONFIG_HOME, 'outask/config.json')];
     const caches = [join(f.installed, 'cache'), join(env.XDG_CACHE_HOME, 'outask/cache')];
     for (const path of defaults) {
       mkdirSync(dirname(path), { recursive: true });
@@ -362,59 +361,6 @@ test('uninstall leaves configuration and caches behind user-managed directory al
   assert.equal(readFileSync(join(skill, 'cache/user-data'), 'utf8'), 'preserve');
   assert.equal(readlinkSync(join(configHome, 'outask')), skill);
   assert.equal(readlinkSync(join(cacheHome, 'outask')), skill);
-});
-
-test('managed upgrades replace the previous root installers and preserve user data and unknown files', (t) => {
-  for (const target of Object.keys(installerEntries)) {
-    const f = fixture(t, target);
-    // Construct a managed application with root-level installer files.
-    cpSync(f.source, f.installed, { recursive: true });
-    rmSync(join(f.installed, installerEntries[target]));
-    const oldInstallers = ['install.mjs', 'install-path.mjs', 'install-launcher.mjs', 'install.sh',
-      ...(target === 'macos-arm64' ? ['Install.command'] : target === 'windows-x64' ? ['install.cmd'] : [])];
-    for (const name of oldInstallers) writeFileSync(join(f.installed, name), `Previous managed ${name}\n`);
-    // Preserve the hook fixture's install-launcher import in the root-installer layout.
-    for (const helper of ['install-release.mjs', 'install-path.mjs']) {
-      rmSync(join(f.installed, 'app/scripts', helper), { force: true });
-    }
-    writeFileSync(join(f.installed, 'release.json'), JSON.stringify({ version: '0.0.1', target }));
-    mkdirSync(f.bin, { recursive: true });
-    symlinkSync(join(f.installed, 'app/bin/tasks'), join(f.bin, 'tasks'));
-    const project = join(f.home, 'project');
-    mkdirSync(project);
-    ok(run(join(f.bin, 'tasks'), ['create', project, '--json', JSON.stringify({ title: 'Existing task', extra: { retained: ['unknown', 42] } })], { env: f.env }));
-    const dataPath = join(project, 'tasks/active.json');
-    const data = readFileSync(dataPath, 'utf8');
-    const userFiles = {
-      'user-note.txt': 'retain user content\n',
-      'install-custom.mjs': 'retain similarly named unknown file\n',
-      'user-data/settings.json': '{"unknown":{"retained":true}}\n',
-    };
-    for (const [name, content] of Object.entries(userFiles)) {
-      mkdirSync(dirname(join(f.installed, name)), { recursive: true });
-      writeFileSync(join(f.installed, name), content);
-    }
-    const config = join(f.home, '.codex/config.toml');
-    mkdirSync(dirname(config));
-    const configuration = '[mcp_servers.existing]\ncommand = "keep-this"\n';
-    writeFileSync(config, configuration);
-    assert.match(ok(f.install()), /Installed/);
-    assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
-    assert.equal(JSON.parse(readFileSync(join(f.installed, 'release.json'), 'utf8')).version, releaseVersion);
-    const installedNames = readdirSync(f.installed);
-    for (const name of oldInstallers.filter((name) => name !== installerEntries[target])) {
-      assert.equal(installedNames.includes(name), false, `${target}: obsolete ${name}`);
-    }
-    assert.equal(installedNames.includes(installerEntries[target]), true, target);
-    for (const helper of ['install-release.mjs', 'install-path.mjs', 'install-launcher.mjs']) {
-      assert.equal(existsSync(join(f.installed, 'app/scripts', helper)), true, `${target}: ${helper}`);
-    }
-    for (const [name, content] of Object.entries(userFiles)) assert.equal(readFileSync(join(f.installed, name), 'utf8'), content, `${target}: ${name}`);
-    assert.equal(readFileSync(dataPath, 'utf8'), data, target);
-    assert.deepEqual(JSON.parse(data)[0].extra, { retained: ['unknown', 42] });
-    assert.equal(readFileSync(config, 'utf8'), configuration, target);
-    ok(run(join(f.bin, 'tasks'), ['validate', project], { env: f.env }));
-  }
 });
 
 test('preflight rejects missing Node and incompatible Node before writing installation', (t) => {
@@ -480,7 +426,7 @@ test('installer refuses an unrelated destination before replacing user files', (
   assert.match(result.stderr, /INSTALL_EXISTS/);
   assert.equal(readFileSync(join(f.installed, 'user-note.txt'), 'utf8'), 'retain this');
   assert.equal(existsSync(f.bin), false);
-  // Legacy installer filenames and release metadata alone do not prove ownership.
+  // Installer filenames and release metadata alone do not prove ownership.
   writeFileSync(join(f.installed, 'release.json'), JSON.stringify({ version: '0.0.1', target: 'linux-x64' }));
   mkdirSync(join(f.installed, 'app'));
   writeFileSync(join(f.installed, 'app/package.json'), JSON.stringify({ name: 'unrelated-application' }));
@@ -493,84 +439,15 @@ test('installer refuses an unrelated destination before replacing user files', (
   assert.equal(existsSync(f.bin), false);
 });
 
-test('legacy versioned installations retire managed payloads while retaining unrelated files', (t) => {
-  const f = fixture(t);
-  ok(f.install());
-  const legacy = join(f.releases, `task-tracker-${releaseVersion}-linux-x64`);
-  renameSync(f.installed, legacy);
-  for (const name of ['outask', 'tasks']) rmSync(join(f.bin, name));
-  symlinkSync(join(legacy, 'app/bin/tasks'), join(f.bin, 'tasks'));
-  writeFileSync(join(legacy, 'user-note.txt'), 'legacy user content');
-  ok(f.install());
-  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
-  assert.equal(readFileSync(join(legacy, 'user-note.txt'), 'utf8'), 'legacy user content');
-  assert.equal(existsSync(join(legacy, 'app/package.json')), false);
-  assert.equal(existsSync(join(legacy, 'app/bin/tasks')), false);
-});
-
-test('a legacy packaged updater migrates its default root, registry and command into one Outask installation', t => {
-  const f = fixture(t);
-  const oldRoot = join(f.home, '.local/share/task-tracker/releases');
-  const previous = join(oldRoot, 'Outask');
-  cpSync(f.source, previous, { recursive: true });
-  const manifest = join(previous, 'app/package.json');
-  const pkg = JSON.parse(readFileSync(manifest, 'utf8'));
-  writeFileSync(manifest, JSON.stringify({ ...pkg, name: 'task-tracker-local' }));
-  mkdirSync(f.bin, { recursive: true });
-  symlinkSync(join(previous, 'app/bin/tasks'), join(f.bin, 'tasks'));
-  writeFileSync(join(previous, 'user-owned.txt'), 'preserve');
-  const oldConfig = join(f.home, '.config/task-tracker/config.json');
-  mkdirSync(dirname(oldConfig), { recursive: true });
-  const settings = '{"projects":{},"unknown":{"preserved":[1,2]}}\n';
-  writeFileSync(oldConfig, settings);
-  const env = { ...f.env, XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined, OUTASK_CONFIG: undefined };
-  // Supply the task-tracker application parent explicitly.
-  ok(run(process.execPath, [internalInstaller(f.source), 'install', '--bin-dir', f.bin, '--release-root', oldRoot], { env }));
-  for (const name of ['outask', 'tasks']) {
-    assert.equal(readlinkSync(join(f.bin, name)), join(f.installed, 'app/bin/tasks'));
-    assert.equal(ok(run(join(f.bin, name), ['--version'], { env })).trim(), `Outask v${releaseVersion}`);
-  }
-  assert.equal(readFileSync(join(f.installed, 'config.json'), 'utf8'), settings);
-  assert.equal(existsSync(oldConfig), true);
-  assert.equal(existsSync(join(previous, 'app/package.json')), false);
-  assert.equal(readFileSync(join(previous, 'user-owned.txt'), 'utf8'), 'preserve');
-  assert.equal(readdirSync(f.releases).some(name => name.startsWith('.outask-')), false);
-});
-
-test('installation preserves default state created by source commands and refuses conflicting registries', t => {
+test('installation preserves default state created by source commands', t => {
   const f = fixture(t);
   const current = join(f.installed, 'config.json');
   mkdirSync(join(f.installed, 'cache'), { recursive: true });
   writeFileSync(current, '{"projects":{}}\n');
-  const oldConfig = join(f.home, '.config/task-tracker/config.json');
-  mkdirSync(dirname(oldConfig), { recursive: true });
-  writeFileSync(oldConfig, '{"projects":{},"unknown":true}\n');
   const env = { ...f.env, XDG_CONFIG_HOME: undefined, OUTASK_CONFIG: undefined };
-  const blocked = run(process.execPath, [internalInstaller(f.source)], { env });
-  assert.notEqual(blocked.status, 0);
-  assert.match(blocked.stderr, /CONFIG_CONFLICT/);
-  assert.equal(existsSync(f.bin), false);
-  assert.equal(readFileSync(oldConfig, 'utf8'), '{"projects":{},"unknown":true}\n');
-  rmSync(oldConfig);
   ok(run(process.execPath, [internalInstaller(f.source)], { env }));
   assert.equal(readFileSync(current, 'utf8'), '{"projects":{}}\n');
   assert.ok(existsSync(join(f.installed, 'cache')));
-});
-
-test('command uninstall preserves a user-selected symlinked legacy registry without attempting migration', t => {
-  const f = fixture(t);
-  ok(f.install());
-  const external = join(f.home, 'external-registry.json');
-  writeFileSync(external, '{"unknown":"preserve"}\n');
-  const legacy = join(f.home, '.config/task-tracker/config.json');
-  mkdirSync(dirname(legacy), { recursive: true });
-  symlinkSync(external, legacy);
-  ok(run(process.execPath, [internalInstaller(f.installed), 'uninstall'], {
-    env: { ...f.env, XDG_CONFIG_HOME: undefined, OUTASK_CONFIG: undefined },
-  }));
-  for (const name of ['outask', 'tasks']) assert.equal(existsSync(join(f.bin, name)), false);
-  assert.equal(readlinkSync(legacy), external);
-  assert.equal(readFileSync(external, 'utf8'), '{"unknown":"preserve"}\n');
 });
 
 test('custom root is the installation parent and ownership requires the selected root', (t) => {
@@ -883,23 +760,6 @@ test('macOS packaged installer forwards arguments, diagnostics and exit status',
   }
 });
 
-test('macOS directory selection recognises its stable destination and previous default root', (t) => {
-  const f = fixture(t, 'macos-arm64');
-  const legacy = join(f.home, '.local/share/task-tracker/releases', `task-tracker-${releaseVersion}-macos-arm64`);
-  cpSync(f.source, legacy, { recursive: true });
-  mkdirSync(f.bin, { recursive: true });
-  symlinkSync(join(legacy, 'app/bin/tasks'), join(f.bin, 'tasks'));
-  // Test platform-dependent path selection; native acceptance runs separately on macOS.
-  const module = "Object.defineProperty(process, 'platform', { value: 'darwin' }); const entry = process.argv[1]; process.argv.splice(1, 1); await import(entry);";
-  ok(run(process.execPath, ['--input-type=module', '-e', module, internalInstaller(f.source)], { env: f.env }));
-  const installed = join(f.home, 'Library/Application Support/Outask');
-  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(installed, 'app/bin/tasks'));
-  assert.equal(existsSync(join(legacy, 'app/package.json')), false);
-  ok(run(process.execPath, ['--input-type=module', '-e', module, join(repo, 'app/scripts/install-cli.mjs'),
-    'install', '--bin-dir', f.bin], { env: f.env }));
-  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(repo, 'app/bin/tasks'));
-});
-
 test('development installer recognises a release in an explicit custom release root', (t) => {
   const f = fixture(t);
   const actualRoot = join(f.home, 'release-storage');
@@ -968,22 +828,6 @@ test('installer ignores an unrelated non-searchable PATH directory', {
   } finally {
     chmodSync(restricted, 0o700);
   }
-});
-
-test('installer migrates existing checkout and previous release command links', (t) => {
-  const f = fixture(t);
-  mkdirSync(f.bin, { recursive: true });
-  symlinkSync(join(repo, 'app/bin/tasks'), join(f.bin, 'tasks'));
-  ok(f.install());
-  rmSync(join(f.bin, 'tasks'));
-  const old = join(f.releases, 'task-tracker-0.0.1-linux-x64');
-  cpSync(f.source, old, { recursive: true });
-  writeFileSync(join(old, 'release.json'), JSON.stringify({ version: '0.0.1', target: 'linux-x64' }));
-  writeFileSync(join(old, 'bin/tasks'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
-  symlinkSync(join(old, 'bin/tasks'), join(f.bin, 'tasks'));
-  ok(f.install());
-  assert.equal(readlinkSync(join(f.bin, 'tasks')), join(f.installed, 'app/bin/tasks'));
-  assert.equal(existsSync(join(old, 'bin/tasks')), false);
 });
 
 test('Windows archive installer checks Node before delegating to the managed installer', () => {

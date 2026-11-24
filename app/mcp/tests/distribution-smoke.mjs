@@ -31,7 +31,6 @@ const bin = windows ? join(home, 'AppData/Local/Programs/Outask/commands') : joi
 const releases = windows ? join(home, 'AppData/Local/Programs') : process.platform === 'darwin' ? join(home, 'Library/Application Support') : join(home, '.local/share');
 const application = join(releases, process.platform === 'linux' ? 'outask' : 'Outask');
 const config = join(application, 'config.json');
-const oldConfig = join(home, '.config/task-tracker/config.json');
 const tools = join(temporary, 'tools');
 const env = {
   ...process.env, USERPROFILE: windows ? home : process.env.USERPROFILE, HOME: home, SHELL: process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash', ZDOTDIR: undefined, LOCALAPPDATA: join(home, 'AppData/Local'), XDG_CONFIG_HOME: undefined, XDG_CACHE_HOME: undefined,
@@ -99,7 +98,7 @@ function documentedInstall(source, shell) {
 }
 function registry(script) { return run(powershell, ['-NoProfile', '-NonInteractive', '-Command', '[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding; ' + script]); }
 try {
-  for (const directory of [home, downloads, tools, join(home, '.config/task-tracker'), join(project, 'tasks'), join(project, 'docs')]) {
+  for (const directory of [home, downloads, tools, join(project, 'tasks'), join(project, 'docs')]) {
     mkdirSync(directory, { recursive: true });
   }
   if (windows) {
@@ -118,7 +117,6 @@ try {
   write('tasks/task-schema.json', schema);
   write('docs/notes.txt', 'User project document\n');
   const configuration = `${JSON.stringify({ slow_query_ms: 0, custom: { keep: true } }, null, 2)}\n`;
-  writeFileSync(oldConfig, configuration);
 
   run('tar', ['-xzf', archive, '-C', downloads]);
   const source = join(downloads, archiveDirectory);
@@ -177,9 +175,8 @@ try {
   assert.equal(existsSync(join(helperReleases, name, installerName)), true,
     'A custom-root installation must retain its platform installer');
   assert.equal(existsSync(bin), false, 'Explicit helper overrides must not write the default command directory');
-  assert.equal(existsSync(releases), false, 'Explicit helper overrides must not write the default application directory');
+  assert.equal(existsSync(join(application, 'app')), false, 'Explicit helper overrides must not write the default application payload');
   assert.deepEqual(JSON.parse(read('tasks/active.json')), [original]);
-  assert.equal(readFileSync(oldConfig, 'utf8'), configuration);
   const helperUninstall = invoke(join(helperReleases, name, installerName), ['uninstall',
     '--bin-dir', helperBin, '--release-root', helperReleases], helperEnv);
   assert.equal(helperUninstall.status, 0, helperUninstall.stderr || helperUninstall.stdout);
@@ -191,9 +188,10 @@ try {
     assert.equal(env.PATH.split(delimiter).includes(bin), false, 'First installation must not inherit the installed command directory');
     assert.equal(existsSync(join(home, process.platform === 'darwin' ? '.zprofile' : '.bashrc')), false, 'First installation must start with fresh shell startup files');
   }
+  mkdirSync(application, { recursive: true });
+  writeFileSync(config, configuration);
   if (windows) documentedInstall(source, 'powershell'); else run(installer);
   lock = projectLockPath(project);
-  assert.equal(existsSync(oldConfig), true, 'The legacy registry filename must continue to resolve after migration');
   assert.equal(readFileSync(config, 'utf8'), configuration);
   if (!windows) assert.equal(readlinkSync(command), join(releases, name, 'app/bin/tasks'));
   if (!windows) {
@@ -246,11 +244,11 @@ try {
     assert.equal(invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/c', 'tasks --version'], freshEnv).stdout.trim(), `Outask v${metadata.version}`);
     assert.match(readFileSync(command, 'utf8'), /^[\x00-\x7f]*$/, 'The managed batch launcher must be independent of the console code page');
     // Save/restore the test console code page; the launcher itself must leave 437 intact.
-    const legacyScript = `for /f "tokens=2 delims=:" %c in ('chcp') do set "OUTASK_OLD_CP=%c" & chcp 437 >nul & call "%OUTASK_COMMAND%" --version & set "OUTASK_EXIT=!errorlevel!" & chcp & chcp !OUTASK_OLD_CP! >nul & exit /b !OUTASK_EXIT!`;
-    const legacy = invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/v:on', '/c', legacyScript], { ...freshEnv, OUTASK_COMMAND: command });
-    assert.equal(legacy.status, 0, legacy.stderr || legacy.stdout);
-    assert.ok(legacy.stdout.split(/\r?\n/).some((line) => line.trim() === `Outask v${metadata.version}`));
-    assert.match(legacy.stdout, /\b437\b/, 'Running a launcher in a Unicode install directory must preserve CP437');
+    const codePageScript = `for /f "tokens=2 delims=:" %c in ('chcp') do set "OUTASK_OLD_CP=%c" & chcp 437 >nul & call "%OUTASK_COMMAND%" --version & set "OUTASK_EXIT=!errorlevel!" & chcp & chcp !OUTASK_OLD_CP! >nul & exit /b !OUTASK_EXIT!`;
+    const codePage = invoke(join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/v:on', '/c', codePageScript], { ...freshEnv, OUTASK_COMMAND: command });
+    assert.equal(codePage.status, 0, codePage.stderr || codePage.stdout);
+    assert.ok(codePage.stdout.split(/\r?\n/).some((line) => line.trim() === `Outask v${metadata.version}`));
+    assert.match(codePage.stdout, /\b437\b/, 'Running a launcher in a Unicode install directory must preserve CP437');
     assert.equal(invoke(powershell, ['-NoProfile', '-Command', 'tasks --version; exit $LASTEXITCODE'], freshEnv).stdout.trim(), `Outask v${metadata.version}`);
   }
   rmSync(downloads, { recursive: true, force: true });
@@ -516,7 +514,7 @@ try {
   for (const alias of ['outask', 'tasks']) assert.equal(existsSync(join(bin, windows ? `${alias}.cmd` : alias)), false);
   for (const name of ['app', 'release.json', installerName]) assert.equal(existsSync(join(updatedInstall, name)), false);
   for (const [path, content] of retained) assert.equal(read(path), content);
-  for (const path of [config, oldConfig, join(application, 'cache')]) assert.equal(existsSync(path), false, path);
+  for (const path of [config, join(application, 'cache')]) assert.equal(existsSync(path), false, path);
   for (const path of protectedFiles) assert.equal(readFileSync(path, 'utf8'), 'retain user content\n');
   evidence = {
     result: 'PASS', os: { platform: process.platform, version: osVersion, architecture },
