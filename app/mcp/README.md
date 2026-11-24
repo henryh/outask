@@ -81,14 +81,14 @@ Both `outask` and `node` must be available on the client's PATH; follow the PATH
 checks above if startup fails. For Windows, use the Node entry described above.
 Remove the entry and stop its process to disconnect the adapter.
 
-## Compatible updates
+## Updates
 
 Run `outask self update` while existing sessions remain connected. Let active writes finish normally.
 Existing sessions use their loaded version until the launching client
 restarts them in its normal lifecycle. Verify `outask --version` and a fresh MCP
 connection with a task read to check the updated installation independently.
 See [project locks and upgrades](../README.md#project-locks-and-upgrades)
-for coordination-file cleanup and incompatible protocol migrations.
+for coordination-file cleanup.
 
 ## Tools and selection
 

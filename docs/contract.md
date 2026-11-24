@@ -1,6 +1,6 @@
 # Tracker contract
 
-Planned coordination is defined in the [Work Origin delivery contract](work-origin.md).
+This document defines shared task data, operation semantics, guarantees and errors for implementers and integrators. Use [Install Outask](install.md) to set up the application, the [MCP guide](../app/mcp/README.md) to connect an agent, and the [operator cookbook](../app/README.md) for commands and recovery procedures.
 
 Core/standalone operations own storage, validation and write coordination. CLI,
 MCP and read-only HTTP adapt their inputs and outputs to those operations.
@@ -15,41 +15,14 @@ contain CLI/MCP; HTTP is available from a source checkout. See the
 Outask is the displayed product name; `outask` is the command and service
 identifier. `tasks` is a permanent equivalent command.
 
-The permanent default roots are `~/.local/share/outask` on Linux,
-`~/Library/Application Support/Outask` on macOS, and
-`%LOCALAPPDATA%\Programs\Outask` on Windows. Application files, default
-`config.json` and disposable `cache/` live in these roots.
-Updates stage and back up only managed program files beside that root. The
-root, registry, cache and coordination inodes stay in place; successful updates
-remove staging and backups. Installation cleanup covers managed application directories selected for migration and preserves unrecognised sibling files. Conflicting registries stop migration.
-
-Archive and source-checkout uninstall remove managed commands, confirmed installed payloads, default application/XDG global configuration, migrated legacy settings and application caches. Explicit configuration at arbitrary paths, project/skill data, source checkouts and unrelated files remain. Cleanup never traverses user-managed directory symlinks into external settings/cache data. Existing PATH/profile settings and fixed writer coordination files remain.
-
-npm installations use npm's global package directory and command entries for application files. They use the same default Outask configuration, cache and coordination paths. Native npm install/update/uninstall owns the program lifecycle; npm uninstall preserves configuration, cache, skills and project records. See the [npm guide](npm.md).
-
-`outask self update` manages the running CLI installation from any directory. It updates managed archives through the packaged updater and global npm packages through their owning npm/prefix/registry. Archive installation records the command directory as `bin` in installed `release.json`; commands can also be resolved through PATH. Updates retain the installation's distribution channel and newer installed versions. `--check` queries version availability and preserves application/project files (npm may write cache/logs): exit 0 current/newer, 10 update available, 2 unsupported context, 1 failure. Source checkouts, local npm/npx and unrecognised contexts receive update guidance. See [installation and updates](../app/README.md#installation-and-updates).
-
-Necessary external integrations are POSIX links for both commands in
-`~/.local/bin`, existing managed shell PATH blocks (including `ZDOTDIR`), and
-Windows user PATH pointing to the root's `commands/` directory. Installation
-consolidates its generated PATH blocks and preserves other shell code.
-Managed source payloads are identified by release metadata and package ownership inside the known application parents. Refresh explicit client/hook references
-when changing layouts; remove an installed hook with its original command first.
-Explicit `--bin-dir`, `--release-root`, `--config`, `OUTASK_CONFIG` and XDG
-paths remain supported choices. Modified hooks require manual integration.
-
-Writer coordination uses the fixed POSIX `/var/tmp/task-tracker-locks-<uid>`
-namespace and Windows `<OS-user-home>/AppData/Local/Programs/Outask/locks`,
-independently of HOME/cache/config/temp overrides. Before changing coordination locations or protocol generations, finish active writes and close CLI/MCP/HTTP sessions. Start upgraded writers together on one generation.
-Compatible updates within that generation preserve running sessions. Never
-unlink or relocate live coordination files. Retirement requires all affected
-writers to finish and close before coordinated migration and restart.
-Loaded readers retain their cache paths; fresh processes use the Outask root or explicit XDG cache location. Clear a cache after its readers and refresh workers close.
+Installation locations, managed files and update/removal behaviour are defined in [installation details](install.md#installation-details). Project JSON remains the task-data authority across installation changes. npm and archive installations share the default configuration, cache and writer-coordination paths.
 
 CLI/MCP/HTTP launchers set the Node process title to `outask`; MCP metadata and
 the HTTP `Server` header report `outask`. OS executable-image names (for example
 `node.exe` on Windows), client-chosen connection labels and wrapper processes
 are controlled by the OS/client.
+
+## Shared operations
 
 Core entry points take a project path and return values; adapters handle output and exit status. Their options follow the shared rules below:
 
@@ -77,9 +50,7 @@ same working directory and environment.
 Global configuration precedence is explicit `--config`, `OUTASK_CONFIG`,
 then the platform Outask application root's `config.json`. An explicit
 `XDG_CONFIG_HOME` selects `$XDG_CONFIG_HOME/outask/config.json` instead.
-The `task-tracker/config.json` path supplies configuration when the canonical configuration is absent; installation copies it byte-for-byte into the canonical root and links the source filename for running clients. POSIX
-uses a symlink; Windows uses a hard link, which is refreshed after each update.
-A Windows configuration-link failure preserves both settings copies; explicitly select an external configuration file when needed. Reconcile conflicting configuration files before installation. Explicit config selects the program configuration path. Global configuration
+Explicit config selects the program configuration path. Global configuration
 supports only the non-negative integer `slow_query_ms` (default `150`), including
 for standalone search. Unknown configuration fields are preserved and ignored;
 configuration does not map names or search for projects.
@@ -87,9 +58,8 @@ Define task rules in the project schema.
 
 ## Implemented read configuration
 
-The project schema defaults to `tasks/task-schema.json`, falling back to an
-existing `docs/task-schema.json`. Both present is `INVALID_CONFIG` unless an
-explicit selector chooses one: core `schemaPath`, CLI/scripts/HTTP startup
+The project schema defaults to `tasks/task-schema.json`. Select another project-relative
+file with core `schemaPath`, CLI/scripts/HTTP startup
 `--schema-path`, MCP `schema_path`. Explicit paths must exist, stay inside the
 project and name a regular file through ordinary directories. Schema files and
 all their path components must not be symlinks, including automatic candidates.
@@ -128,11 +98,11 @@ not prepare projects. Reads preserve task bytes and do not refresh existing
 service metadata or inspect it for blocker eligibility. Missing metadata is
 uncertified; successful validation or writes establish its fingerprints/counter.
 
-Selected read stores must be arrays of objects with positive safe-integer IDs, non-empty title and effective status strings and no duplicate IDs across selected files. Declared statuses are checked unless `validate: false`. Even exempt stores need this read structure; schemas cannot waive the ID/title minimum. Minimum-field read errors identify the source file, zero-based record index and first missing/incompatible field with a correction to make. See [validation and manual edits](../app/README.md#validation-and-manual-edits) for preserving existing records during corrections. Every present `updated_at` must be canonical UTC milliseconds; a missing `updated_at` is valid. Reads preserve unknown fields and do not validate unselected history or all project-required fields. Blocker inspection additionally checks examined blocker fields. A successful read is not a full validation verdict.
+Selected read stores must be arrays of objects with positive safe-integer IDs, non-empty title and status strings and no duplicate IDs across selected files. Declared statuses are checked unless `validate: false`. Even exempt stores need this read structure; schemas cannot waive the ID/title minimum. Minimum-field read errors identify the source file, zero-based record index and first missing/incompatible field with a correction to make. See [validation and manual edits](../app/README.md#validation-and-manual-edits) for preserving existing records during corrections. Every present `updated_at` must be canonical UTC milliseconds; a missing `updated_at` is valid. Reads preserve unknown fields and do not validate unselected history or all project-required fields. Blocker inspection additionally checks examined blocker fields. A successful read is not a full validation verdict.
 
 ## Records and project rules
 
-Read and ordinary validation require `id`, `title` and an effective `status`. Only an absent status is inferred: without a schema, `active.json` supplies `pending` and `done.json` supplies `done`. Other stores have no implicit fallback. With a schema, each store containing status-less tasks needs an explicit `missing_status` naming one of its allowed statuses. Fallbacks cannot be `in_progress`, `review` or any configured `working_statuses` value. Explicit blank, null, wrong-type and undeclared values retain their existing validation rules. Inference supplies the same status for reads, filters, groups, search, counts and blocker checks; it never edits records or schemas. Full-validation exemptions remain as described below.
+Read and ordinary validation require explicit `id`, `title` and `status` fields. Status must be a non-empty string allowed by the selected store. Reads never infer or write missing record fields. Full-validation exemptions remain as described below.
 
 Standard creation adds omitted `priority: "medium"` and `blockers: []`; schema `format: "minimal"` omits those defaults. Both stamp tracker-owned `updated_at`. Title is required; omitted status defaults to `pending` or configured `default_status`; omitted ID is allocated. A configured default must name a declared status. Unknown fields, IDs, records and readable source formatting must be preserved.
 
@@ -319,22 +289,14 @@ file permissions; Windows uses the OS user profile under
 `AppData/Local/Programs/Outask/locks` with inherited ACLs. Projects containing that lock
 directory are rejected for writes. Different projects have independent locks.
 
-The retained external SQLite coordination files contain no task data. Completion,
-exceptions and process death release the OS lock; a retained file is not evidence
-of ownership. Never remove/replace coordination files while tracker processes
-may run. Optional cleanup requires all that user's tracker processes to stop.
-Ordinary compatible upgrades preserve persistent MCP/HTTP sessions and in-flight
-writes. Sessions use their loaded code until their launching client restarts them normally; fresh
-launches use the updated installation. Only an incompatible coordination-protocol
-migration requires arranging for affected clients to close old sessions after
-active writes finish before upgraded writers start. A `tasks/.task-tracker.json.lock` causes `PROJECT_BUSY`. Confirm that its writers have stopped before clearing it, then restart upgraded writers together. See [upgrade commands](../app/README.md#project-locks-and-upgrades).
+The retained external SQLite coordination files contain no task data. Completion, exceptions and process death release the OS lock; a retained file is not evidence of ownership. Coordination depends on stable file inodes. Updates preserve persistent MCP/HTTP sessions and in-flight writes; sessions retain their loaded code until restarted, while fresh launches use the updated installation. See [project locks and upgrades](../app/README.md#project-locks-and-upgrades) for restart and cleanup procedures.
 
 These guarantees exclude arbitrary editors, cross-user/host/network-filesystem
 writers, atomic snapshots across concurrent completed moves and power-loss
 durability. Detected changes between source checks fail with `PROJECT_CHANGED`;
 an arbitrary editor can still race the last check/rename.
 
-Creation and actual mutations stamp canonical ISO UTC millisecond `updated_at`, strictly later than the prior date: max(current clock, prior + 1 ms). No-ops preserve record/service bytes; changing store at the same status is a mutation. An actual change also persists the effective/final status on a record with a missing status; equal updates and same-store transitions remain no-ops and leave status absent. The maximum supported date is readable/no-op-safe but cannot advance (`TIMESTAMP_EXHAUSTED`). Callers cannot supply, patch or remove this field. Manual editors must advance existing dates; reads/validation neither infer changes nor bulk-stamp records.
+Creation and actual mutations stamp canonical ISO UTC millisecond `updated_at`, strictly later than the prior date: max(current clock, prior + 1 ms). No-ops preserve record/service bytes; changing store at the same status is a mutation. The maximum supported date is readable/no-op-safe but cannot advance (`TIMESTAMP_EXHAUSTED`). Callers cannot supply, patch or remove this field. Manual editors must advance existing dates; reads/validation neither infer changes nor bulk-stamp records.
 
 Optional `ifUpdatedAt` (CLI `--if-updated-at`) compares the exact stored date
 under lock after recovery, even for no-ops. Missing/different dates yield
@@ -380,10 +342,7 @@ size failures leave existing task/service bytes unchanged, apart from normal
 missing-metadata preparation or recovery of an earlier operation.
 
 A successful mutation returns the full persisted task. Creation atomically
-replaces the task before service state; if service refresh fails,
-`WRITE_INCOMPLETE` reports the saved ID. Inspect it and validate before another
-create: blindly repeating an interrupted/lost response can create another task.
-Changed fingerprints force safe revalidation; a saved ID is never freed.
+replaces the task before service state; if service refresh fails, `WRITE_INCOMPLETE` reports the saved ID. Creation is not idempotent: repeating a request after an interrupted/lost response can create another task. Changed fingerprints force safe revalidation; a saved ID is never freed. See [statuses and recovery](../app/README.md#statuses-and-recovery) for safe inspection and retry procedures.
 
 ### Partial updates
 
@@ -425,17 +384,14 @@ Lifecycle moves stage full replacements and save bounded
 `tasks/.task-tracker.pending` before atomically replacing destination, source
 and service files, then removing the journal. Reads/inspections refuse pending
 moves with `RECOVERY_REQUIRED`. Validation, creation and lifecycle writes recover
-under the same lock. Never delete the journal to bypass recovery.
+under the same lock. The journal is required for recovery.
 
 Recovery rolls forward verified before/after states, including temporary duplicate
 copies, to exactly one retained record and matching metadata. It is idempotent
 and checks staged content, paths, source budget and external file/service edits.
 Malformed journals fail; external changes yield `RECOVERY_CONFLICT`, preserving
 journal/current bytes for reconciliation. Post-publication failure reports
-`WRITE_INCOMPLETE` with empty stdout. Recover and inspect before retrying:
-a saved conditional request then conflicts; an unconditional repeat to the same
-status/store is a no-op. Leftover UUID temporary files may be removed only after
-the crashed process has stopped. See [recovery commands](../app/README.md#statuses-and-recovery).
+`WRITE_INCOMPLETE` with empty stdout. After recovery, a saved conditional request conflicts; an unconditional repeat to the same status/store is a no-op. See [statuses and recovery](../app/README.md#statuses-and-recovery) for inspection, reconciliation and temporary-file cleanup.
 
 ## Effective schema and Git hooks
 

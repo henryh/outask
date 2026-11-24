@@ -28,7 +28,7 @@ or use the [operator cookbook](app/README.md).
 
 ## Use with an agent
 
-Connect the local Outask MCP adapter to your agent and start a new session. See [MCP setup](app/mcp/README.md) for client and platform instructions.
+Connect the local Outask MCP adapter to your agent and start a new session. See [MCP setup](app/mcp/README.md) for client and platform instructions. Find the server listing on [Glama](https://glama.ai/mcp/servers/henryh/outask).
 
 To use [Plan to Tasks](skills/plan-to-tasks/), copy its folder into your agent's skills directory and enable it.
 
