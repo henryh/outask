@@ -110,11 +110,11 @@ test('explicit IDs cannot collide with any retained store and never lower the co
   const root = fixture(t, [task(1)], {
     stores: {
       'active.json': { statuses: ['pending'] }, 'done.json': { statuses: ['done'] },
-      'archive.json': { statuses: ['archive'] }, 'legacy.json': { statuses: ['old'], validate: false },
+      'archive.json': { statuses: ['archive'] }, 'unvalidated.json': { statuses: ['old'], validate: false },
     }, groups: { Active: ['pending'], Done: ['done'], Archive: ['archive', 'old'] },
   });
   writeStore(root, 'archive.json', [task(150, { status: 'archive' })]);
-  writeStore(root, 'legacy.json', [{ id: 700, legacyOnly: true }]);
+  writeStore(root, 'unvalidated.json', [{ id: 700, extensionOnly: true }]);
   writeStore(root, 'retained.json', [task(900, { status: 'historical' })]);
   for (const id of [1, 99, 150, 700, 900]) rejected(root, { id, title: 'Duplicate' }, 'ID_CONFLICT');
   assert.equal(createTask(root, { title: 'Automatic' }).id, 901);
@@ -141,10 +141,9 @@ test('missing state and external task, file-set and configuration edits refresh 
   unlinkSync(join(root, 'tasks/old.json'));
   assert.equal(createTask(root, { title: 'Removed file' }).id, 802);
   assert.equal(state(root).validated.files['tasks/old.json'], undefined);
-  mkdirSync(join(root, 'docs'));
-  writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } }, required_fields: ['scope'] }));
+  writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } }, required_fields: ['scope'] }));
   rejected(root, { title: 'External config invalidates retained records', scope: 'Present' }, 'INVALID_STORE');
-  unlinkSync(join(root, 'docs/task-schema.json'));
+  unlinkSync(join(root, 'tasks/task-schema.json'));
   writeStore(root, 'old.json', [task(500)]);
   rejected(root, { title: 'External duplicate' }, 'INVALID_STORE');
   writeFileSync(join(root, 'tasks/old.json'), '[');
@@ -219,17 +218,17 @@ test('working-state blockers, self-links, cycles and invalid fields reject witho
 test('mixed stores and explicit destinations use current Active membership', (t) => {
   const root = fixture(t, [], {
     stores: { 'active.json': { statuses: ['todo', 'doing'] }, 'mixed.json': { statuses: ['todo', 'doing', 'done'] },
-      'legacy.json': { statuses: ['todo'], validate: false } },
+      'unvalidated.json': { statuses: ['todo'], validate: false } },
     groups: { Active: ['todo', 'doing'], Done: ['done'] }, default_status: 'todo', working_statuses: ['doing'],
   });
   writeStore(root, 'mixed.json', [task(2, { status: 'todo' }), task(3, { status: 'done' })]);
-  writeStore(root, 'legacy.json', [{ id: 4, status: 'todo' }]);
+  writeStore(root, 'unvalidated.json', [{ id: 4, status: 'todo' }]);
   rejected(root, { title: 'Ambiguous' }, 'INVALID_INPUT');
   rejected(root, { title: 'Wrong store' }, 'INVALID_INPUT', { store: 'done' });
   rejected(root, { title: 'Blocked', status: 'doing', blockers: [2] }, 'ACTIVE_BLOCKERS', { store: 'active' });
   rejected(root, { title: 'Exempt active blocker', status: 'doing', blockers: [4] }, 'ACTIVE_BLOCKERS', { store: 'active' });
   assert.equal(createTask(root, { title: 'Mixed history is inactive', status: 'doing', blockers: [3] }, { store: 'mixed' }).id, 100);
-  rejected(root, { title: '', status: 'todo' }, 'INVALID_STORE', { store: 'legacy' });
+  rejected(root, { title: '', status: 'todo' }, 'INVALID_STORE', { store: 'unvalidated' });
 });
 
 test('two simultaneous standalone creators wait for coordination and retain unique tasks', { timeout: 10000 }, async (t) => {
@@ -352,10 +351,9 @@ test('oversized responses, oversized resulting stores, bad inputs and exhaustion
 
 test('creation configuration is validated consistently by validation and creation', (t) => {
   const root = fixture(t, []);
-  mkdirSync(join(root, 'docs'));
   for (const extra of [{ format: 'unknown' }, { default_status: 'unknown' }, { working_statuses: 'in_progress' },
     { working_statuses: ['unknown'] }, { working_statuses: ['done'] }]) {
-    writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify({ stores: {
+    writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify({ stores: {
       'active.json': { statuses: ['pending', 'in_progress'] }, 'done.json': { statuses: ['done'] },
     }, ...extra }));
     rejected(root, { title: 'Bad configuration' }, 'INVALID_CONFIG');

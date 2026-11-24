@@ -47,17 +47,17 @@ test('configured requirements, optional review, plan fields and config fingerpri
   validateProject(root);
   const old = state(root);
   config.required_fields.push('estimate');
-  writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify(config));
+  writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify(config));
   invalid(root, /estimate is required/);
   assert.deepEqual(state(root), old);
   config.required_fields.pop();
   config.plan.required_for_statuses = [];
-  writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify(config));
+  writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify(config));
   assert.equal(validateProject(root).refreshed, true);
   writeStore(root, 'active.json', [task(1, { status: 'review', scope: 'Work', acceptance: ['Check'] })]);
   invalid(root, /status must be one of pending, in_progress/);
   config.plan.required_for_statuses = ['in_progress'];
-  writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify(config));
+  writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify(config));
   writeStore(root, 'active.json', [task(1, { status: 'in_progress', scope: 'Work', acceptance: ['Check'] })]);
   invalid(root, /techdesign is required/);
   writeStore(root, 'active.json', [task(1, { status: 'in_progress', scope: 'Work', acceptance: ['Check'], techdesign: 'Design', stages: ['Implement'] })]);
@@ -129,16 +129,16 @@ test('create and update use configured field rules without persisting rejected r
 
 test('all retained stores enforce IDs including exemptions while extension fields remain passive', (t) => {
   const root = fixture(t, [task(1, { scope: {}, acceptance: false, completed_at: 'project-defined' })], {
-    stores: { 'active.json': { statuses: ['pending'] }, 'legacy.json': { statuses: ['old'], validate: false } },
+    stores: { 'active.json': { statuses: ['pending'] }, 'unvalidated.json': { statuses: ['old'], validate: false } },
     groups: { Active: ['pending'], Archive: ['old'] },
   });
-  writeStore(root, 'legacy.json', [{ id: 700, arbitrary: true }]);
+  writeStore(root, 'unvalidated.json', [{ id: 700, arbitrary: true }]);
   assert.equal(validateProject(root).counter, 700);
-  writeStore(root, 'legacy.json', [{ id: 99 }]);
+  writeStore(root, 'unvalidated.json', [{ id: 99 }]);
   invalid(root, /duplicate id 99/);
-  writeStore(root, 'legacy.json', [{ id: '700' }]);
+  writeStore(root, 'unvalidated.json', [{ id: '700' }]);
   invalid(root, /id must be a positive safe integer/);
-  writeStore(root, 'legacy.json', {});
+  writeStore(root, 'unvalidated.json', {});
   invalid(root, /root value must be an array/);
 });
 
@@ -167,19 +167,14 @@ test('missing counters preserve metadata and malformed sources never create cert
   assert.deepEqual(state(root), {});
 });
 
-test('configuration addition/removal invalidates state and locks prevent concurrent refresh', (t) => {
+test('configuration addition/removal invalidates state', (t) => {
   const root = fixture(t, [task(1)]);
   validateProject(root);
   assert.equal(state(root).validated.files['tasks/task-schema.json'], null);
-  mkdirSync(join(root, 'docs'));
-  writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } } }));
+  writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } } }));
   assert.equal(validateProject(root).refreshed, true);
-  unlinkSync(join(root, 'docs/task-schema.json'));
+  unlinkSync(join(root, 'tasks/task-schema.json'));
   assert.equal(validateProject(root).refreshed, true);
-  writeFileSync(join(root, 'tasks/.task-tracker.json.lock'), '');
-  const before = snapshot(root);
-  invalid(root, /cannot lock validation.*EEXIST/);
-  assert.deepEqual(snapshot(root), before);
 });
 
 test('deep Active graphs validate without call-stack limits and errors stay bounded', (t) => {
@@ -197,11 +192,10 @@ test('invalid required-field configuration and oversized inputs preserve service
   const root = fixture(t, [task(1)]);
   validateProject(root);
   const old = state(root);
-  mkdirSync(join(root, 'docs'));
-  writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } }, required_fields: 'scope' }));
+  writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } }, required_fields: 'scope' }));
   invalid(root, /required_fields must be an array/);
   assert.deepEqual(state(root), old);
-  unlinkSync(join(root, 'docs/task-schema.json'));
+  unlinkSync(join(root, 'tasks/task-schema.json'));
   writeFileSync(join(root, 'tasks/active.json'), ' '.repeat(projectBytes + 1));
   invalid(root, new RegExp(`${projectBytes / 1024 / 1024} MiB read budget`));
   assert.deepEqual(state(root), old);

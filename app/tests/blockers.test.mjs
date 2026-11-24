@@ -53,7 +53,7 @@ test('inspection uses every Active store and only active IDs in mixed stores', (
     syncBuiltinESMExports();
   }
   assert.deepEqual(opened, [
-    join(root, 'docs/task-schema.json'), join(root, 'tasks/mixed.json'), join(root, 'tasks/queue.json'),
+    join(root, 'tasks/task-schema.json'), join(root, 'tasks/mixed.json'), join(root, 'tasks/queue.json'),
   ]);
   assert.deepEqual(result.activeBlockers, [2, 3]);
   assert.equal(result.eligible, false);

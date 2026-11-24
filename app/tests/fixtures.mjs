@@ -52,8 +52,7 @@ export function fixture(context, active = Array.from({ length: 12 }, (_, index) 
   writeStore(root, 'active.json', active);
   writeStore(root, 'done.json', [task(99, { status: 'done', completed_at: '2026-09-17T00:00:00Z' })]);
   if (config) {
-    mkdirSync(join(root, 'docs'));
-    writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify(config, null, 2));
+    writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify(config, null, 2));
   }
   return root;
 }

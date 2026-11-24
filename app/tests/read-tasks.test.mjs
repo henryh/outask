@@ -96,7 +96,7 @@ test('configured groups span stores and split mixed stores consistently for list
   assert.deepEqual(snapshot(root), before);
 });
 
-test('legacy store configuration works without group or record migration', (context) => {
+test('custom store configuration infers groups without changing records', (context) => {
   const root = fixture(context, [task(1, { status: 'waiting' })], {
     stores: {
       'active.json': { statuses: ['waiting', 'doing'] },
@@ -208,10 +208,10 @@ test('invalid configuration and missing configured stores cannot produce partial
     { ...config, plan: { required_for_statuses: 'todo' } },
   ];
   for (const invalid of invalidConfigs) {
-    writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify(invalid));
+    writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify(invalid));
     assert.throws(() => listTasks(root), { code: 'INVALID_CONFIG' });
   }
-  writeFileSync(join(root, 'docs/task-schema.json'), '{broken');
+  writeFileSync(join(root, 'tasks/task-schema.json'), '{broken');
   assert.throws(() => listTasks(root), { code: 'INVALID_JSON' });
 });
 
@@ -237,10 +237,11 @@ test('read diagnostics identify the first incompatible minimum field without cha
   const root = fixture(t, []);
   const path = join(root, 'tasks/active.json');
   for (const [record, problem, correction] of [
-    [{ title: 'Legacy', status: 'pending' }, 'missing id', 'set id to a positive safe integer'],
+    [{ title: 'Record', status: 'pending' }, 'missing id', 'set id to a positive safe integer'],
     [task('2'), 'incompatible id', 'set id to a positive safe integer'],
     [{ id: 2, status: 'pending' }, 'missing title', 'set title to a non-empty string'],
     [task(2, { title: [] }), 'incompatible title', 'set title to a non-empty string'],
+    [{ id: 2, title: 'Missing status' }, 'missing status', 'set status to a non-empty string'],
     [task(2, { status: ' ' }), 'incompatible status', 'set status to a non-empty string'],
     [null, 'task must be an object', 'correct this record to include id, title and status'],
   ]) {
@@ -263,8 +264,7 @@ test('manual status typos are reported instead of silently hiding tasks from the
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /INVALID_STORE.*status pendnig.*expected pending/);
   assert.throws(() => getTask(root, 1), { code: 'INVALID_STORE' });
-  mkdirSync(join(root, 'docs'));
-  writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify({
+  writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify({
     stores: { 'active.json': { statuses: ['pending'], validate: false } },
   }));
   assert.equal(getTask(root, 1, { stores: ['active'] }).status, 'pendnig');

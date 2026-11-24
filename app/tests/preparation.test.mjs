@@ -112,8 +112,8 @@ test('first failed mutations and validation prepare only uncertified service met
 test('missing stores in configured, partial or previously populated projects remain errors', (t) => {
   const roots = [];
   const configured = empty(t);
-  mkdirSync(join(configured, 'docs'));
-  writeFileSync(join(configured, 'docs/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } } }));
+  mkdirSync(join(configured, 'tasks'));
+  writeFileSync(join(configured, 'tasks/task-schema.json'), JSON.stringify({ stores: { 'active.json': { statuses: ['pending'] } } }));
   roots.push(configured);
   const partial = empty(t);
   mkdirSync(join(partial, 'tasks'));
@@ -244,16 +244,16 @@ test('existing records are readable without metadata; invalid data never receive
 
 test('configured standard stores remain lazy while configuration and extension fields survive', (t) => {
   const root = empty(t);
-  mkdirSync(join(root, 'docs'));
+  mkdirSync(join(root, 'tasks'));
   const config = JSON.stringify({ extension: true, default_status: 'todo', stores: {
     'active.json': { statuses: ['todo'] }, 'done.json': { statuses: ['finished'] }, 'archive.json': { statuses: ['deleted'] },
   } });
-  writeFileSync(join(root, 'docs/task-schema.json'), config);
+  writeFileSync(join(root, 'tasks/task-schema.json'), config);
   createTask(root, { title: 'Configured' });
   assert.equal(validateProject(root).counter, 1);
   transitionTask(root, 1, 'finished');
   deleteTask(root, 1);
-  assert.equal(readFileSync(join(root, 'docs/task-schema.json'), 'utf8'), config);
+  assert.equal(readFileSync(join(root, 'tasks/task-schema.json'), 'utf8'), config);
   assert.equal(getTask(root, 1, { group: 'Archive' }).status, 'deleted');
 });
 

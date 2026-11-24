@@ -8,7 +8,7 @@ import { jsonBytes } from './response.mjs';
 import { fingerprint, knownCounter, readService, recoverMove, saveMove, serviceState, withProjectLock } from './service.mjs';
 import { changeFields } from './source.mjs';
 import { finishStore } from './storage-format.mjs';
-import { effectiveRecord, openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
+import { openProject, projectRelative, retainedFiles, serviceFile } from './stores.mjs';
 import { nextTimestamp, timestampValue, validateTimestamp } from './timestamps.mjs';
 import { scanProject, validateCycles, validateRecord } from './validation.mjs';
 
@@ -87,8 +87,7 @@ export function moveTask(projectPath, id, status, options, deleting, patch) {
         sources.set(file, selected);
         let previousEnd;
         for (const entry of records) {
-          const task = rules.validate === false && rules.missing_status === undefined && entry.value.id !== id
-            ? entry.value : effectiveRecord(entry.value, project, file, `tasks/${file}`);
+          const task = entry.value;
           selected.count++;
           if (found?.file === file && found.nextStart === undefined) found.nextStart = entry.start;
           if (task.id === id) found = { file, task, persisted: entry.value, start: entry.start, end: entry.end, previousEnd };

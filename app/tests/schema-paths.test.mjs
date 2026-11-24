@@ -24,29 +24,20 @@ function writeSchema(root, relative, value) {
   writeFileSync(join(root, relative), JSON.stringify(value));
 }
 
-test('automatic selection prefers the new tasks location and retains legacy-only projects', (t) => {
-  const current = fixture(t, [task(1, { status: 'queued' })]);
-  writeSchema(current, 'tasks/task-schema.json', schema());
-  assert.equal(listTasks(current).tasks[0].status, 'queued');
-  assert.equal(validateProject(current).valid, true);
-  assert.equal(JSON.parse(readFileSync(join(current, 'tasks/.task-tracker.json'))).validated.files['tasks/task-schema.json'] !== undefined, true);
-
-  const legacy = fixture(t, [task(1, { status: 'legacy' })], schema('legacy'));
-  assert.equal(listTasks(legacy).tasks[0].status, 'legacy');
-  assert.equal(validateProject(legacy).valid, true);
-  assert.equal(JSON.parse(readFileSync(join(legacy, 'tasks/.task-tracker.json'))).validated.files['docs/task-schema.json'] !== undefined, true);
+test('automatic selection uses the canonical tasks schema', (t) => {
+  const root = fixture(t, [task(1, { status: 'queued' })], schema());
+  assert.equal(listTasks(root).tasks[0].status, 'queued');
+  assert.equal(validateProject(root).valid, true);
+  assert.equal(JSON.parse(readFileSync(join(root, 'tasks/.task-tracker.json'))).validated.files['tasks/task-schema.json'] !== undefined, true);
 });
 
-test('automatic ambiguity and unsafe explicit paths fail before changing project files', (t) => {
+test('unsafe explicit schema paths fail before changing project files', (t) => {
   const root = fixture(t, [task(1)], schema('pending'));
-  writeSchema(root, 'tasks/task-schema.json', schema('pending'));
   rmSync(join(root, 'tasks/.task-tracker.json'));
   const before = snapshot(root);
-  assert.throws(() => listTasks(root), /both exist.*select one explicitly/);
   assert.throws(() => listTasks(root, { schemaPath: '../outside.json' }), /stay inside/);
   assert.deepEqual(snapshot(root), before);
   assert.equal(listTasks(root, { schemaPath: 'tasks/task-schema.json' }).total, 1);
-  assert.equal(listTasks(root, { schemaPath: 'docs/task-schema.json' }).total, 1);
 });
 
 test('a schema inside tasks is excluded from stores while driving core reads, writes and fingerprints', (t) => {
@@ -118,12 +109,11 @@ test('schema symlinks and symlink ancestors are rejected before service preparat
   assert.throws(() => validateProject(linkedAncestor, { schemaPath: 'config/schema.json' }), /must not contain symbolic links/);
   assert.equal(existsSync(join(linkedAncestor, 'tasks/.task-tracker.json')), false);
 
-  const legacy = fixture(t, [task(3)]);
-  rmSync(join(legacy, 'tasks/.task-tracker.json'));
-  mkdirSync(join(legacy, 'docs'));
-  symlinkSync(join(outside, 'config/schema.json'), join(legacy, 'docs/task-schema.json'));
-  assert.throws(() => listTasks(legacy), /must not contain symbolic links/);
-  assert.equal(existsSync(join(legacy, 'tasks/.task-tracker.json')), false);
+  const defaultPath = fixture(t, [task(3)]);
+  rmSync(join(defaultPath, 'tasks/.task-tracker.json'));
+  symlinkSync(join(outside, 'config/schema.json'), join(defaultPath, 'tasks/task-schema.json'));
+  assert.throws(() => listTasks(defaultPath), /must not contain symbolic links/);
+  assert.equal(existsSync(join(defaultPath, 'tasks/.task-tracker.json')), false);
 });
 
 test('an in-tasks schema cannot configure itself as a task store', (t) => {
