@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { approvedNotes, conciseNotes, openingSentence } from './helpers/release-fixture.mjs';
+import { conciseNotes, openingSentence } from './helpers/release-fixture.mjs';
 import { distributionVersion } from '../src/version.mjs';
 
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = false, lockVersion = version, notesChange = false, squash = false, legacy = false, crlf = false, readme} = {}) {
+function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = false, lockVersion = version, notesChange = false, squash = false, crlf = false, readme} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'outask-release-pr-'));
   t.after(() => rmSync(root, {recursive: true, force: true}));
   for (const dir of ['app/scripts', 'app/src', 'scripts', 'docs']) mkdirSync(join(root, dir), {recursive: true});
@@ -32,7 +32,7 @@ function fixture(t, {version = '0.16.0', previousVersion = '0.15.0', extra = fal
   git('switch', '-c', 'release-0.16');
   packageFiles(version, lockVersion);
   const id = distributionVersion(version);
-  const notes = legacy ? approvedNotes(id) : conciseNotes(id);
+  const notes = conciseNotes(id);
   writeFileSync(join(root, 'docs/release-notes.md'), crlf ? notes.replaceAll('\n', '\r\n') : notes);
   if (extra) writeFileSync(join(root, 'app/code.mjs'), 'unreviewed code\n');
   git('add', '.'); git('commit', '-qm', 'Release');
@@ -80,14 +80,12 @@ test('ordinary PRs and closed unmerged release PRs skip publication', t => {
   }
 });
 
-test('new release candidates accept concise notes without a checksum link and reject the historical format', t => {
+test('new release candidates accept concise notes without a checksum link', t => {
   for (const crlf of [false, true]) {
     const concise = fixture(t, { version: '1.6.0', previousVersion: '1.5.1', crlf }).invoke();
     assert.equal(concise.status, 0, concise.stderr);
   }
-  const legacy = fixture(t, { legacy: true }).invoke();
-  assert.notEqual(legacy.status, 0);
-  assert.match(legacy.stderr, /unheaded README opening sentence/);
+
 });
 
 test('contributor merges, wrong revision, fork release PRs and changed approval title cannot publish', t => {
@@ -147,7 +145,7 @@ test('tag creation and retry push only the annotated tag at the approved merge',
 
 
 test('recovery verifies original approval and existing annotated tag without creating or moving it', t => {
-  const f = fixture(t, {extra: true, legacy: true});
+  const f = fixture(t, {extra: true});
   const verify = () => f.invoke({}, 'verify', 'scripts/release-recovery.mjs');
   assert.notEqual(verify().status, 0, 'missing original tag must not be created by recovery');
   assert.equal(f.git('tag', '--list'), '');

@@ -7,7 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { distributionVersion } from '../src/version.mjs';
-import { approvedNotes, conciseNotes } from './helpers/release-fixture.mjs';
+import { conciseNotes } from './helpers/release-fixture.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 function fixture(t, packageVersion = '0.16.0') {
@@ -22,6 +22,8 @@ function fixture(t, packageVersion = '0.16.0') {
     writeFileSync(join(root, 'dist', name), 'verified archive');
     return { name, size: 16, state: 'uploaded', digest: `sha256:${createHash('sha256').update('verified archive').digest('hex')}` };
   });
+  const checksums = assets.map(asset => `${asset.digest.slice(7)}  ${asset.name}\n`).join('');
+  const checksumAsset = { name: 'SHA256SUMS', size: Buffer.byteLength(checksums), state: 'uploaded', digest: `sha256:${createHash('sha256').update(checksums).digest('hex')}` };
   const notes = join(root, 'notes.md'), state = join(root, 'state.json'), log = join(root, 'calls.jsonl');
   writeFileSync(join(root, 'tools/git'), `#!${process.execPath}
 const args = process.argv.slice(2);
@@ -63,13 +65,16 @@ if (args[1] === 'edit') state.draft = false;
 fs.writeFileSync(process.env.RELEASE_STATE, JSON.stringify(state));
 `, { mode: 0o755 });
   return { root, notes, assets, version,
-    invoke({ existing = null, notesText = approvedNotes(version), ...env } = {}) {
+    invoke({ existing = null, notesText = conciseNotes(version), ...env } = {}) {
       rmSync(log, { force: true }); writeFileSync(notes, notesText); writeFileSync(state, JSON.stringify(existing));
       const result = spawnSync(process.execPath, ['scripts/release-upload.mjs'], { cwd: root, encoding: 'utf8', env: { ...process.env, REPO: 'owner/project', TARGETS: '', RELEASE_NOTES_FILE: notes, SOURCE_NOTES: notes, PATH: join(root, 'tools'), CALL_LOG: log, RELEASE_STATE: state, ...env } });
       assert.ifError(result.error);
       return { ...result, calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse) : [], release: JSON.parse(readFileSync(state, 'utf8')) };
     },
-    existing(assets = [], draft = true) { return { id: 42, draft, assets, name: `Outask v${version}`, body: approvedNotes(version) }; },
+    existing(assets = [], draft = true) {
+      if (assets.length === 3) assets = [...assets, checksumAsset];
+      return { id: 42, draft, assets, name: `Outask v${version}`, body: conciseNotes(version) };
+    },
   };
 }
 const mutations = (result) => result.calls.filter(args => ['create', 'upload', 'edit', 'delete-asset'].includes(args[1]));
@@ -145,10 +150,10 @@ test('publication stages all verified archives in a draft with the exact approve
   assert.ok(!result.calls.find(args => args[1] === 'create').includes('--prerelease'));
   assert.ok(result.calls.find(args => args[1] === 'edit').includes('--latest'));
   assert.ok(result.calls.some(args => args[0] === 'api' && args[1] === 'repos/owner/project/releases/latest'));
-  assert.equal(result.release.body, approvedNotes(f.version));
+  assert.equal(result.release.body, conciseNotes(f.version));
   assert.equal(result.release.name, 'Outask v0.16');
   assert.equal(result.release.draft, false);
-  assert.equal(result.release.assets.length, 3);
+  assert.equal(result.release.assets.length, 4);
   assert.equal(readFileSync(f.notes, 'utf8'), 'changed after validation\n');
 });
 
@@ -174,9 +179,9 @@ test('retry of a published release is read-only and mismatches never replace con
   for (const changed of [
     {...existing, body: 'other notes'},
     {...existing, name: 'other title'},
-    {...existing, assets: f.assets.slice(1)},
-    {...existing, assets: [{...f.assets[0], digest: 'sha256:other'}, ...f.assets.slice(1)]},
-    {...existing, assets: [...f.assets, {name: 'unexpected'}]},
+    {...existing, assets: existing.assets.slice(1)},
+    {...existing, assets: [{...existing.assets[0], digest: 'sha256:other'}, ...existing.assets.slice(1)]},
+    {...existing, assets: [...existing.assets, {name: 'unexpected'}]},
   ]) {
     const result = f.invoke({existing: changed});
     assert.notEqual(result.status, 0);
@@ -189,7 +194,7 @@ test('partial platform uploads retain the draft until all three archives are pre
   const result = f.invoke({TARGETS: 'linux-x64'});
   assert.notEqual(result.status, 0);
   assert.equal(result.release.draft, true);
-  assert.equal(result.release.assets.length, 1);
+  assert.equal(result.release.assets.length, 2);
   assert.ok(!result.calls.some(args => args[1] === 'edit'));
 });
 
@@ -201,16 +206,16 @@ test('patch and prerelease identifiers remain complete', t => {
     const edit = result.calls.find(args => args[1] === 'edit');
     assert.ok(edit.includes(version.includes('-') ? '--latest=false' : '--latest'));
     if (version.includes('-')) assert.ok(!result.calls.some(args => args[1]?.endsWith('/releases/latest')));
-    assert.ok(result.release.assets.every(asset => asset.name.includes(`-${f.version}-`)));
+    assert.ok(result.release.assets.filter(asset => asset.name !== 'SHA256SUMS').every(asset => asset.name.includes(`-${f.version}-`)));
   }
 });
 
 test('invalid notes and publication prerequisites fail before remote mutations', t => {
-  const f = fixture(t), valid = approvedNotes(f.version);
+  const f = fixture(t), valid = conciseNotes(f.version);
   for (const env of [
     {RELEASE_NOTES_FILE: ''}, {TARGETS: 'unsupported-platform'}, {MISSING_TAG: '1'}, {MISMATCH: '1'}, {DIRTY: '1'},
     {notesText: '# Duplicate title\n' + valid},
-    {notesText: valid.replace('## Current version', '## Missing')},
+    {notesText: valid.replace("## What's new", '## Missing')},
     {notesText: valid.replace('extract the archive', 'download the archive')},
     {notesText: valid.replace('open that directory', 'continue')},
     {notesText: valid.replace('Node.js 22.23.3 or later', 'Node.js')},
@@ -236,7 +241,7 @@ test('release notes need not retain the extracted download directory', t => {
     'Extract the archive. Open the directory Outask in a terminal and run:',
     'Download the archive, extract it in a directory you will keep, open that directory in a terminal and run:',
   ]) {
-    const notes = approvedNotes(f.version).replace('Download and extract the archive, open that directory in a terminal and run:', install);
+    const notes = conciseNotes(f.version).replace('Download and extract the archive, open that directory in a terminal and run:', install);
     const result = f.invoke({ notesText: notes, existing: { ...f.existing(f.assets, false), body: notes } });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(mutations(result).length, 0);
@@ -259,7 +264,11 @@ test('partial-target invocation cannot publish or confirm unverified unselected 
     for (const assets of [f.assets.slice(0, 1), [f.assets[0], f.assets[1], {...f.assets[2], digest: 'sha256:wrong'}]]) {
       const result = f.invoke({TARGETS: 'linux-x64', existing: f.existing(assets, draft)});
       assert.notEqual(result.status, 0);
-      assert.equal(mutations(result).length, 0);
+      assert.ok(!result.calls.some(args => args[1] === 'edit'));
+      if (draft && assets.length === 1) {
+        const upload = result.calls.find(args => args[1] === 'upload');
+        assert.deepEqual(upload.slice(5).map(path => path.split('/').at(-1)), ['SHA256SUMS']);
+      } else assert.equal(mutations(result).length, 0);
     }
   }
   rmSync(join(f.root, 'dist', f.assets[2].name));
@@ -275,34 +284,11 @@ test('a complete draft resumes by release ID when tag metadata returns 404', t =
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(mutations(result).map(args => args[1]), ['edit']);
   assert.equal(result.release.id, 42);
-  assert.equal(result.release.body, approvedNotes(f.version));
-  assert.deepEqual(result.release.assets, f.assets);
+  assert.equal(result.release.body, conciseNotes(f.version));
+  assert.deepEqual(result.release.assets.filter(asset => asset.name !== 'SHA256SUMS'), f.assets);
   assert.equal(result.release.draft, false);
 });
 
-
-test('retry preserves approved v1.0 installer commands for draft and published releases', t => {
-  const f = fixture(t, '1.0.0');
-  const original = approvedNotes(f.version)
-    .replace('Linux:\n', 'Linux/macOS:\n')
-    .replace('\nmacOS:\n\n```sh\n./Install.command\n```\n', '')
-    .replaceAll('Install.cmd', 'install.cmd');
-  const separateWindows = original.replace(
-    'Windows:\n\n```text\n./install.cmd  # PowerShell\ninstall.cmd   & rem cmd.exe\n```',
-    'Windows PowerShell:\n\n```powershell\n./install.cmd\n```\n\nWindows cmd.exe:\n\n```bat\ninstall.cmd\n```',
-  );
-  assert.match(original, /Linux\/macOS:/);
-  assert.doesNotMatch(original, /Install\.command|Install\.cmd/);
-  assert.match(separateWindows, /Windows PowerShell:/);
-  for (const notes of [original, separateWindows]) {
-    for (const draft of [true, false]) {
-      const result = f.invoke({notesText: notes, existing: {...f.existing(f.assets, draft), body: notes}});
-      assert.equal(result.status, 0, result.stderr);
-      assert.deepEqual(mutations(result).map(args => args[1]), draft ? ['edit'] : []);
-      assert.equal(result.release.body, notes);
-    }
-  }
-});
 
 test('publication fails verification when GitHub Latest does not resolve the published stable tag', t => {
   const f = fixture(t);
@@ -320,20 +306,6 @@ test('publication fails verification when GitHub Latest does not resolve the pub
   assert.ok(verified.calls.some(args => args[0] === 'api' && args[1] === 'repos/owner/project/releases/latest'));
   assert.equal(mutations(verified).length, 0);
   assert.deepEqual(verified.release, result.release);
-});
-
-test('published v1.5.1 historical notes retain the mandatory fourth checksum asset', t => {
-  const f = fixture(t, '1.5.1'), notesText = approvedNotes(f.version, { checksums: true });
-  const first = f.invoke({ notesText });
-  assert.equal(first.status, 0, first.stderr);
-  assert.equal(first.release.body, notesText);
-  assert.equal(first.release.assets.length, 4);
-  const retry = f.invoke({ notesText, existing: first.release });
-  assert.equal(retry.status, 0, retry.stderr);
-  assert.deepEqual(mutations(retry), []);
-  const absent = f.invoke({ notesText, existing: { ...first.release, assets: first.release.assets.filter(asset => asset.name !== 'SHA256SUMS') } });
-  assert.notEqual(absent.status, 0);
-  assert.deepEqual(mutations(absent), []);
 });
 
 test('future prereleases publish mandatory checksums without a description link or changing Latest', t => {

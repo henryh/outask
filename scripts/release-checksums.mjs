@@ -6,12 +6,6 @@ import { archiveName, targets } from './release-config.mjs';
 
 export const checksumName = 'SHA256SUMS';
 
-export function checksumsRequired(version) {
-  // Releases at v1.5.1 and later require checksum assets.
-  const [major, minor = 0, patch = 0] = version.split('-')[0].split('.').map(Number);
-  return major > 1 || (major === 1 && (minor > 5 || (minor === 5 && patch >= 1)));
-}
-
 export function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }

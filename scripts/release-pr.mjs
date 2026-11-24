@@ -30,7 +30,7 @@ function compareVersion(a, b) {
   return 0;
 }
 
-export function candidate(base, repo, title, { recovery = false } = {}) {
+export function candidate(base, repo, title) {
   const pkg = jsonAt('HEAD', 'app/package.json');
   const previous = jsonAt(base, 'app/package.json');
   const lock = jsonAt('HEAD', 'app/package-lock.json');
@@ -40,11 +40,11 @@ export function candidate(base, repo, title, { recovery = false } = {}) {
   if (!releaseFiles.every((path) => changed.includes(path))) throw new Error(`Release PR must include changes to ${releaseFiles.join(', ')}`);
   const version = distributionVersion(pkg.version);
   if (title !== releaseTitle(version)) throw new Error(`Release PR title must be ${releaseTitle(version)}`);
-  releaseNotes(version, pkg.version, repo, targets, notesPath, { recovery });
+  releaseNotes(version, pkg.version, repo, targets, notesPath);
   return { version, tag: `v${version}`, prerelease: pkg.version.includes('-') };
 }
 
-export function gate(event, merged = true, options = {}) {
+export function gate(event, merged = true) {
   const pr = event.pull_request;
   if (!pr || pr.base.ref !== 'main') return null;
   // A version in the exact release title explicitly opts a task PR into release.
@@ -59,9 +59,9 @@ export function gate(event, merged = true, options = {}) {
     if (parents.length !== 3 || parents[2] !== pr.head.sha) throw new Error('Release requires a GitHub merge commit of the exact approved PR revision');
     // The notes reviewed in the PR must be precisely the bytes published from main.
     if (git(['rev-parse', `HEAD:${notesPath}`]) !== git(['rev-parse', `${pr.head.sha}:${notesPath}`])) throw new Error('Merged notes differ from the approved PR revision');
-    return candidate(parents[1], repo.full_name, pr.title, options);
+    return candidate(parents[1], repo.full_name, pr.title);
   }
-  return candidate(pr.base.sha, repo.full_name, pr.title, options);
+  return candidate(pr.base.sha, repo.full_name, pr.title);
 }
 
 export function verifyTag(tag) {

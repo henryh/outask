@@ -119,7 +119,7 @@ Write-Output "Checksum OK: $archive"
 
 Recovery is selected by a corrective draft PR titled `Publish approved release #<merged-release-PR> from run #<Release-run-ID>`. It recovers the approved version.
 
-The recovery gate validates the repository owner, original owner-merged PR, matching Release run/revision, approved notes, six merged-main checks and three native archive builds. The corrective PR must pass its six regular CI jobs. Recovery checks out the approved merge, verifies its existing tag and uses corrected publisher code with the retained archives. Expired artifacts or mismatched digests/notes stop recovery.
+The recovery gate validates the repository owner, original owner-merged PR, matching Release run/revision, approved notes, six merged-main checks and three native archive builds. The corrective PR must pass its six regular CI jobs. Recovery checks out the approved merge, verifies its existing tag and uses corrected publisher code with the retained archives. Approved notes must use the current release-description format; all releases require `SHA256SUMS`. Expired artifacts or mismatched digests/notes stop recovery.
 
 Recovery requires the retained native-build artifacts and their accepted bytes. Inspect draft releases through the release-by-ID API.
 
