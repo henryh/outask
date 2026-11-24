@@ -77,17 +77,6 @@ test('a rejected second connection in the same process preserves OS exclusion', 
   assert.equal(run('validate-task-stores', [root]).status, 0);
 });
 
-test('legacy locks fail closed and are never deleted or interpreted as dead owners', (t) => {
-  const root = fixture(t, []);
-  const path = join(root, 'tasks/.task-tracker.json.lock');
-  writeFileSync(path, 'legacy bytes');
-  const before = snapshot(root);
-  assert.throws(() => createTask(root, { title: 'Rejected' }), (error) => error.code === 'PROJECT_BUSY' && /stop all older writers/.test(error.message));
-  assert.deepEqual(snapshot(root), before);
-  unlinkSync(path);
-  assert.equal(createTask(root, { title: 'After coordinated upgrade' }).title, 'After coordinated upgrade');
-});
-
 test('damaged external coordination fails closed without altering task data', (t) => {
   const root = fixture(t, [task(1)]);
   writeFileSync(projectLockPath(root), 'not a SQLite database');

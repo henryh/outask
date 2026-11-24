@@ -140,13 +140,13 @@ test('interrupted cross-file moves block reads and recover through validator or 
   }
 });
 
-test('legacy and explicit in-tasks schemas survive interrupted lifecycle recovery', async (t) => {
+test('default and explicit schemas survive interrupted lifecycle recovery', async (t) => {
   const config = {
     stores: { 'active.json': { statuses: ['pending'] }, 'done.json': { statuses: ['done'] } },
     groups: { Active: ['pending'], Done: ['done'] },
   };
-  for (const selected of ['legacy', 'explicit']) {
-    const root = fixture(t, [task(1)], selected === 'legacy' ? config : undefined);
+  for (const selected of ['default', 'explicit']) {
+    const root = fixture(t, [task(1)], selected === 'default' ? config : undefined);
     const schemaPath = selected === 'explicit' ? 'tasks/custom-schema.json' : undefined;
     if (schemaPath) writeFileSync(join(root, schemaPath), JSON.stringify(config));
     const preload = interruption(root, "String(args[1]).endsWith('/done.json')");
@@ -264,9 +264,9 @@ syncBuiltinESMExports();\n`);
 
 test('transitions preserve shadowed duplicate status values and edit only the effective string', (t) => {
   for (const [shadow, key] of [
-    ['{"legacy":true,"status":"nested"}', '"status"'],
-    ['["legacy",{"status":"nested"}]', '"status"'],
-    ['{"legacy":[true]}', '"sta\\u0074us"'],
+    ['{"extension":true,"status":"nested"}', '"status"'],
+    ['["extension",{"status":"nested"}]', '"status"'],
+    ['{"extension":[true]}', '"sta\\u0074us"'],
   ]) {
     const root = fixture(t, []);
     const original = `{"id":1,"title":"Task","status":${shadow},${key}:"pending"}`;

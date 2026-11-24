@@ -358,7 +358,7 @@ test('refresh records fingerprints outside Git and recovers from stale locks, fa
   assert.deepEqual(searchTasks(root, 'recovered').tasks.map((row) => row.id), [1]);
   assert.equal(refreshSearchIndex(root), true);
   assert.deepEqual(searchTasks(root, 'recovered').tasks.map((row) => row.id), [1]);
-  writeFileSync(join(root, 'docs/task-schema.json'), JSON.stringify({
+  writeFileSync(join(root, 'tasks/task-schema.json'), JSON.stringify({
     stores: { 'active.json': { statuses: ['pending'] } }, search: { mode: 'indexed' }, format: 'standard',
   }));
   assert.deepEqual(searchTasks(root, 'recovered').tasks.map((row) => row.id), [1]);

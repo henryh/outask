@@ -8,8 +8,7 @@ import { fail } from '../src/errors.mjs';
 import { reportError } from './output.mjs';
 import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
-import { legacyLocations, obsoleteInstalls } from './install-migration.mjs';
-import { managedInstallation, uninstallApplication } from './uninstall.mjs';
+import { managedInstallation, uninstallApplication, installedApplications } from './uninstall.mjs';
 
 const windows = process.platform === 'win32';
 const defaults = installLocations();
@@ -78,7 +77,7 @@ Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile 
     }
     const bin = resolve(values['bin-dir'] ?? defaults.bin);
     const defaultRoot = defaults.releases;
-    const releaseRoots = [canonical(resolve(values['release-root'] ?? defaultRoot)), ...legacyLocations().map(canonical)];
+    const releaseRoots = [canonical(resolve(values['release-root'] ?? defaultRoot))];
     const targets = commandNames.map((name) => join(bin, windows ? `${name}.cmd` : name));
     for (const target of targets) {
       if (inspect(target) && !owned(target, releaseRoots)) fail('COMMAND_EXISTS', `${target}: unrelated command; resolve the collision before installing`);
@@ -94,7 +93,7 @@ Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile 
       }
     }
     const installed = positionals[0] === 'uninstall'
-      ? obsoleteInstalls(releaseRoots, undefined, managedInstallation) : [];
+      ? installedApplications(releaseRoots, undefined, managedInstallation) : [];
     for (const target of targets) {
       const present = inspect(target);
       if (positionals[0] === 'uninstall') {

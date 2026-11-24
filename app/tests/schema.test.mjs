@@ -21,8 +21,8 @@ test('no-schema inspection expands defaults without creating configuration or st
   const expected = {
     format: 'standard', default_status: 'pending', working_statuses: ['in_progress', 'review'],
     stores: {
-      'active.json': { statuses: ['pending', 'in_progress', 'review'], missing_status: 'pending' },
-      'done.json': { statuses: ['done'], missing_status: 'done' }, 'archive.json': { statuses: ['cancelled'] },
+      'active.json': { statuses: ['pending', 'in_progress', 'review'] },
+      'done.json': { statuses: ['done'] }, 'archive.json': { statuses: ['cancelled'] },
     },
     groups: { Active: ['pending', 'in_progress', 'review'], Done: ['done'], Archive: ['cancelled'] },
     search: { mode: 'scan' },
@@ -62,7 +62,7 @@ test('CLI materialises validation-ready JSON, refuses overwrite and permits expl
   assert.deepEqual(snapshot(root), written);
 });
 
-test('selected custom and legacy schemas retain fields and explicit semantics', (t) => {
+test('selected custom schemas retain fields and explicit semantics', (t) => {
   const config = {
     stores: { 'active.json': { statuses: ['queued', 'working'], extension: 'keep' }, 'done.json': { statuses: ['finished'] } },
     groups: { Active: ['queued', 'working'], Done: ['finished'] },
@@ -78,7 +78,7 @@ test('selected custom and legacy schemas retain fields and explicit semantics', 
     assert.deepEqual(schema[key], config[key]);
   }
   assert.equal(validateProject(root).valid, true);
-  assert.equal(existsSync(join(root, 'tasks/task-schema.json')), false);
+  assert.equal(existsSync(join(root, 'tasks/task-schema.json')), true);
   const custom = join(root, 'tasks/custom-schema.json');
   writeFileSync(custom, JSON.stringify(schema));
   const selected = cli(root, ['--schema-path', 'tasks/custom-schema.json', '--write', '--replace']);

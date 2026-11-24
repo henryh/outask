@@ -5,9 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { commandNames, packageNames, installLocations, windowsLauncher, launcherEntry } from './install-launcher.mjs';
 import { configurePath } from './install-path.mjs';
-import { managedPayload, managedInstallation as managed, uninstallApplication } from './uninstall.mjs';
+import { managedPayload, managedInstallation as managed, uninstallApplication, installedApplications, retirePayload } from './uninstall.mjs';
 import { updateRelease } from './update-release.mjs';
-import { legacyLocations, legacyConfig, obsoleteInstalls, retireConfig, retirePayload } from './install-migration.mjs';
 
 const windows = process.platform === 'win32';
 // Node 22's native recursive copy can misplace UTF-8 Windows paths. A filter
@@ -71,12 +70,7 @@ Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile 
     if (positionals.length > 1 || !['install', 'update', 'uninstall'].includes(positionals[0] ?? 'install')
       || values['bin-dir'] === '' || values['release-root'] === '') throw new Error('INVALID_INPUT: invalid action or empty directory');
     const bin = canonical(resolve(values['bin-dir'] ?? defaults.bin));
-    const legacyRoot = canonical(legacyLocations()[1]);
-    const defaultRoot = defaults.releases;
-    const requestedRoot = canonical(resolve(values['release-root'] ?? defaultRoot));
-    const oldDefaults = legacyLocations().slice(0, 2).map(canonical);
-    // Map task-tracker application roots to the platform destination; preserve custom roots.
-    const releases = !values['update-existing'] && oldDefaults.includes(requestedRoot) ? canonical(defaultRoot) : requestedRoot;
+    const releases = canonical(resolve(values['release-root'] ?? defaults.releases));
     if (!managed(root)) throw new Error('INVALID_RELEASE: invalid release metadata or application');
     const releaseTarget = JSON.parse(readFileSync(join(root, 'release.json'), 'utf8')).target;
     const payload = ['app', 'bin', publicInstallers[releaseTarget], 'release.json', 'README.md'];
@@ -84,12 +78,7 @@ Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile 
     if (values['update-existing'] && (positionals[0] !== 'install' || !managed(destination))) {
       throw new Error('NOT_INSTALLED: update-existing requires an existing managed installation');
     }
-    const releaseRoots = [releases, legacyRoot, ...legacyLocations().map(canonical)];
-    const migration = positionals[0] === 'uninstall' || values['update-existing'] ? undefined : legacyConfig();
-    if (positionals[0] !== 'uninstall' && migration && inspect(migration.target)
-      && !readFileSync(migration.source).equals(readFileSync(migration.target))) {
-      throw new Error(`CONFIG_CONFLICT: ${migration.source} and ${migration.target} differ; reconcile the registries before migrating`);
-    }
+    const releaseRoots = [releases];
     const targets = commandNames.map((name) => join(bin, windows ? `${name}.cmd` : name));
     const target = targets[0];
     function owned(path) {
@@ -108,10 +97,10 @@ Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile 
       }
       if (!inspect(path)?.isSymbolicLink()) return false;
       const linked = canonical(resolve(dirname(path), readlinkSync(path)));
-      const parent = linked.endsWith('/app/bin/tasks') ? resolve(linked, '../../..') : resolve(linked, '../..');
+      if (!linked.endsWith('/app/bin/tasks')) return false;
+      const parent = resolve(linked, '../../..');
       if (releaseRoots.includes(dirname(parent)) && managed(parent)) {
-        const metadata = JSON.parse(readFileSync(join(parent, 'release.json'), 'utf8'));
-        return linked === join(parent, 'app/bin/tasks') || linked === join(parent, 'bin/tasks');
+        return linked === join(parent, 'app/bin/tasks');
       }
       if (linked !== join(parent, 'app/bin/tasks') || inspect(join(parent, 'release.json'))) return false;
       try {
@@ -121,7 +110,7 @@ Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile 
     }
     for (const target of targets) if (inspect(target) && !owned(target)) throw new Error(`COMMAND_EXISTS: ${target} is unrelated; resolve the collision before installing`);
     if (positionals[0] === 'uninstall') {
-      const installed = obsoleteInstalls(releaseRoots, undefined, managed);
+      const installed = installedApplications(releaseRoots, undefined, managed);
       for (const target of targets) if (owned(target)) unlinkSync(target);
       uninstallApplication(installed);
       console.log(`Removed managed commands at ${bin}, installed application files, default global configuration and caches. Project/skill data, source checkouts, custom configuration files and unrelated files are preserved.`);
@@ -131,7 +120,7 @@ Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile 
       await updateRelease({ destination: installed, bin, releases });
     } else {
       if (windows) console.log('Windows coordination: before first using this writer generation, finish active writes and close all prior CLI/MCP/HTTP sessions. Start new writers afterward; do not mix generations.');
-      const obsolete = values['update-existing'] ? [] : obsoleteInstalls(releaseRoots, destination, managed);
+      const obsolete = values['update-existing'] ? [] : installedApplications(releaseRoots, destination, managed);
       accessSync(join(root, 'app/bin/tasks'), constants.X_OK);
       await import('../cli.mjs');
       for (const part of values['update-existing'] ? [] : (process.env.PATH ?? '').split(delimiter)) {
@@ -241,7 +230,6 @@ Finish writes and close CLI/MCP/HTTP sessions before uninstalling. PATH/profile 
         else console.error(`Recovery files retained at ${work}`);
         if (linkWork && !rollbackFailed) rmSync(linkWork, { recursive: true, force: true });
       }
-      retireConfig(migration);
       for (const previous of obsolete) retirePayload(previous, managedPayload);
       const messages = values['update-existing'] ? [] : configurePath(bin);
       for (const message of messages.filter(message => !message.startsWith('Run immediately'))) console.log(message);

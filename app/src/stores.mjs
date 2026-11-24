@@ -13,8 +13,8 @@ export const serviceFile = '.task-tracker.json';
 export const pendingFile = '.task-tracker.pending';
 
 export const standardStores = {
-  'active.json': { statuses: ['pending', 'in_progress', 'review'], missing_status: 'pending' },
-  'done.json': { statuses: ['done'], missing_status: 'done' },
+  'active.json': { statuses: ['pending', 'in_progress', 'review'] },
+  'done.json': { statuses: ['done'] },
   'archive.json': { statuses: ['cancelled'] },
 };
 export const defaultSearch = { mode: 'scan' };
@@ -32,7 +32,6 @@ function storeName(name) {
 }
 
 export const defaultSchema = 'tasks/task-schema.json';
-export const legacySchema = 'docs/task-schema.json';
 const selectedSchema = Symbol('selectedSchema');
 
 function contained(root, path) {
@@ -74,14 +73,9 @@ export function selectSchema(root, schemaPath) {
     inspectSchema(root, path, true);
     return { path, explicit: true, [selectedSchema]: true };
   }
-  const preferred = join(root, defaultSchema);
-  const legacy = join(root, legacySchema);
-  const hasPreferred = inspectSchema(root, preferred, false);
-  const hasLegacy = inspectSchema(root, legacy, false);
-  if (hasPreferred && hasLegacy) {
-    fail('INVALID_CONFIG', `${defaultSchema} and ${legacySchema} both exist; select one explicitly with schemaPath or --schema-path`);
-  }
-  return { path: hasLegacy ? legacy : preferred, explicit: false, [selectedSchema]: true };
+  const path = join(root, defaultSchema);
+  inspectSchema(root, path, false);
+  return { path, explicit: false, [selectedSchema]: true };
 }
 
 function readConfig(path, budget, explicit, directory) {
@@ -100,13 +94,6 @@ function readConfig(path, budget, explicit, directory) {
     }
     if (store.validate !== undefined && typeof store.validate !== 'boolean') {
       invalid(`store ${name} validate must be a boolean`);
-    }
-  }
-  for (const [name, store] of Object.entries(config.stores)) {
-    if (Object.hasOwn(store, 'missing_status') && (!isText(store.missing_status)
-      || !store.statuses.includes(store.missing_status)
-      || ['in_progress', 'review', ...(Array.isArray(config.working_statuses) ? config.working_statuses : [])].includes(store.missing_status))) {
-      invalid(`store ${name} missing_status must name a status in stores["${name}"].statuses that is not a working status; set a compatible missing_status manually`);
     }
   }
   const statuses = new Set(Object.values(config.stores).flatMap((store) => store.statuses));
@@ -273,19 +260,6 @@ export function selectStoreFiles(project, { stores = [], group } = {}) {
   return { files: uninitialised ? [] : files, selectedGroup };
 }
 
-// Keep persisted records separate: inference is read-only until an actual mutation.
-export function effectiveRecord(task, project, file, label) {
-  if (!isObject(task) || Object.hasOwn(task, 'status')) return task;
-  const status = project.stores[file]?.missing_status;
-  if (status === undefined) {
-    const correction = project.config === undefined
-      ? 'set an explicit status on this record or configure its store with a non-working missing_status'
-      : `set stores["${file}"].missing_status in ${project.schemaPath} to a declared non-working status allowed by this store`;
-    fail('INVALID_STORE', `${label}: missing status; ${correction}; no fallback is configured for ${file}`);
-  }
-  return { ...task, status };
-}
-
 export function recordEntries(project, options = {}) {
   const { files, selectedGroup } = selectStoreFiles(project, options);
   const entries = (function* iterate() {
@@ -295,11 +269,10 @@ export function recordEntries(project, options = {}) {
       const { records: tasks } = readArray(path, project.budget);
       for (const { value, index } of tasks) {
         const label = `${path}[${index}]`;
-        let task = value;
+        const task = value;
         if (!isObject(task)) {
           fail('INVALID_STORE', `${label}: task must be an object; correct this record to include id, title and status`);
         }
-        if (Number.isSafeInteger(task.id) && task.id > 0 && isText(task.title)) task = effectiveRecord(task, project, file, label);
         const invalidField = !Number.isSafeInteger(task.id) || task.id <= 0 ? 'id'
           : !isText(task.title) ? 'title' : !isText(task.status) ? 'status' : undefined;
         if (invalidField) {

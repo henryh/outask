@@ -67,7 +67,7 @@ fi
 exec ${command}\n`;
   const present = inspect(hook);
   const previous = present?.isFile() ? readFileSync(hook, 'utf8') : undefined;
-  const managed = previous === content || previous === content.replace('# outask:', '# task-tracker:');
+  const managed = previous === content;
   if (present && !managed) manual(`Existing or modified hook at ${hook}`);
   if (values.remove) {
     if (present) unlinkSync(hook);

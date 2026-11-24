@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import { fixture, run, snapshot, task, writeStore } from './fixtures.mjs';
 import { selectProject } from '../src/projects.mjs';
 import { readConfig } from '../src/config.mjs';
+import { applicationRoot } from '../src/locations.mjs';
 
 const entry = fileURLToPath(new URL('../bin/tasks', import.meta.url));
 const installer = fileURLToPath(new URL('../scripts/install-cli.mjs', import.meta.url));
@@ -265,10 +266,10 @@ test('installer refuses unrelated target, dangling links and PATH commands', (t)
 
 test('development installer recognises a managed release command on PATH', (t) => {
   const root = fixture(t, []);
-  const release = join(root, '.local', 'share', 'task-tracker', 'releases', 'task-tracker-1.0.0-linux-x64');
+  const release = applicationRoot({ HOME: root, USERPROFILE: root, LOCALAPPDATA: join(root, 'AppData/Local') });
   const releaseBin = join(release, 'app/bin');
   mkdirSync(releaseBin, { recursive: true });
-  writeFileSync(join(release, 'app/package.json'), JSON.stringify({ name: 'task-tracker-local' }));
+  writeFileSync(join(release, 'app/package.json'), JSON.stringify({ name: 'outask' }));
   writeFileSync(join(release, 'release.json'), JSON.stringify({ version: '1.0.0', target: 'linux-x64' }));
   writeFileSync(join(releaseBin, 'tasks'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   const pathBin = join(root, 'release-bin');
@@ -276,24 +277,24 @@ test('development installer recognises a managed release command on PATH', (t) =
   symlinkSync(join(releaseBin, 'tasks'), join(pathBin, 'tasks'));
   const destination = join(root, 'development-bin');
   success(execute(process.execPath, [installer, 'install', '--bin-dir', destination], {
-    env: { ...process.env, HOME: root, SHELL: '/bin/bash', PATH: pathBin },
+    env: { ...process.env, HOME: root, USERPROFILE: root, LOCALAPPDATA: join(root, 'AppData/Local'), SHELL: '/bin/bash', PATH: pathBin },
   }));
   assert.equal(realpathSync(join(destination, 'tasks')), entry);
 });
 
 test('development installer rejects a release lookalike outside its managed location', (t) => {
   const root = fixture(t, []);
-  const lookalike = join(root, 'other', 'task-tracker-1.0.0-linux-x64');
+  const lookalike = join(root, 'other', 'outask');
   const lookalikeBin = join(lookalike, 'app/bin');
   mkdirSync(lookalikeBin, { recursive: true });
-  writeFileSync(join(lookalike, 'app/package.json'), JSON.stringify({ name: 'task-tracker-local' }));
+  writeFileSync(join(lookalike, 'app/package.json'), JSON.stringify({ name: 'outask' }));
   writeFileSync(join(lookalike, 'release.json'), JSON.stringify({ version: '1.0.0', target: 'linux-x64' }));
   writeFileSync(join(lookalikeBin, 'tasks'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   const pathBin = join(root, 'lookalike-bin');
   mkdirSync(pathBin);
   symlinkSync(join(lookalikeBin, 'tasks'), join(pathBin, 'tasks'));
   error(execute(process.execPath, [installer, 'install', '--bin-dir', join(root, 'development-bin')], {
-    env: { ...process.env, HOME: root, PATH: pathBin },
+    env: { ...process.env, HOME: root, USERPROFILE: root, LOCALAPPDATA: join(root, 'AppData/Local'), PATH: pathBin },
   }), 'COMMAND_EXISTS');
 });
 

@@ -35,7 +35,7 @@ test('creation stamps its own canonical time and mutations advance through equal
   }
 });
 
-test('legacy and timestamped no-ops preserve all bytes while same-status store moves advance timestamps', (t) => {
+test('untimestamped and timestamped no-ops preserve all bytes while same-status store moves advance timestamps', (t) => {
   const root = fixture(t, [task(1), task(2, { updated_at: earlier })]);
   assert.deepEqual(getTask(root, 1, { fields: ['id', 'updated_at'] }), { id: 1 });
   for (const id of [1, 2]) {
@@ -129,6 +129,6 @@ test('history source discovery stops after finding the ID and preserves unconfig
   };
   try { assert.equal(transitionTask(root, 99, 'pending').id, 99); } finally { JSON.parse = parse; }
   assert.equal(unrelated, 0);
-  writeStore(root, 'retained.json', [task(300, { status: 'legacy' })]);
+  writeStore(root, 'retained.json', [task(300, { status: 'retained' })]);
   rejected(root, () => transitionTask(root, 300, 'pending'), 'INVALID_INPUT');
 });

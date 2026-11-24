@@ -4,7 +4,7 @@ See [Install Outask](../docs/install.md) for npm, platform archives and source c
 
 ## Installation and updates
 
-Run `outask self update` to update an installed archive or global npm installation on Linux, macOS or Windows. Run `outask self update --check` to check release availability. Both commands work from any directory; `tasks self update` is equivalent. Archive updates use GitHub Latest stable; npm updates use the configured registry and the running installation's prefix. See the [npm quick start](../docs/npm.md) and [footprint rules](../docs/contract.md#product-identity-and-installation-footprint). Open a new terminal after installation and restart an editor to refresh its PATH.
+Run `outask self update` to update an installed archive or global npm installation on Linux, macOS or Windows. Run `outask self update --check` to check release availability. Both commands work from any directory; `tasks self update` is equivalent. Archive updates use GitHub Latest stable; npm updates use the configured registry and the running installation's prefix. See the [npm quick start](../docs/npm.md) and [installation details](../docs/install.md#installation-details). Open a new terminal after installation and restart an editor to refresh its PATH.
 
 `--check` exits with 0 when current or newer than stable, 10 when an update is available, 2 for an unsupported installation context, and 1 on failure. Checks preserve application and project files; npm may write cache/logs. Follow the printed update guidance for source checkouts, local npm/npx and unrecognised installations. Installed versions newer than stable are retained.
 
@@ -33,9 +33,7 @@ an unrelated `tasks` collision explicitly. The self updater retains custom paths
 Finish writes and close CLI/MCP/HTTP sessions. From the installed application's directory, uninstall with
 `./install.sh uninstall` on Linux, `./Install.command uninstall` on macOS,
 `./Install.cmd uninstall` in PowerShell or `Install.cmd uninstall` in cmd.exe.
-Uninstall removes managed `outask`/`tasks` commands, confirmed installed application files, default global configuration (including XDG and migrated legacy locations) and application caches. Project/skill tasks and configuration, source checkouts, configuration files at arbitrary `--config` / `OUTASK_CONFIG` locations and unrelated files remain. Cleanup does not follow directory symlinks into external data.
-
-Existing PATH/profile settings and writer coordination files remain; coordination files must retain their inodes for running or independently loaded writers. Custom installations require their original `--bin-dir` and `--release-root`. npm uninstall has its own [cleanup rules](../docs/npm.md).
+See [updates and removal](../docs/install.md#updates-and-removal) for retained files and differences between archive and npm cleanup. Custom installations require their original `--bin-dir` and `--release-root`.
 
 ## Verify a download
 
@@ -140,10 +138,9 @@ Correct invalid metadata and retry.
 
 ## Project locks and upgrades
 All cooperating writers use the same OS user, host and local filesystem.
-Before changing coordination locations or protocol generations, finish active writes and close CLI/MCP/HTTP sessions. Start upgraded writers together on one generation. Compatible updates within a generation preserve running sessions.
-A `tasks/.task-tracker.json.lock` causes `PROJECT_BUSY`; confirm that its writers have stopped before removing it.
+Updates preserve running sessions and in-flight writes. Restart clients to load the updated code.
 
-Keep SQLite coordination files in place while tracker processes run. Optional cleanup requires all that user's tracker processes to stop. Keep the coordination directory on a local filesystem. Coordinate manual edits with running writers.
+Keep SQLite coordination files in place while tracker processes run. Optional cleanup requires all that user's tracker processes to stop. Keep the coordination directory on a local filesystem. Coordinate manual edits with running writers. Loaded readers retain their cache paths; fresh processes use the Outask root or explicit XDG cache location. Clear a cache after its readers and refresh workers close.
 
 ## Git hooks
 ```bash
@@ -165,7 +162,7 @@ Git invokes `pre-commit` from the working-tree root, so this uses the current pr
 the platform Outask root's `config.json`. Explicit `XDG_CONFIG_HOME` selects
 `$XDG_CONFIG_HOME/outask/config.json`; explicit `XDG_CACHE_HOME` selects
 `$XDG_CACHE_HOME/outask/cache`. Otherwise disposable indexes live in `cache/`
-inside the Outask root. Configuration migration links source filenames to the canonical settings file. Conflicting settings files require reconciliation.
+inside the Outask root.
 The only supported setting is non-negative integer `slow_query_ms` (default `150`).
 Unknown JSON fields are preserved and ignored. Project selection uses paths or cwd.
 
@@ -175,9 +172,8 @@ outask schema
 outask schema --write
 ```
 
-Schema selection uses `tasks/task-schema.json`, then existing
-`docs/task-schema.json`. If both exist, choose with `--schema-path`; an explicit
-path is project-relative, must exist and cannot use symlinks.
+Schema selection defaults to `tasks/task-schema.json`. Select a custom file with
+`--schema-path`; an explicit path is project-relative, must exist and cannot use symlinks.
 Use `--schema-path` to select a schema and `--config` to select global settings. `schema --write` refuses an existing file;
 use `--write --replace` only when you intend to expand the current schema while
 preserving custom rules. Validate after schema changes. See the

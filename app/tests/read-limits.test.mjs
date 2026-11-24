@@ -231,13 +231,13 @@ test('project input accounting includes configuration and only the selected stor
   assert.ok(size < projectBytes);
   assert.throws(() => listTasks(root), { code: 'INPUT_TOO_LARGE' });
   rejected(run('get-task', [root, '1', '--fields', 'id']), 'INPUT_TOO_LARGE', /active.json.*fewer stores/);
-  rmSync(join(root, 'docs/task-schema.json'));
+  rmSync(join(root, 'tasks/task-schema.json'));
   assert.deepEqual(getTask(root, 1, { fields: ['id'] }), { id: 1 });
   truncateSync(join(root, 'tasks/done.json'), projectBytes + 1);
   assert.equal(countTasks(root), 1);
   assert.throws(() => listTasks(root, { stores: ['all'] }), { code: 'INPUT_TOO_LARGE' });
   assert.equal(statSync(path).size, size);
-  writeFileSync(join(root, 'docs/task-schema.json'), 'x'.repeat(projectBytes + 1));
+  writeFileSync(join(root, 'tasks/task-schema.json'), 'x'.repeat(projectBytes + 1));
   rejected(run('list-tasks', [root, '--count']), 'INPUT_TOO_LARGE', new RegExp(`task-schema.json.*${projectBytes / 1024 / 1024} MiB`));
 });
 

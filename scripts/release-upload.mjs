@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { releaseNotes } from './release-notes.mjs';
-import { archiveChecksums, checksumName, checksumsRequired } from './release-checksums.mjs';
+import { archiveChecksums, checksumName } from './release-checksums.mjs';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -64,12 +64,9 @@ try {
   const selected = targetList();
   const selectedNames = selected.map(target => archiveName(target, releaseId));
   const expectedNames = targets.map(target => archiveName(target, releaseId));
-  const approved = releaseNotes(releaseId, packageId, repo, targets, process.env.RELEASE_NOTES_FILE, { recovery: true });
-  const withChecksums = checksumsRequired(packageId);
-  if (withChecksums) {
-    selectedNames.push(checksumName);
-    expectedNames.push(checksumName);
-  }
+  const approved = releaseNotes(releaseId, packageId, repo, targets, process.env.RELEASE_NOTES_FILE);
+  selectedNames.push(checksumName);
+  expectedNames.push(checksumName);
   if (!succeeds('git', ['rev-parse', '--verify', tag])) {
     fail('INVALID_INPUT', `Tag ${tag} is required. Inspect or retry the approved Release workflow; do not tag manually`);
   }
@@ -85,16 +82,13 @@ try {
     fail('INVALID_INPUT', 'Tracked files must be clean before uploading a release');
   }
   rejectMixedArchives(packageId);
-  requireArchives(selected, releaseId);
-  if (withChecksums) {
-    requireArchives(targets, releaseId);
-    const checksums = archiveChecksums(distRoot, releaseId);
-    const path = join(distRoot, checksumName);
-    if (existsSync(path) && readFileSync(path, 'utf8') !== checksums) {
-      fail('INVALID_INPUT', 'Local SHA256SUMS differs from the verified archives; refusing publication');
-    }
-    writeFileSync(path, checksums);
+  requireArchives(targets, releaseId);
+  const checksums = archiveChecksums(distRoot, releaseId);
+  const path = join(distRoot, checksumName);
+  if (existsSync(path) && readFileSync(path, 'utf8') !== checksums) {
+    fail('INVALID_INPUT', 'Local SHA256SUMS differs from the verified archives; refusing publication');
   }
+  writeFileSync(path, checksums);
   approvedNotesDirectory = mkdtempSync(join(tmpdir(), 'outask-release-notes-'));
   const approvedNotesPath = join(approvedNotesDirectory, 'release-notes.md');
   writeFileSync(approvedNotesPath, approved.notes, { flag: 'wx', mode: 0o400 });
@@ -106,7 +100,7 @@ try {
       fail('INVALID_INPUT', 'Existing release title/description differs from the approved release; refusing to rewrite it');
     }
     verifyAssetNames(release, expectedNames);
-    verifyAssets(release, (withChecksums ? expectedNames : selectedNames).filter(name => release.assets.some(asset => asset.name === name)));
+    verifyAssets(release, expectedNames.filter(name => release.assets.some(asset => asset.name === name)));
   } else {
     run('gh', ['release', 'create', tag, '--repo', repo, '--verify-tag', '--draft', ...(packageId.includes('-') ? ['--prerelease'] : []), '--title', releaseTitle(releaseId), '--notes-file', approvedNotesPath]);
     release = { draft: true, assets: [] };
@@ -114,7 +108,7 @@ try {
   const missing = selectedNames.filter(name => !release.assets.some(asset => asset.name === name));
   if (!release.draft) {
     requireArchives(targets, releaseId);
-    if (withChecksums) verifyChecksums(releaseId);
+    verifyChecksums(releaseId);
     verifyAssets(release, expectedNames);
   } else {
     if (missing.length) run('gh', ['release', 'upload', tag, '--repo', repo, ...missing.map(name => join(distRoot, name))]);
@@ -127,7 +121,7 @@ try {
     }
     verifyAssetNames(final, expectedNames);
     requireArchives(targets, releaseId);
-    if (withChecksums) verifyChecksums(releaseId);
+    verifyChecksums(releaseId);
     verifyAssets(final, expectedNames);
     run('gh', ['release', 'edit', tag, '--repo', repo, '--draft=false', packageId.includes('-') ? '--latest=false' : '--latest']);
   }

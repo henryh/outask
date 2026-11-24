@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { archiveName, archivePath, hostTarget, releaseVersion, root, tagName } from './release-config.mjs';
-import { checksumName, checksumsRequired, verifyArchive } from './release-checksums.mjs';
+import { checksumName, verifyArchive } from './release-checksums.mjs';
 
 // These suites remain in the full CI and regression runs.
 const deliveryTests = new Set([
@@ -144,11 +144,9 @@ function downloaded() {
   try {
     const name = archiveName(hostTarget());
     run('Published archive download', 'gh', ['release', 'download', tagName(), '--repo', repo, '--pattern', name, '--dir', temporary]);
-    if (checksumsRequired(releaseVersion())) {
-      run('Published checksums download', 'gh', ['release', 'download', tagName(), '--repo', repo, '--pattern', checksumName, '--dir', temporary]);
-      verifyArchive(readFileSync(join(temporary, name)), name, readFileSync(join(temporary, checksumName), 'utf8'), releaseVersion());
-      console.log('Published archive SHA256: PASS');
-    }
+    run('Published checksums download', 'gh', ['release', 'download', tagName(), '--repo', repo, '--pattern', checksumName, '--dir', temporary]);
+    verifyArchive(readFileSync(join(temporary, name)), name, readFileSync(join(temporary, checksumName), 'utf8'), releaseVersion());
+    console.log('Published archive SHA256: PASS');
     smoke(join(temporary, name));
   } finally {
     rmSync(temporary, { recursive: true, force: true });

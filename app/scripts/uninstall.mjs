@@ -1,13 +1,10 @@
-import { lstatSync, readFileSync, readlinkSync, readdirSync, rmSync, rmdirSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { lstatSync, readFileSync, readdirSync, rmSync, rmdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { applicationRoot, cacheRoot, configPath } from '../src/locations.mjs';
 import { packageNames } from './install-launcher.mjs';
-import { retirePayload } from './install-migration.mjs';
 
 const windows = process.platform === 'win32';
-export const managedPayload = ['app', 'bin', 'install.sh', 'install.mjs', 'install-path.mjs', 'install-launcher.mjs',
-  ...(!windows ? ['install.cmd'] : []), 'Install.command', 'Install.cmd', 'release.json', 'README.md'];
+export const managedPayload = ['app', 'bin', 'install.sh', 'Install.command', 'Install.cmd', 'release.json', 'README.md'];
 
 export function managedInstallation(path) {
   try {
@@ -40,20 +37,12 @@ function removeEmpty(path) {
 
 export function uninstallApplication(paths) {
   const application = applicationRoot();
-  const legacy = new Set([join(process.env.HOME || homedir(), '.config/task-tracker/config.json'),
-    ...(process.env.XDG_CONFIG_HOME ? [join(process.env.XDG_CONFIG_HOME, 'task-tracker/config.json')] : [])]);
-  const configs = new Set([join(application, 'config.json'), configPath(), ...legacy]);
+  const configs = new Set([join(application, 'config.json'), configPath()]);
   const caches = new Set([join(application, 'cache'), cacheRoot()]);
   // Explicit --config / OUTASK_CONFIG files are user-owned; never enumerate them.
   for (const path of configs) {
     const entry = inspect(path);
     if (!ordinaryParents(path) || !entry || (!entry.isFile() && !entry.isSymbolicLink())) continue;
-    // Preserve a user-managed legacy link. Installer migration links target one
-    // of the standard configuration files and can be retired with them.
-    if (legacy.has(path) && entry.isSymbolicLink()) {
-      const target = resolve(dirname(path), readlinkSync(path));
-      if (!configs.has(target)) continue;
-    }
     rmSync(path, { force: true });
   }
   for (const path of caches) {
@@ -66,4 +55,22 @@ export function uninstallApplication(paths) {
   // installation and cache lifetime. Remove only empty command/application dirs.
   removeEmpty(join(application, 'commands'));
   removeEmpty(application);
+}
+
+// Remove only confirmed application payloads; preserve neighboring user files.
+export function retirePayload(path, payload) {
+  for (const name of payload) rmSync(join(path, name), { recursive: true, force: true });
+  if (readdirSync(path).length === 0) rmdirSync(path);
+}
+
+export function installedApplications(roots, destination, managed = managedInstallation) {
+  const result = [];
+  for (const root of new Set(roots)) {
+    if (!inspect(root)?.isDirectory()) continue;
+    for (const name of readdirSync(root)) {
+      const path = join(root, name);
+      if (path !== destination && !lstatSync(path).isSymbolicLink() && managed(path)) result.push(path);
+    }
+  }
+  return result;
 }

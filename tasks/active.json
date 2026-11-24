@@ -407,24 +407,24 @@
     "id": 33,
     "title": "List unblocked tasks and select the oldest eligible task in one read",
     "status": "pending",
-    "priority": "medium",
+    "priority": "low",
     "blockers": [],
-    "scope": "Add read-only operations to obtain all unblocked Active tasks through bounded pagination and to obtain the next task, defined as the lowest-ID Active task whose blockers are absent or no longer Active. Reuse the existing local blocker contract: a task is blocked exactly when its blockers intersect current Active IDs; omitted blockers are empty and inactive/unknown IDs do not block. Expose equivalent behavior in core/standalone, CLI, MCP and read-only HTTP, with discoverable help and documentation. Select and filter inside one operation before pagination, avoiding per-candidate inspectBlockers calls. Preserve existing list and blocker-inspection behavior. This is tracker eligibility only; do not interpret free-text dependencies, project phases, priority rules or external prerequisites, start tasks, or mutate records.",
-    "values": "Goal: let developers and agents choose available work efficiently from repository-local task data. Client value: retrieve the eligible backlog or its oldest task without issuing one blocker-inspection request per candidate. Observable result: one MCP/CLI operation returns the correct next task, and bounded list pages contain only eligible tasks. Measurement: a fixture with dozens of earlier blocked tasks, completed/unknown blockers and later eligible tasks produces the exact eligible set and lowest eligible ID without client-side per-task calls.",
+    "scope": "Add read-only operations to obtain all unblocked Active tasks through bounded pagination and to obtain the next task, defined as the lowest-ID Active task whose blockers are absent or no longer Active. Reuse the existing local blocker contract: a task is blocked exactly when its blockers intersect current Active IDs; omitted blockers are empty and inactive/unknown IDs do not block. Expose equivalent behavior in core/standalone, CLI, MCP and read-only HTTP, with discoverable help and documentation. Select and filter inside one operation before pagination, avoiding per-candidate inspectBlockers calls. Preserve existing list and blocker-inspection behavior. This is tracker eligibility only; do not interpret free-text dependencies, project phases, priority rules or external prerequisites, start tasks, or mutate records. Make MCP the primary agent workflow and CLI a fallback. Add exact candidate-status filtering to both reads so agents can request waiting tasks without including started or review work; blocker evaluation continues to use the complete Active set. Retrieval does not claim ownership.",
+    "values": "Goal: support AI coding agents selecting available work efficiently through MCP. Client value: retrieve waiting, unblocked tasks or the oldest eligible task without per-candidate blocker requests. Observable result: one MCP request selects the correct task or bounded eligible page using an exact project status filter, without claiming or starting work. Measurement: verify a backlog with earlier blocked tasks, started/review tasks and custom waiting statuses; blockers in every Active status still apply and the correct lowest eligible ID is returned.",
     "acceptance": [
-      "Provide discoverable read operations for (1) a bounded, pageable list of unblocked Active tasks and (2) the next unblocked task, ordered by ascending numeric ID rather than priority; define and document the no-eligible-task response.",
+      "Provide discoverable read operations for (1) a bounded, pageable list of unblocked Active tasks and (2) the next unblocked task, ordered by ascending numeric ID rather than priority; define and document the no-eligible-task response. Support an exact status filter on both operations so agents can request waiting tasks and exclude work already in progress or review, including project-defined statuses.",
       "Compute eligibility using the existing shared local-blocker contract, including configured Active groups, omitted/empty blockers, duplicate blockers and inactive/unknown IDs. Failed Active reads and invalid examined blocker fields remain errors rather than silently making tasks eligible.",
-      "Load the current Active set once per operation and filter eligible candidates before pagination; preserve stable ordering, projection and response-size boundaries. Retrieval does not start a task or modify task records.",
-      "Expose aligned behavior, inputs, outputs, errors and help across core/standalone, CLI, MCP and read-only HTTP, updating the owning contract and user/agent documentation. Existing list_tasks and inspect_blockers remain compatible.",
-      "Verify with focused contract and adapter tests: older blocked tasks precede the first eligible task, blockers complete/archive and release a dependant, no blockers, inactive/unknown IDs, no eligible tasks, pagination beyond a first page containing only blocked candidates, custom Active statuses and failed/malformed Active reads.",
+      "Load the current Active set once per operation to establish blockers, independently of the requested candidate-status filter. Filter candidate status and eligibility before pagination and next-task selection; preserve stable ordering, projection and response-size boundaries. Retrieval neither assigns ownership nor starts a task or modifies task records.",
+      "Make MCP the primary documented interface for an agent choosing available work; present CLI as a fallback for manual operations and scripts. Expose aligned behavior, inputs, outputs, errors and help across core/standalone, CLI, MCP and read-only HTTP, updating the owning contract and user/agent documentation. Existing list_tasks and inspect_blockers remain compatible.",
+      "Verify with focused contract and adapter tests: older blocked tasks precede the first eligible task, blockers complete/archive and release a dependant, no blockers, inactive/unknown IDs, no eligible tasks, pagination beyond a first page containing only blocked candidates, custom Active statuses and failed/malformed Active reads. Verify that waiting-status filtering excludes started/review tasks while blockers in other Active statuses still block candidates; exercise the filter in both list and next-task operations.",
       "Demonstrate from the client boundary that a backlog with dozens of blocked candidates yields the next eligible task in one request and the eligible list in bounded pages without per-task inspect_blockers calls; run applicable repository checks."
     ],
     "sources": [
       "User request 2026-11-10: add all-unblocked and oldest-next-task retrieval after a selection required 43 individual inspect_blockers calls.",
       "docs/contract.md: Local blockers and shared read surfaces."
     ],
-    "notes": "Planning only; implementation is not started. Preserve project-specific selection policy in consumers; this next-task operation implements the explicitly requested oldest-ID rule.",
-    "updated_at": "2026-11-10T16:11:49.340Z"
+    "notes": "Planning only; implementation is not started. Preserve project-specific selection policy in consumers; this next-task operation implements the explicitly requested oldest-ID rule. Owner-approved clarification 2026-11-23: low priority; MCP is the primary agent interface, with exact status filtering for waiting work and no ownership or automatic-start side effects.",
+    "updated_at": "2026-11-23T10:21:18.360Z"
   },
   {
     "id": 35,
@@ -512,5 +512,81 @@
       "Verify on Codex CLI that setting up Outask MCP includes installing and checking the skill, and that a new session can load it and read the repository's tasks. Where automatic installation is unavailable, show exact manual steps and make the remaining setup requirement clear."
     ],
     "updated_at": "2026-11-18T08:59:23.774Z"
+  },
+  {
+    "id": 44,
+    "title": "Prevent duplicate task creation when retrying a request",
+    "status": "pending",
+    "priority": "low",
+    "blockers": [],
+    "scope": "Allow a coding agent to safely retry task creation after a lost MCP response without creating another task. Add an optional caller-provided idempotency key for a single creation intent, retained across retries and distinct for independent creations. Make MCP the primary documented agent interface and keep shared creation behavior aligned across core/standalone and CLI. Determine a minimal durable implementation and define key scope, retention and replay behavior for tasks changed or moved after creation. Existing creation without a key remains compatible. Frequency of lost-response duplicates in actual Outask use is unknown; this is a low-priority reliability improvement, not semantic deduplication of similar tasks.",
+    "acceptance": [
+      "Reproduce a task being persisted before its MCP response is lost; retry with the same key and input returns the original task identity and leaves exactly one retained task.",
+      "Reusing a key with different creation input returns a clear conflict without modifying task data.",
+      "Concurrent same-key creation requests persist exactly one task, and retry protection survives an MCP process restart.",
+      "Independent creation requests with distinct keys remain independent even when their task content matches.",
+      "Document key generation and reuse, project scope, retention and replay semantics, including changed or moved tasks, in MCP tool guidance and relevant documentation.",
+      "Preserve creation behavior without a key, existing records, IDs, extension fields and manual JSON editing compatibility; verify the client-visible behavior through MCP and focused shared-interface checks."
+    ],
+    "values": {
+      "goal": "Reliable task tracking for AI coding agents through MCP",
+      "value": "An agent can repeat an uncertain creation request without duplicating a saved task.",
+      "observable_result": "After a simulated lost creation response, a repeated keyed request resolves to the single original task.",
+      "verification": "Run a real MCP lost-response/restart/retry scenario and concurrent same-key creation; verify exactly one retained task and a clear changed-input conflict."
+    },
+    "updated_at": "2026-11-23T10:09:26.338Z"
+  },
+  {
+    "id": 45,
+    "title": "Clarify Outask positioning for AI coding agents",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Update README, product documentation, npm package and MCP Registry descriptions while preserving the existing lightweight approach, readable JSON tasks alongside code, and collaboration between developers and agents. Make MCP the primary agent interface and CLI a fallback for manual operations and scripts. Retain Git-native in the explanation rather than the opening. Prepare description changes and the owner-approved task records for this positioning initiative together in one PR.",
+    "acceptance": [
+      "The opening sentence retains lightweight positioning; descriptions explain readable JSON tasks alongside code and their value for AI coding agents.",
+      "README, product documentation, npm package and MCP Registry descriptions use consistent positioning.",
+      "MCP is the primary agent interface and the README getting-started route leads to agent connection through MCP; CLI is presented as a fallback for manual operations and scripts.",
+      "Git-native appears in explanatory copy rather than leading the description.",
+      "Claims match existing capabilities; application behavior and storage format remain unchanged.",
+      "Prepare the description changes and owner-approved task records for this initiative together in one PR; verify consistency and affected documentation links."
+    ],
+    "values": "Goal: clarify Outask's value for AI coding agents. Value: users immediately understand the lightweight repository-local product and primary MCP workflow. Observable result: consistent descriptions lead users to MCP onboarding. Verification: review the affected descriptions and follow the README onboarding links.",
+    "updated_at": "2026-11-23T10:28:24.941Z"
+  },
+  {
+    "id": 46,
+    "title": "Document task context continuity across agent sessions",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Briefly explain task context continuity in README and provide concise documentation describing what agents explicitly save in tasks and how they read it through MCP to continue work in another session. Use existing task operations and respect project-owned fields and rules.",
+    "acceptance": [
+      "README contains a brief explanation and a link to the detailed documentation.",
+      "Documentation covers saving the goal, progress, verification results and remaining actions.",
+      "Explain that agents explicitly record task context and that conversation history is not automatically saved.",
+      "Recommendations use existing Outask capabilities and respect project-owned fields and schema rules.",
+      "Keep the text clear and concise, without demonstration scenarios or digressions; verify described behavior against the existing contract and check affected links."
+    ],
+    "values": "Goal: make continued work across AI agent sessions understandable. Value: users know what task context to preserve and how agents retrieve it through MCP. Observable result: documentation identifies the information required to resume work without implying automatic conversation recovery. Verification: review guidance against existing operations and project schema rules and follow the README documentation link.",
+    "updated_at": "2026-11-23T10:28:24.957Z"
+  },
+  {
+    "id": 47,
+    "title": "Assess parallel task workflows across Git branches and worktrees",
+    "status": "pending",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Check parallel task work across Git branches and worktrees, identify concrete problems and recommend the smallest justified corrections. Record findings and decisions in this task rather than a separate report.",
+    "acceptance": [
+      "Check independent creation in two branches, including collisions between allocated numeric task IDs.",
+      "Check merging edits to different tasks and edits to the same task.",
+      "Assess how tasks/.task-tracker.json affects diffs and merge conflicts.",
+      "Check Git hooks across multiple worktrees and the difference between staged task state and working-tree files.",
+      "Record reproducible results, consequences of confirmed problems and recommended solutions in the task.",
+      "Propose small corrective tasks with verifiable acceptance for confirmed problems; record an evidence-backed no-change decision where no correction is needed. Obtain owner approval before creating follow-up tasks."
+    ],
+    "values": "Goal: make Git-native task workflows predictable for developers and coding agents. Value: establish which parallel Git scenarios work and which require correction. Observable result: evidence-backed correction or no-change decisions for creation, merging, metadata and hooks. Verification: reproduce the listed branch/worktree scenarios and retain decisive outcomes in this task.",
+    "updated_at": "2026-11-23T10:28:24.971Z"
   }
 ]

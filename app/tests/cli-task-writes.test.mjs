@@ -43,7 +43,7 @@ test('installed CLI handles field rules, full lifecycle and readable diffs witho
   const installed = (args, input) => execute(join(bin, 'tasks'), args, { cwd: root, env, input });
   const git = (...args) => success(execute('git', args, { cwd: root }));
   git('init', '-q');
-  git('add', 'tasks', 'docs');
+  git('add', 'tasks');
   const index = readFileSync(join(root, '.git/index'));
   rejected(root, ['create', '--title', 'Missing acceptance'], 'INVALID_STORE');
   rejected(root, ['create', '--title', 'Blank acceptance', '--input', '-'], 'INVALID_STORE', { input: '{"acceptance":[""]}' });

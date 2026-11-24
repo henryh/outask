@@ -21,7 +21,6 @@ const runtimeScripts = [
   'get-tasks.mjs',
   'hook.mjs',
   'install-launcher.mjs',
-  'install-migration.mjs',
   'install-path.mjs',
   'install-release.mjs',
   'uninstall.mjs',
