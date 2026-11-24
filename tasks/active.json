@@ -588,23 +588,5 @@
     ],
     "values": "Goal: make Git-native task workflows predictable for developers and coding agents. Value: establish which parallel Git scenarios work and which require correction. Observable result: evidence-backed correction or no-change decisions for creation, merging, metadata and hooks. Verification: reproduce the listed branch/worktree scenarios and retain decisive outcomes in this task.",
     "updated_at": "2026-11-23T10:28:24.971Z"
-  },
-  {
-    "id": 48,
-    "title": "Prepare Outask for publication in MCP directories",
-    "status": "awaiting_owner",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Make the current Outask installation and MCP workflow ready for directory users. Remove obsolete compatibility and migration mechanisms, their dedicated tests and documentation; keep current task data, IDs, extension fields and supported platform behavior intact. Include the existing documentation corrections in this task. Prepare the henryh/outask listing and pull request for punkpeye/awesome-mcp-servers using its current contribution rules; publish only after owner confirmation. Implement on a task branch.",
-    "acceptance": [
-      "Inventory obsolete compatibility paths, including former task-tracker configuration and installation migration, legacy schema fallback, old lock handling and missing-status inference; remove obsolete mechanisms and their dedicated tests and documentation while preserving current supported behavior and user records.",
-      "Current installation, CLI and MCP flows work with canonical Outask configuration and schema; affected source acceptance and regression checks pass, with platform limits recorded.",
-      "Existing documentation corrections are preserved and reconciled with the simplified current contract; no obsolete migration or backwards-compatibility instructions remain in maintained user documentation.",
-      "The awesome-mcp-servers contribution follows current CONTRIBUTING.md, checks for duplicate Outask entries, and adds exactly the owner-provided line in alphabetical order under Workplace & Productivity without changing other entries; existing local branch add-outask and commit 368c24a are inspected and reused where valid.",
-      "Independent source review and QA are completed; owner manual-test and delivery decisions are recorded. No push or PR publication occurs without explicit owner agreement."
-    ],
-    "values": "Goal: make Outask usable and understandable for developers and AI coding agents discovering it through MCP directories. Immediate value: a current-only installation and documented CLI/MCP path with a reviewable directory submission. Observable result: a new user can follow current setup instructions and create, update and read repository-local tasks through MCP; the prepared directory diff contains one accurate Outask entry. Verify with current-installation and CLI/MCP acceptance scenarios, affected regression checks and inspection of the directory contribution diff.",
-    "notes": "Stage 1 complete on task-48-mcp-directory-readiness, source reviewed at 5e8066b. Existing documentation and approved backlog corrections preserved. Removed old task-tracker config/install migrations, docs/task-schema automatic fallback, old project lock checks, missing-status inference, historical release-note recovery formats and checksum version exemptions with dedicated tests/fixtures. Retained current tasks alias, explicit custom schemas, unknown fields/IDs, OS writer coordination, live sessions and current-format recovery safety. Independent review PASS; findings corrected in 5771fe0 and 5e8066b. Independent QA PASS: make test-feature exit 0 (243 Core + 18 MCP total; native Windows cross-volume scenario skipped on Linux), isolated source CLI/MCP lifecycle and retired fallback/status rejection checks pass without unintended record mutation. Parent release-tool QA: 39/39 passed. Installer focused tests: 16 pass, 1 native Windows skip. Host Linux, Node v24.21.0. Temporary logs/fixtures/children cleaned. Source entry: node app/bin/outask; MCP: node app/bin/outask mcp. Native artifact/build/distribution and hosted CI remain stage-2 gates, not claimed passed. Await owner's manual-test choice/result and agreement to delivery; no version or artifact preparation, push or PR publication performed. Catalog latest origin/main checked 2026-11-24: no Outask, Workplace & Productivity appropriate; add-outask/368c24a at /home/user/Projects/awesome-mcp-servers-outask remains exact one-line change. Current upstream CONTRIBUTING mandates backlink; verified Glama card linked from Outask README, and local PR text records that backlink must be published first.",
-    "updated_at": "2026-11-24T08:21:44.681Z"
   }
 ]
