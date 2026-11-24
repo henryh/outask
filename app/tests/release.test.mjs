@@ -244,7 +244,7 @@ test('download install, repeat, update and uninstall preserve project data and s
   assert.deepEqual(JSON.parse(ok(task('schema', schemaProject, '--write'))), effective);
   assert.deepEqual(JSON.parse(readFileSync(join(schemaProject, 'tasks/task-schema.json'))), effective);
   const project = join(f.home, 'project');
-  mkdirSync(join(project, 'docs'), { recursive: true });
+  mkdirSync(join(project, 'tasks'), { recursive: true });
   const schema = { stores: { 'active.json': { statuses: ['pending', 'in_progress'], required_fields: ['team'] }, 'done.json': { statuses: ['done'], required_fields: ['team'] } } };
   writeFileSync(join(project, 'tasks/task-schema.json'), JSON.stringify(schema));
   ok(task('create', project, '--json', JSON.stringify({ title: 'Installed task', team: 'ops', extra: { keep: true } })));
