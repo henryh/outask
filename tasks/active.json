@@ -592,7 +592,7 @@
   {
     "id": 49,
     "title": "Clarify MCP tool guidance with minimal schema text",
-    "status": "in_progress",
+    "status": "awaiting_owner",
     "priority": "medium",
     "blockers": [],
     "scope": "Make the smallest MCP tool-description and input-schema wording changes that address actionable Glama findings: explain update_task patch verbs; distinguish list/search fields and paging; define inspect_blockers eligibility; clarify selection among read tools and status/field mutations; state consequential write behavior only where needed (creation retry, stale-write guard, archive visibility/restore). Keep each addition brief and avoid repeating schema facts. Preserve tool names, operations and response behavior; add no new tools.",
@@ -607,6 +607,7 @@
       "docs/contract.md",
       "app/mcp/server.mjs"
     ],
-    "updated_at": "2026-11-25T11:19:08.453Z"
+    "updated_at": "2026-11-25T11:22:57.631Z",
+    "notes": "Feature review: PASS. Checked committed MCP descriptions and patch field schema against docs/contract.md; wording matches existing operations, adds no tools or runtime changes, and makes no blanket read-only claim. Feature QA: PASS. Live stdio SDK tools/list guidance assertions and lifecycle scenario passed (18 MCP tests); make test-feature passed 243 core and 18 MCP tests. git diff --check passed. Source candidate d90825e. Patch version and exact release notes remain for stage 2 after owner source acceptance."
   }
 ]
