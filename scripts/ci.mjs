@@ -11,6 +11,7 @@ const deliveryTests = new Set([
   'checksum-docs.test.mjs',
   'install-path.test.mjs',
   'npm-release.test.mjs',
+  'github-packages-release.test.mjs',
   'push-guard.test.mjs',
   'release-checksums.test.mjs',
   'release-notes.test.mjs',
@@ -91,6 +92,17 @@ function npmSmoke(artifact) {
   process.stdout.write(run('npm installed CLI/MCP lifecycle', process.execPath, ['app/mcp/tests/npm-smoke.mjs', artifact], acceptanceEnv()));
 }
 
+async function githubPackagesSmoke() {
+  const temporary = mkdtempSync(join(tmpdir(), 'outask-gpr-acceptance-'));
+  try {
+    const archive = join(temporary, 'scoped.tgz');
+    const { prepareScopedPackage } = await import('./github-packages-release.mjs');
+    const { npmArtifact } = await import('./npm-release.mjs');
+    prepareScopedPackage(npmArtifact, archive);
+    npmSmoke(archive);
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
+}
+
 function npmDistribution() {
   const temporary = mkdtempSync(join(tmpdir(), 'outask-ci-npm-'));
   try {
@@ -155,8 +167,8 @@ function downloaded() {
 
 try {
   const mode = process.argv[2];
-  if (process.argv.length > 3 || (mode !== undefined && !['dependencies', 'test-feature', 'test', 'regression', 'distribution', 'archive', 'downloaded', 'npm', 'npm-archive', 'npm-downloaded'].includes(mode))) {
-    throw new Error('Usage: node scripts/ci.mjs [dependencies|test-feature|test|regression|distribution|archive|downloaded|npm|npm-archive|npm-downloaded]');
+  if (process.argv.length > 3 || (mode !== undefined && !['dependencies', 'test-feature', 'test', 'regression', 'distribution', 'archive', 'downloaded', 'npm', 'npm-archive', 'npm-downloaded', 'github-packages-archive'].includes(mode))) {
+    throw new Error('Usage: node scripts/ci.mjs [dependencies|test-feature|test|regression|distribution|archive|downloaded|npm|npm-archive|npm-downloaded|github-packages-archive]');
   }
   if (mode === undefined || mode === 'dependencies') dependencies();
   if (mode === 'test-feature') tests({ featureOnly: true });
@@ -170,6 +182,7 @@ try {
   if (mode === 'downloaded') downloaded();
   if (mode === undefined || mode === 'distribution' || mode === 'npm') npmDistribution();
   if (mode === 'npm-archive') npmSmoke((await import('./npm-release.mjs')).npmArtifact);
+  if (mode === 'github-packages-archive') await githubPackagesSmoke();
   if (mode === 'npm-downloaded') await npmDownloaded();
 } catch (error) {
   console.error(error.message);

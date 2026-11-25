@@ -82,6 +82,12 @@ The npm publisher requires `OUTASK_NPM_OWNER` to identify a package maintainer a
 
 Verify the public package read-only with `node scripts/ci.mjs npm-downloaded`. Packed lifecycle checks exercise updates through a controlled local registry; public download checks require an existing published version. Required archive publication and download checks still apply.
 
+## GitHub Packages publication
+
+The owner-merged `Release` workflow also publishes `@henryh/outask` to `https://npm.pkg.github.com` from the same accepted `npm-package` artifact. The GitHub Packages job changes only the packed `package.json` name and `publishConfig`, plus matching root name fields if a lockfile is present. It checks the complete file list and unchanged payload bytes, then publishes with `GITHUB_TOKEN` and `packages: write`. An existing version succeeds only when its registry integrity matches the prepared archive. This path does not change npmjs.org publication, its dist-tags or Trusted Publishing, or the MCP Registry descriptor.
+
+After the first publication, open the `@henryh/outask` package settings in GitHub. Confirm that its linked repository is `henryh/outask` and that Actions access for this repository permits subsequent uploads. Set package visibility to **Public** under the package's own settings if GitHub offers that control. Keep the repository's visibility unchanged. GitHub's npm registry still requires authentication for npm CLI downloads of public packages.
+
 ## MCP Registry publication
 
 Run `node scripts/mcp-registry.mjs check` from the checkout to check the [server descriptor](../app/mcp/server.json) against the npm manifest. Use the exact npm version in both descriptor fields, including the patch component when the GitHub tag omits it.

@@ -100,3 +100,6 @@ jobs:
           path: dist
       - name: Accept the exact npm artifact on this native host
         run: node scripts/ci.mjs npm-archive
+      - name: Accept the scoped package from the same artifact
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '24'
+        run: node scripts/ci.mjs github-packages-archive
