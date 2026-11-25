@@ -811,5 +811,37 @@
     "updated_at": "2026-11-25T11:32:02.239Z",
     "notes": "Feature review/QA PASS: source candidate d90825e; MCP tools/list guidance and lifecycle 18/18, make test-feature 243 core + 18 MCP. Owner accepted source result and delivery on 2026-11-25; no manual test. Delivery review PASS: origin/main unchanged at integration; combined diff limited to MCP wording/schema descriptions, focused MCP assertions, patch version 1.11.1, exact notes and task records. Exact release notes and MCP Registry descriptor PASS; git diff --check PASS. Delivery QA PASS on Linux x64, Node 24.21.0: make ci (342 core, 18 MCP, installed archive and npm lifecycle); make regression (353 core, 18 MCP, installed archive and npm lifecycle). Node 22/macOS/Windows acceptance remains required in hosted CI after approved push. No runtime operation or tool-name change.",
     "completed_at": "2026-11-25T11:31:53.000Z"
+  },
+  {
+    "id": 31,
+    "title": "Wait for npm registry visibility before verifying publication",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Correct the reproduced Outask v1.7 publication failure in scripts/npm-release.mjs: npm publish succeeded through trusted publishing and reported asynchronous processing, but the immediate metadata read could not yet see 1.7.0 and incorrectly reported an integrity mismatch. After an accepted publication, use bounded read-only retries for visibility of the exact approved package version and its intended dist-tag, then verify the published integrity against the already accepted artifact. Distinguish a not-yet-visible version/tag, transient registry failures, an actual immutable integrity mismatch and authentication/publication rejection. Preserve owner-merged release approval, existing-version safeguards, bootstrap behavior and stable/prerelease tag rules. Retry metadata reads only; never repeat npm publish inside the wait or automatically replace/delete/retag a published version. Keep the change small and within the existing publication helper and its focused tests.",
+    "acceptance": [
+      "A deterministic registry fixture initially hides a successfully accepted version and/or serves the old intended dist-tag, then exposes the approved integrity and tag; verification eventually passes after bounded read retries with exactly one publish invocation.",
+      "Published version metadata containing a different integrity fails as an actual immutable-artifact mismatch. The helper never overwrites, deletes or retags that version, and authentication or rejected-publish failures retain actionable diagnostics rather than being reported as propagation delay.",
+      "The wait has a finite deadline/retry budget. If the expected version or dist-tag never becomes visible, it exits nonzero with the package/version, last observed state and clear pending-visibility or registry-error wording; absence is not described as a confirmed integrity mismatch. Transient registry failures stay within the same bound.",
+      "A rerun against an already visible approved version and intended dist-tag succeeds without invoking npm publish. Existing-version collision checks, initial-registry bootstrap handoff and stable/prerelease latest/next selection retain their contracts.",
+      "Focused tests cover delayed version visibility, delayed tag visibility, timeout, transient registry failure, real integrity mismatch and publish rejection using controlled responses and deterministic timing; they perform no real npm publication. Required local checks pass, and contributor guidance is updated only if the recovery procedure changes."
+    ],
+    "values": {
+      "goal": "Publish approved Outask releases reliably while preserving immutable package integrity and owner approval.",
+      "value": "Avoid false failed releases and manual reruns caused by normal asynchronous npm registry processing.",
+      "result": "A successful publication waits for public visibility and completes verification automatically; real mismatches and expired waits still fail clearly.",
+      "verification": "Run controlled publication scenarios with one accepted publish and delayed metadata/tag responses; observe eventual success, bounded timeout and correct hard-failure diagnostics without repeat publication."
+    },
+    "notes": [
+      "Owner explicitly requested this separate task after the v1.7 incident; planning only, implementation is not started.",
+      "Evidence: Release run 42782896399 attempt 2 logged '+ outask@1.7.0' and the npm asynchronous-processing notice, then failed with 'Published npm integrity differs from the approved artifact' while public metadata still lacked 1.7.0. The version later appeared as latest with SHA-512 matching the accepted artifact; attempt 3 succeeded and all six native downloaded archive/npm acceptance jobs passed.",
+      "The earlier ENEEDAUTH was a separate Trusted Publisher configuration issue and is resolved. This task does not change npm account permissions, credentials, publisher configuration or published v1.7 contents.",
+      "Owner decision 2026-11-25: implement now with a 3-minute visibility deadline and no version change (RELEASE_DEFERRED). Evidence: v1.11.1 first publish succeeded but metadata was still 404 around 110 seconds later; it appeared before the next check a short time later. Six previous releases had the same immediate false integrity failure, so a shorter fixed deadline is not supported by the observed boundary.",
+      "Source candidate 8b187a5: feature review PASS. Post-publish checks poll public metadata for at most 180 seconds at 5-second intervals; absent version or delayed tag remains pending, real integrity mismatch and permanent HTTP errors fail immediately, and npm publish is invoked once outside the read loop. Existing-version and bootstrap paths are unchanged. Feature QA PASS: 9 focused npm release tests, make test-feature (243 core, 18 MCP), make ci (346 core, 18 MCP, Linux archive and npm lifecycle), git diff --check. No version change (RELEASE_DEFERRED).",
+      "Owner accepted source result and delivery on 2026-11-25 without manual testing. Deliver as ordinary PR at version 1.11.1; RELEASE_DEFERRED by explicit owner request.",
+      "Delivery review and QA PASS: origin/main unchanged; branch diff contains only npm publication visibility logic, focused tests and task records. Patch version remains 1.11.1 (RELEASE_DEFERRED); release notes are unchanged. Reused make ci PASS (346 core, 18 MCP, Linux archive and npm lifecycle) and focused 9/9 tests on identical application source; git diff --check PASS. Hosted PR CI remains required after approved push."
+    ],
+    "updated_at": "2026-11-25T13:56:13.041Z",
+    "completed_at": "2026-11-25T13:56:07.000Z"
   }
 ]
