@@ -2,14 +2,13 @@ Outask is a lightweight task tracker for personal projects and your AI harness.
 
 ## Downloads
 
-- [Linux x64](https://github.com/henryh/outask/releases/download/v1.11/Outask-1.11-linux-x64.tar.gz)
-- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.11/Outask-1.11-macos-arm64.tar.gz)
-- [Windows x64](https://github.com/henryh/outask/releases/download/v1.11/Outask-1.11-windows-x64.tar.gz)
+- [Linux x64](https://github.com/henryh/outask/releases/download/v1.11.1/Outask-1.11.1-linux-x64.tar.gz)
+- [macOS Apple silicon](https://github.com/henryh/outask/releases/download/v1.11.1/Outask-1.11.1-macos-arm64.tar.gz)
+- [Windows x64](https://github.com/henryh/outask/releases/download/v1.11.1/Outask-1.11.1-windows-x64.tar.gz)
 
 ## What's new
 
-- Configuration uses the Outask application directory, and project schemas default to `tasks/task-schema.json`. Explicit custom paths remain available; see [installation details](https://github.com/henryh/outask/blob/v1.11/docs/install.md#installation-details).
-- Stored tasks require an explicit `status`. Reads and validation identify missing values for correction while preserving task records.
+- MCP tool descriptions clarify task reads, field changes and retries; task behaviour is unchanged.
 
 ## Install
 
@@ -41,6 +40,6 @@ outask list --format table
 
 ## Documentation
 
-- [Basic use](https://github.com/henryh/outask/blob/v1.11/README.md#basic-use)
-- [Full operator reference](https://github.com/henryh/outask/blob/v1.11/app/README.md)
-- [MCP setup](https://github.com/henryh/outask/blob/v1.11/app/mcp/README.md)
+- [Basic use](https://github.com/henryh/outask/blob/v1.11.1/README.md#basic-use)
+- [Full operator reference](https://github.com/henryh/outask/blob/v1.11.1/app/README.md)
+- [MCP setup](https://github.com/henryh/outask/blob/v1.11.1/app/mcp/README.md)

@@ -27,7 +27,7 @@ const selection = {
 const reading = {
   stores: z.array(text).optional().describe('Store names; ["all"] includes retained history. Exclusive with group.'),
   group: z.enum(['Active', 'Done', 'Archive']).optional(),
-  fields: z.array(text).optional().describe('Field projection; ["all"] includes extension fields.'),
+  fields: z.array(text).optional().describe('Fields returned; ["all"] includes extension fields.'),
   no_cache: z.boolean().optional().describe('Default false; omit for normal reads, which can use a freshness-checked cache when enabled and otherwise fall back to authoritative JSON. Set true only for explicit JSON-only reads or cache diagnostics; true never opens or refreshes the cache.'),
 };
 const writing = {
@@ -80,7 +80,7 @@ export function createServer() {
       }
     });
   }
-  register('list_tasks', `List tasks (Active by default), with bounded pagination (maximum limit ${maxLimit}). Defaults: id,title,status; limit 10; offset 0; sort id.`, {
+  register('list_tasks', `List or filter tasks (Active by default); use search_tasks for text search. Default fields: id,title,status; limit 10; offset 0; sort id. Maximum limit ${maxLimit}; follow nextOffset.`, {
     ...reading, limit, offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
     filters: z.array(z.strictObject({ field: text, value: z.string() })).optional(),
     status: text.optional().describe('Exact case-sensitive status filter.'),
@@ -90,33 +90,35 @@ export function createServer() {
     const query = { ...reads(args), descending: desc, filters: [...filters, ...(status === undefined ? [] : [{ field: 'status', value: status }])] };
     return count ? { count: countTasks(path, query) } : listTasks(path, query);
   }, true);
-  register('get_task', 'Get one task, including all fields by default. Active only unless stores or group select history.', {
+  register('get_task', 'Get one known ID, including all fields by default. Active only unless stores or group select history.', {
     ...reading, id,
   }, (path, { id, ...args }) => getTask(path, id, reads(args)), true);
-  register('get_tasks', 'Get requested tasks in caller ID order, report missing IDs and continue with a bounded cursor.', {
+  register('get_tasks', 'Get multiple known IDs in caller order; missing IDs are reported. Follow next_cursor for more.', {
     ...reading, ids: z.array(id).min(1), limit, cursor: text.optional(),
   }, (path, { ids, ...args }) => getTasks(path, ids, reads(args)), true);
-  register('search_tasks', 'Search task content with bounded results, snippets and stable continuation.', {
-    ...reading, query: text, search_fields: z.array(text).optional(), limit, cursor: text.optional(),
+  register('search_tasks', 'Search task text, returning snippets; use list_tasks for filters. Follow next_cursor for more.', {
+    ...reading, query: text, search_fields: z.array(text).optional().describe('Fields searched; fields selects what results return.'), limit, cursor: text.optional(),
   }, (path, { query, search_fields, ...args }, { config }) => searchTasks(path, query, {
     ...reads(args), searchFields: search_fields, slowQueryMs: readConfig(config).slowQueryMs, refreshMode: 'detached',
   }), true);
-  register('create_task', 'Create a task with a safe project-wide ID. Returns the complete persisted record.', {
+  register('create_task', 'Create a task with a safe project-wide ID. Returns the persisted record; check before retrying a lost response to avoid duplicates.', {
     task: object.describe('Task fields; title required, status defaults from project. Extensions preserved.'), store: writing.store,
   }, (path, { task, store, schemaPath }) => createTask(path, task, { store, schemaPath }));
-  register('update_task', 'Patch a retained task atomically. Duplicate additions are silent no-ops. Returns the complete record.', {
+  register('update_task', 'Change task fields atomically, including status with other fields; use transition_task for status alone. Returns the complete record.', {
     ...writing, id, patch: z.strictObject({
-      set: object.optional(), add: z.record(z.string(), z.array(jsonValue)).optional(),
-      remove: z.record(z.string(), z.array(jsonValue)).optional(), unset: z.array(text).optional(),
+      set: object.optional().describe('Replace whole field values.'),
+      add: z.record(z.string(), z.array(jsonValue)).optional().describe('Append distinct array items; duplicates are no-ops.'),
+      remove: z.record(z.string(), z.array(jsonValue)).optional().describe('Remove matching array items.'),
+      unset: z.array(text).optional().describe('Remove optional fields.'),
     }),
   }, (path, args) => updateTask(path, args.id, args.patch, { ...writes(args), schemaPath: args.schemaPath }));
   register('transition_task', 'Move a retained task to an exact configured status; Active blockers prevent starting. Returns the complete record.', {
     ...writing, id, status: text,
   }, (path, args) => transitionTask(path, args.id, args.status, { ...writes(args), schemaPath: args.schemaPath }));
-  register('delete_task', 'Archive a task with its ID and fields retained; optionally select an Archive status. Returns the complete record.', {
+  register('delete_task', 'Archive a task, retaining its ID and fields. History needs explicit selection; restore with transition_task. Returns the complete record.', {
     ...writing, id, status: text.optional(),
   }, (path, args) => deleteTask(path, args.id, { ...writes(args), status: args.status, schemaPath: args.schemaPath }));
-  register('inspect_blockers', 'Inspect exact Active blockers and eligibility, plus a bounded graph. Cycles are diagnostics; defaults: depth 1, limit 10.', {
+  register('inspect_blockers', 'Inspect blockers for a task: only current Active IDs block starting. Returns eligibility and a bounded graph; cycles are diagnostics. Defaults: depth 1, limit 10.', {
     id, limit: limit.describe(`Integer limit from 1 to ${maxLimit} graph edges; default 10. Additional edges are omitted and reported by graph.truncated.limit.`),
     depth: z.number().int().min(1).max(maxDepth).optional(),
     no_cache: reading.no_cache,

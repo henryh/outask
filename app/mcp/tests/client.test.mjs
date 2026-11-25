@@ -258,6 +258,21 @@ test('installed stdio SDK client discovers tools and maintains a full lifecycle 
     }
   }
   assert.match(tools.find((tool) => tool.name === 'list_tasks').description, /max(?:imum)?(?:\s+limit)?\s+50/i);
+  const tool = (name) => tools.find((entry) => entry.name === name);
+  assert.match(tool('list_tasks').description, /search_tasks.*text search.*nextOffset/i);
+  assert.match(tool('get_task').description, /one known ID/i);
+  assert.match(tool('get_tasks').description, /multiple known IDs.*next_cursor/i);
+  assert.match(tool('search_tasks').description, /list_tasks.*filters.*next_cursor/i);
+  assert.match(tool('search_tasks').inputSchema.properties.search_fields.description, /fields searched.*fields selects what results return/i);
+  assert.match(tool('inspect_blockers').description, /current Active IDs block starting.*eligibility/i);
+  const patchFields = tool('update_task').inputSchema.properties.patch.properties;
+  for (const [verb, meaning] of Object.entries({ set: /replace/i, add: /append.*duplicate/i, remove: /remove matching/i, unset: /remove optional/i })) {
+    assert.match(patchFields[verb].description, meaning, verb);
+  }
+  assert.match(tool('update_task').description, /transition_task for status alone/i);
+  assert.match(tool('create_task').description, /retrying a lost response.*duplicates/i);
+  assert.match(tool('delete_task').description, /explicit selection.*restore with transition_task/i);
+  assert.match(tool('update_task').inputSchema.properties.if_updated_at.description, /rejects stale writes/i);
   assert.ok(client.getServerCapabilities().tools);
   const schema = await call('inspect_schema');
   assert.deepEqual(schema, JSON.parse(cli(root, ['schema']).stdout));
