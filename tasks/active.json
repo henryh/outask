@@ -588,5 +588,25 @@
     ],
     "values": "Goal: make Git-native task workflows predictable for developers and coding agents. Value: establish which parallel Git scenarios work and which require correction. Observable result: evidence-backed correction or no-change decisions for creation, merging, metadata and hooks. Verification: reproduce the listed branch/worktree scenarios and retain decisive outcomes in this task.",
     "updated_at": "2026-11-23T10:28:24.971Z"
+  },
+  {
+    "id": 49,
+    "title": "Clarify MCP tool guidance with minimal schema text",
+    "status": "in_progress",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Make the smallest MCP tool-description and input-schema wording changes that address actionable Glama findings: explain update_task patch verbs; distinguish list/search fields and paging; define inspect_blockers eligibility; clarify selection among read tools and status/field mutations; state consequential write behavior only where needed (creation retry, stale-write guard, archive visibility/restore). Keep each addition brief and avoid repeating schema facts. Preserve tool names, operations and response behavior; add no new tools.",
+    "acceptance": [
+      "MCP tools/list gives agents enough concise guidance to choose list/get/batch/search, compose set/add/remove/unset patches, interpret blocker eligibility, and use paging and stale-write safeguards correctly.",
+      "The descriptions accurately reflect the shared contract, including creation retry risk and archive restoration, without generic auth/rate-limit/error boilerplate or unsupported read-only claims.",
+      "Focused MCP schema assertions and an agent-style call review verify the guidance; affected MCP tests pass."
+    ],
+    "values": "Goal: help local AI agents use Outask's existing task operations correctly. Value: fewer wrong MCP calls and unsafe retries without expanding the interface. Observable result: an agent can choose the right tool and construct representative calls from tools/list alone. Verify with focused schema assertions and agent-style call scenarios.",
+    "sources": [
+      "https://glama.ai/mcp/servers/henryh/outask",
+      "docs/contract.md",
+      "app/mcp/server.mjs"
+    ],
+    "updated_at": "2026-11-25T11:19:08.453Z"
   }
 ]
