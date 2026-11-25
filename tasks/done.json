@@ -843,5 +843,23 @@
     ],
     "updated_at": "2026-11-25T13:56:13.041Z",
     "completed_at": "2026-11-25T13:56:07.000Z"
+  },
+  {
+    "id": 50,
+    "title": "Publish the accepted npm artifact to GitHub Packages",
+    "status": "done",
+    "priority": "medium",
+    "blockers": [],
+    "scope": "Add @henryh/outask publication to the existing owner-merged Release workflow using the verified npm-package artifact; preserve npmjs.org and MCP Registry publication. Prepare scoped package metadata without rebuilding, compare existing version bytes for idempotency, document package visibility settings, and run local packaging and launch checks. Do not publish, create a release, push or change repository visibility without owner confirmation.",
+    "acceptance": [
+      "The release workflow publishes @henryh/outask to npm.pkg.github.com with GITHUB_TOKEN and minimal permissions, using the accepted npm-package artifact without rebuilding source.",
+      "Scoped package contains the same payload and only required metadata changes; automatic checks verify files, version and CLI/MCP launch.",
+      "Rerun accepts an identical published version and fails on different content.",
+      "npmjs.org name, dist-tags, Trusted Publishing and MCP Registry descriptor remain unchanged; repository association and public visibility steps are documented without changing repository visibility.",
+      "Local tests pass; no publication, release creation or push occurs before owner confirmation."
+    ],
+    "updated_at": "2026-11-25T17:02:47.115Z",
+    "notes": "Owner declined manual testing and requested a PR-ready local candidate. NO_RELEASE: publication infrastructure only; app/package.json, app/package-lock.json, app/mcp/server.json and docs/release-notes.md remain at 1.11.1. Feature and delivery review PASS from final source: owner-merged workflow reuses accepted npm-package artifact, GITHUB_TOKEN is scoped to contents:read/packages:write, npmjs.org/Trusted Publishing and MCP Registry jobs are unchanged, and fork download acceptance remains eligible. Scoped package retains file list and all non-metadata payload bytes; deterministic integrity makes reruns idempotent, mismatches fail. Documentation records owner package visibility action. QA PASS: make ci locked installs/audits, 349 core tests, 18 MCP tests, Linux archive and npm lifecycle; node scripts/ci.mjs github-packages-archive on real npm artifact passed Linux x64 Node 24.21.0 CLI/MCP lifecycle; git diff --check passed. No publication, release creation or push. Hosted platform/Actions results await the PR.",
+    "completed_at": "2026-11-25T17:02:39Z"
   }
 ]

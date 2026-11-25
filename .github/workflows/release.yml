@@ -104,8 +104,35 @@ jobs:
       - name: Publish through npm trusted publishing or report first-publication handoff
         run: node scripts/npm-release.mjs
 
+  github-packages:
+    needs: [publish, archives]
+    if: github.repository == 'henryh/outask'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: npm-package
+          path: dist
+      - name: Publish the accepted payload to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/github-packages-release.mjs
+
   downloaded-acceptance:
-    needs: [publish, npm-publish]
+    needs: [publish, npm-publish, github-packages]
+    if: always() && needs.publish.result == 'success' && needs.npm-publish.result == 'success' && (needs.github-packages.result == 'success' || needs.github-packages.result == 'skipped')
     uses: ./.github/workflows/release-downloads.yml
     with:
       ref: ${{ github.event.pull_request.merge_commit_sha }}
