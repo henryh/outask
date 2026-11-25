@@ -350,33 +350,6 @@
     "updated_at": "2026-11-09T13:45:14.746Z"
   },
   {
-    "id": 31,
-    "title": "Wait for npm registry visibility before verifying publication",
-    "status": "pending",
-    "priority": "medium",
-    "blockers": [],
-    "scope": "Correct the reproduced Outask v1.7 publication failure in scripts/npm-release.mjs: npm publish succeeded through trusted publishing and reported asynchronous processing, but the immediate metadata read could not yet see 1.7.0 and incorrectly reported an integrity mismatch. After an accepted publication, use bounded read-only retries for visibility of the exact approved package version and its intended dist-tag, then verify the published integrity against the already accepted artifact. Distinguish a not-yet-visible version/tag, transient registry failures, an actual immutable integrity mismatch and authentication/publication rejection. Preserve owner-merged release approval, existing-version safeguards, bootstrap behavior and stable/prerelease tag rules. Retry metadata reads only; never repeat npm publish inside the wait or automatically replace/delete/retag a published version. Keep the change small and within the existing publication helper and its focused tests.",
-    "acceptance": [
-      "A deterministic registry fixture initially hides a successfully accepted version and/or serves the old intended dist-tag, then exposes the approved integrity and tag; verification eventually passes after bounded read retries with exactly one publish invocation.",
-      "Published version metadata containing a different integrity fails as an actual immutable-artifact mismatch. The helper never overwrites, deletes or retags that version, and authentication or rejected-publish failures retain actionable diagnostics rather than being reported as propagation delay.",
-      "The wait has a finite deadline/retry budget. If the expected version or dist-tag never becomes visible, it exits nonzero with the package/version, last observed state and clear pending-visibility or registry-error wording; absence is not described as a confirmed integrity mismatch. Transient registry failures stay within the same bound.",
-      "A rerun against an already visible approved version and intended dist-tag succeeds without invoking npm publish. Existing-version collision checks, initial-registry bootstrap handoff and stable/prerelease latest/next selection retain their contracts.",
-      "Focused tests cover delayed version visibility, delayed tag visibility, timeout, transient registry failure, real integrity mismatch and publish rejection using controlled responses and deterministic timing; they perform no real npm publication. Required local checks pass, and contributor guidance is updated only if the recovery procedure changes."
-    ],
-    "values": {
-      "goal": "Publish approved Outask releases reliably while preserving immutable package integrity and owner approval.",
-      "value": "Avoid false failed releases and manual reruns caused by normal asynchronous npm registry processing.",
-      "result": "A successful publication waits for public visibility and completes verification automatically; real mismatches and expired waits still fail clearly.",
-      "verification": "Run controlled publication scenarios with one accepted publish and delayed metadata/tag responses; observe eventual success, bounded timeout and correct hard-failure diagnostics without repeat publication."
-    },
-    "notes": [
-      "Owner explicitly requested this separate task after the v1.7 incident; planning only, implementation is not started.",
-      "Evidence: Release run 42782896399 attempt 2 logged '+ outask@1.7.0' and the npm asynchronous-processing notice, then failed with 'Published npm integrity differs from the approved artifact' while public metadata still lacked 1.7.0. The version later appeared as latest with SHA-512 matching the accepted artifact; attempt 3 succeeded and all six native downloaded archive/npm acceptance jobs passed.",
-      "The earlier ENEEDAUTH was a separate Trusted Publisher configuration issue and is resolved. This task does not change npm account permissions, credentials, publisher configuration or published v1.7 contents."
-    ],
-    "updated_at": "2026-11-10T09:05:17.377Z"
-  },
-  {
     "id": 32,
     "title": "Report the installed Outask version in MCP server metadata",
     "status": "pending",

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseNpmPack } from '../scripts/npm-pack.mjs';
-import { publicationPlan } from '../../scripts/npm-release.mjs';
+import { publicationPlan, waitForPublication } from '../../scripts/npm-release.mjs';
 
 const candidate = { name: 'fixture-package', version: '1.6.0', integrity: 'sha512-approved', owner: 'confirmed-owner' };
 const owned = { name: candidate.name, maintainers: [{ name: candidate.owner }], versions: {} };
@@ -33,6 +33,61 @@ test('npm retries accept only immutable approved bytes and the expected distribu
   assert.deepEqual(publicationPlan(existing, candidate), { action: 'existing', tag: 'latest' });
   assert.throws(() => publicationPlan(existing, { ...candidate, integrity: 'sha512-other' }), /immutable npm version differs/);
   assert.throws(() => publicationPlan({ ...existing, 'dist-tags': { latest: '1.5.0' } }, candidate), /latest does not select/);
+});
+
+function visibilityFixture(responses, timeoutMs = 180000) {
+  let elapsed = 0;
+  let reads = 0;
+  const options = {
+    timeoutMs,
+    now: () => elapsed,
+    sleep: async (ms) => { elapsed += ms; },
+    read: async () => {
+      const response = responses[Math.min(reads++, responses.length - 1)];
+      if (response instanceof Error) throw response;
+      return response;
+    },
+  };
+  return { options, get reads() { return reads; }, get elapsed() { return elapsed; } };
+}
+
+test('npm waits for the approved version and tag after an accepted publish', async () => {
+  const tagLag = { ...owned, versions: { [candidate.version]: { dist: { integrity: candidate.integrity } } }, 'dist-tags': { latest: '1.5.0' } };
+  const visible = { ...tagLag, 'dist-tags': { latest: candidate.version } };
+  const temporaryError = Object.assign(new Error('npm registry returned HTTP 503'), { status: 503 });
+  const fixture = visibilityFixture([owned, temporaryError, tagLag, visible]);
+  await waitForPublication({ ...candidate, tag: 'latest' }, fixture.options);
+  assert.equal(fixture.reads, 4);
+  assert.equal(fixture.elapsed, 15000);
+});
+
+test('npm visibility timeout names the last pending state or registry error', async () => {
+  for (const [response, last] of [[owned, /version not visible/],
+    [{ ...owned, versions: { [candidate.version]: { dist: { integrity: candidate.integrity } } }, 'dist-tags': { latest: '1.5.0' } }, /latest points to 1\.5\.0/],
+    [Object.assign(new Error('npm registry returned HTTP 503'), { status: 503 }), /HTTP 503/]]) {
+    const fixture = visibilityFixture([response], 10000);
+    await assert.rejects(waitForPublication({ ...candidate, tag: 'latest' }, fixture.options),
+      (error) => /fixture-package@1\.6\.0 visibility timed out after 10s/.test(error.message) && last.test(error.message));
+    assert.equal(fixture.reads, 2);
+  }
+});
+
+test('npm default visibility deadline is three minutes', async () => {
+  const fixture = visibilityFixture([owned]);
+  await assert.rejects(waitForPublication({ ...candidate, tag: 'latest' }, fixture.options), /timed out after 180s/);
+  assert.equal(fixture.elapsed, 180000);
+  assert.equal(fixture.reads, 36);
+});
+
+test('npm publication verification rejects different bytes and permanent registry errors immediately', async () => {
+  const wrong = { ...owned, versions: { [candidate.version]: { dist: { integrity: 'sha512-other' } } } };
+  const forbidden = Object.assign(new Error('npm registry returned HTTP 401'), { status: 401 });
+  for (const [response, expected] of [[wrong, /integrity differs/], [forbidden, /HTTP 401/]]) {
+    const fixture = visibilityFixture([response]);
+    await assert.rejects(waitForPublication({ ...candidate, tag: 'latest' }, fixture.options), expected);
+    assert.equal(fixture.reads, 1);
+    assert.equal(fixture.elapsed, 0);
+  }
 });
 
 test('npm publisher refuses a local invocation before registry or credential access', async () => {
