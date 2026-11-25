@@ -352,7 +352,7 @@
   {
     "id": 31,
     "title": "Wait for npm registry visibility before verifying publication",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "medium",
     "blockers": [],
     "scope": "Correct the reproduced Outask v1.7 publication failure in scripts/npm-release.mjs: npm publish succeeded through trusted publishing and reported asynchronous processing, but the immediate metadata read could not yet see 1.7.0 and incorrectly reported an integrity mismatch. After an accepted publication, use bounded read-only retries for visibility of the exact approved package version and its intended dist-tag, then verify the published integrity against the already accepted artifact. Distinguish a not-yet-visible version/tag, transient registry failures, an actual immutable integrity mismatch and authentication/publication rejection. Preserve owner-merged release approval, existing-version safeguards, bootstrap behavior and stable/prerelease tag rules. Retry metadata reads only; never repeat npm publish inside the wait or automatically replace/delete/retag a published version. Keep the change small and within the existing publication helper and its focused tests.",
@@ -372,9 +372,10 @@
     "notes": [
       "Owner explicitly requested this separate task after the v1.7 incident; planning only, implementation is not started.",
       "Evidence: Release run 42782896399 attempt 2 logged '+ outask@1.7.0' and the npm asynchronous-processing notice, then failed with 'Published npm integrity differs from the approved artifact' while public metadata still lacked 1.7.0. The version later appeared as latest with SHA-512 matching the accepted artifact; attempt 3 succeeded and all six native downloaded archive/npm acceptance jobs passed.",
-      "The earlier ENEEDAUTH was a separate Trusted Publisher configuration issue and is resolved. This task does not change npm account permissions, credentials, publisher configuration or published v1.7 contents."
+      "The earlier ENEEDAUTH was a separate Trusted Publisher configuration issue and is resolved. This task does not change npm account permissions, credentials, publisher configuration or published v1.7 contents.",
+      "Owner decision 2026-11-25: implement now with a 3-minute visibility deadline and no version change (RELEASE_DEFERRED). Evidence: v1.11.1 first publish succeeded but metadata was still 404 around 110 seconds later; it appeared before the next check a short time later. Six previous releases had the same immediate false integrity failure, so a shorter fixed deadline is not supported by the observed boundary."
     ],
-    "updated_at": "2026-11-10T09:05:17.377Z"
+    "updated_at": "2026-11-25T13:30:10.255Z"
   },
   {
     "id": 32,
