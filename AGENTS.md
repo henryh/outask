@@ -54,4 +54,5 @@ history, squash/rebase delivery, or tag/upload manually.
 
 Install the push guard in each clone. After successful delivery verification,
 return a clean checkout to `main` and fast-forward from origin, preserving dirty
-files/local commits and retaining the task branch as required by the delivery policy.
+files/local commits. Remove merged task branches after successful delivery verification,
+following the local and remote cleanup rules in the delivery policy.

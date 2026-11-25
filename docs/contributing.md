@@ -81,8 +81,7 @@ git merge --ff-only origin/main
 
 Confirm `HEAD` equals `origin/main` and the worktree is clean. Stop if dirty files
 or local/ahead/diverged commits make synchronisation unsafe; do not stash, discard,
-reset or rewrite them. Keep the task branch. Starting work, passing checks or
-merge approval alone never authorises other remote actions.
+reset or rewrite them. After successful delivery verification, delete the merged local task branch with `git branch -d <task-branch>`. Delete its remote branch through GitHub or `git push origin --delete <task-branch>` only with explicit owner agreement for that deletion; the final delivery approval may include it. Run `git fetch --prune origin` to remove stale remote-tracking references after remote deletion. Preserve unmerged branches and branches used by another worktree; never force-delete them as routine cleanup. Starting work, passing checks or merge approval alone never authorises other remote actions.
 
 ## Native distribution acceptance
 
